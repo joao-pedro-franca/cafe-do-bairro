@@ -114,7 +114,7 @@ As três categorias e os 11 produtos ficam em `cafeConfig.ts`. `exibirNoCardapio
 - Pão de queijo é apresentado por unidade (R$ 3,00); a dúzia (R$ 25,00) está configurada como acompanhamento opcional de bolos caseiros, sem pedido independente.
 - Panetone e bolo de Natal são sazonais de dezembro (`meses: [12]`) e têm encomenda indisponível até confirmação. Permanecem visíveis para revisão, sem liberação automática por data.
 
-Essa revisão foi solicitada após releitura da entrevista e substitui a simplificação anterior do brief, na qual a dúzia era um produto independente em uma encomenda de produto único. O brief original foi preservado; a futura implementação do formulário e da API deverá considerar o acompanhamento opcional. As descrições, tamanhos e preços continuam ilustrativos. Ainda não há seleção ou registro de encomenda no cardápio.
+Essa revisão foi solicitada após releitura da entrevista e substitui a simplificação anterior do brief, na qual a dúzia era um produto independente em uma encomenda de produto único. O brief original foi preservado; o formulário e a API já consideram o acompanhamento opcional. As descrições, tamanhos e preços continuam ilustrativos. Ainda não há seleção ou registro de encomenda no cardápio.
 
 A apresentação usa listas de cartões, papel claro, bordas discretas e tipografia serifada inspirados no mockup. No celular, os produtos ficam empilhados para permitir leitura sem controles de carrossel. As imagens são desenhos SVG provisórios, não fotografias dos produtos.
 
@@ -140,21 +140,16 @@ Um `400` mostra a validação do servidor. Falhas de rede, timeout de 20 segundo
 
 O rascunho fica apenas na memória da página; recarregar apaga o preenchimento. Pedidos confirmados persistem no SQLite e não são cancelados ao recarregar. Dados do cliente são enviados somente ao endpoint público de criação; não há consulta administrativa pelo site nem integração com WhatsApp.
 
-## Verificação manual
+## Revisão pré-entrega
 
-Teste em 360, 390, 768 e 1280 px: ausência de rolagem horizontal, leitura e botões confortáveis. Use Tab/Enter para navegar, abrir os contatos e seguir os dois CTAs. Confira os destinos `#cardapio` e `#encomendas` e a preferência por movimento reduzido.
+A [revisão técnica e visual completa](docs/REVISAO-PRE-ENTREGA.md) contém requisitos verificados, correções, pendências, capturas e roteiro de demonstração.
 
-Verificações executadas nesta etapa: instalação concluída (auditoria sem vulnerabilidades reportadas), lint aprovado, TypeScript em modo estrito e build aprovados, servidor Vite iniciado e respostas HTTP 200 para HTML e SVG. A revisão visual nas quatro larguras e a navegação por teclado ainda precisam ser feitas manualmente: o controle de navegador estava indisponível nesta sessão.
-
-Na revisão do cardápio, build e lint passaram novamente. Também foram conferidos os 11 IDs únicos, a distribuição de 6/3/2 itens por categoria, os seis bolos encomendáveis, a indisponibilidade dos cafés e natalinos para encomenda e o vínculo da dúzia opcional com bolos caseiros. O controle de navegador permaneceu indisponível; a conferência visual continua pendente.
-
-Na etapa do formulário, lint, build e os sete testes automatizados das validações passaram. Os testes cobrem campos obrigatórios, telefones, elegibilidade dos produtos, datas inválidas e viradas de dia/ano e ano bissexto. A revisão visual e de interação continua pendente porque o controle de navegador estava indisponível.
-
-Na integração, passaram os **19 testes do front-end** (incluindo seis cenários de interação com DOM simulado, proxy Vite, API e SQLite reais), os **13 testes do back-end**, lint e build do front-end e verificação de tipos/build do back-end. Foram conferidos sucesso somente após `201`, bloqueio de envio simultâneo, preservação da gaveta, `400`, `409`, falha de rede e bloqueio das rotas administrativas pelo proxy. A inspeção visual em navegador real permanece pendente porque o controle de navegador estava indisponível; DOM simulado não verifica o layout renderizado.
-
-Na etapa atual de disponibilidade por quantidade, os testes cobrem também saldo 3 reservados/2 disponíveis, quantidade limitada, dia lotado, consulta com falha e nova tentativa, resposta atrasada, atualização após `201`/`409`, soma por data, migração idempotente e concorrência entre processos. Os resultados atuais são **27 testes no front-end e 20 no back-end**, além de lint, builds e verificação de tipos. A inspeção visual em navegador real continua sendo uma verificação manual; DOM simulado não valida o layout.
-
-Na etapa de informações/rodapé, passaram **31 testes no front-end e 20 no back-end**, lint e build do front-end, verificação de tipos e build do back-end. Os quatro testes novos verificam o bloqueio de destinos fictícios/não confirmados, normalização do WhatsApp, codificação da mensagem e validação do perfil Instagram. Os testes anteriores foram mantidos. Formulário, disponibilidade e código da API não foram alterados. A inspeção visual em navegador real permanece pendente por indisponibilidade do controle de navegador nesta sessão.
+- **32 testes do front-end e 21 do back-end passaram**, além de lint, typecheck e builds disponíveis.
+- Layout conferido em navegador Edge/Chromium real nas larguras **360, 390, 768 e 1280 px**, sem rolagem horizontal na página e no formulário.
+- Fluxo real pelo proxy: disponibilidade, POST único com `201`, SQLite persistente, dia lotado e recuperação de `409`.
+- Axe-core não detectou violações nos seis estados examinados. Não houve exceção JavaScript; o único erro HTTP final foi o `409` intencional do teste de capacidade.
+- Corrigidos contadores comprimidos no celular, preço cortado no seletor, quebra do ornamento no hero, favicon ausente e telefone normalizado com DDI recusado em atualização.
+- Capturas e resultados estão em `docs/auditoria/`. Safari/iOS, Firefox e leitor de tela continuam como conferências complementares.
 
 O proxy segue a opção oficial [`server.proxy` do Vite](https://vite.dev/config/server-options#server-proxy), mantendo o caminho `/api/encomendas` sem reescrita e sem adicionar credenciais administrativas.
 
@@ -178,4 +173,4 @@ O proxy segue a opção oficial [`server.proxy` do Vite](https://vite.dev/config
 
 ## Próxima etapa
 
-Conferir a apresentação em navegador real e substituir os dados/imagens fictícios por materiais autorizados quando fornecidos. Painel com autenticação adequada e implantação continuam para etapas futuras. A identidade visual, a gaveta e as regras de reserva foram preservadas nesta etapa.
+Consultar as pendências da revisão pré-entrega: outros motores/dispositivos e leitor de tela, materiais visuais autorizados quando fornecidos e conferência do repositório. Painel e implantação continuam para etapas futuras.

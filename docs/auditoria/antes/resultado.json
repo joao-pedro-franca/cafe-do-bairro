@@ -1,0 +1,87 @@
+{
+  "larguras": [
+    {
+      "largura": 360,
+      "documento": 360,
+      "transbordamentos": []
+    },
+    {
+      "largura": 390,
+      "documento": 390,
+      "transbordamentos": []
+    },
+    {
+      "largura": 768,
+      "documento": 768,
+      "transbordamentos": []
+    },
+    {
+      "largura": 1280,
+      "documento": 1280,
+      "transbordamentos": []
+    },
+    {
+      "estado": "formulario",
+      "largura": 360,
+      "documento": 360,
+      "transbordamentos": []
+    },
+    {
+      "estado": "formulario",
+      "largura": 390,
+      "documento": 390,
+      "transbordamentos": []
+    },
+    {
+      "estado": "formulario",
+      "largura": 768,
+      "documento": 768,
+      "transbordamentos": []
+    },
+    {
+      "estado": "formulario",
+      "largura": 1280,
+      "documento": 1280,
+      "transbordamentos": []
+    }
+  ],
+  "passos": [
+    "Landing e âncoras nas quatro larguras",
+    "Data real, saldo 3/2, validação, quantidade e preservação da gaveta",
+    "POST único 201, gravação em SQLite e saldo final zero",
+    "Dia lotado bloqueia seleção de bolos",
+    "Contato em demonstração, rodapé e aviso /admin sem painel",
+    "Persistência após reabrir SQLite e listagem administrativa negada"
+  ],
+  "acessibilidade": [
+    {
+      "passo": "landing-390",
+      "violacoes": []
+    },
+    {
+      "passo": "landing-1280",
+      "violacoes": []
+    },
+    {
+      "passo": "formulario-erros-390",
+      "violacoes": []
+    },
+    {
+      "passo": "formulario-preenchido-1280",
+      "violacoes": []
+    },
+    {
+      "passo": "confirmacao-1280",
+      "violacoes": []
+    },
+    {
+      "passo": "aviso-admin-390",
+      "violacoes": []
+    }
+  ],
+  "console": [
+    "Failed to load resource: the server responded with a status of 404 (Not Found)"
+  ],
+  "errosPagina": [],
+  "falhasRede": []
+}

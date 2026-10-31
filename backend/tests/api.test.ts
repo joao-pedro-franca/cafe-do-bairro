@@ -107,6 +107,15 @@ test('dados persistem depois de fechar e reabrir o banco', async (t) => {
   assert.deepEqual((await segunda.request('GET', '/1')).dados, criado.dados)
 })
 
+test('telefone com DDI normalizado pela API pode ser reenviado em uma atualização', async (t) => {
+  const api = await apiTeste(t)
+  const criado = await api.request('POST', '', { ...pedido, telefone: '+55 (73) 99999-9999' })
+  assert.equal(criado.dados.telefone, '5573999999999')
+  const atualizado = await api.request('PATCH', `/${criado.dados.id}`, { telefone: criado.dados.telefone })
+  assert.equal(atualizado.status, 200)
+  assert.equal(atualizado.dados.telefone, criado.dados.telefone)
+})
+
 test('erros de JSON, tamanho e credencial não expõem detalhes internos', async (t) => {
   const api = await apiTeste(t)
   for (const [body, tipo, esperado] of [['{', 'application/json', 400], ['a'.repeat(17000), 'application/json', 413], ['texto', 'text/plain', 415]] as const) {

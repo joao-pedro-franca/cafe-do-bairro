@@ -9,3 +9,4 @@ backend/data/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+.audit-tools/

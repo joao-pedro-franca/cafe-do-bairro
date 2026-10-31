@@ -75,7 +75,7 @@ São os mesmos campos do estado do formulário atual. `produto` recebe um **ID**
 
 `incluirPaoDeQueijo` é booleano; omitido no POST, vira `false`. `true` significa **uma dúzia junto com os bolos**, independentemente da quantidade de bolos. O acompanhamento não ocupa nenhuma parte da capacidade de bolos. Não há quantidade de dúzias, pedido independente do acompanhamento ou carrinho.
 
-O POST define `id` e `status` no servidor e rejeita esses campos na entrada. A resposta contém os dados registrados, `id`, `status: "recebida"` e o adicional como booleano. O telefone é normalizado para dígitos (mantendo o `55` se informado como `+55`). O cabeçalho `Location` aponta para a consulta administrativa do novo ID.
+O POST define `id` e `status` no servidor e rejeita esses campos na entrada. A resposta contém os dados registrados, `id`, `status: "recebida"` e o adicional como booleano. O telefone é normalizado para dígitos (mantendo o DDI `55` quando informado, com ou sem `+`). Esse valor normalizado também é aceito em atualizações. O cabeçalho `Location` aponta para a consulta administrativa do novo ID.
 
 PATCH aceita qualquer combinação dos mesmos campos e `status`: `recebida`, `em preparo` ou `entregue`. Campos omitidos são preservados; corpo vazio, campos desconhecidos e valores de tipo incorreto são recusados. Uma mudança somente de status/contato pode ser feita em pedido antigo, sem alterar sua data. Se enviar `dataEntrega`, ela precisa ser amanhã ou depois. Trocar a data ou a quantidade revalida a data futura e o saldo dentro da transação, excluindo a quantidade anterior desse mesmo ID da soma. Assim, aumentar não conta o próprio pedido duas vezes; reduzir libera a diferença. Falhar preserva todo o registro anterior.
 
@@ -182,7 +182,7 @@ npm.cmd run typecheck
 npm.cmd run build
 ```
 
-Os 20 testes cobrem CRUD, adicional, status inicial, soma das quantidades em todos os status, disponibilidade pública sem dados pessoais, dia lotado, mudanças combinadas de data/quantidade com rollback, redução/exclusão liberando bolos, persistência, migração de base antiga e reabertura, campos inválidos, SQL parametrizado, proteção administrativa, JSON/erros e fuso. Quatro cenários usam processos independentes no mesmo SQLite: última vaga por POST/PATCH, dois pedidos de três bolos e aumentos simultâneos de quantidade. Um teste compara IDs e fuso com `frontend/src/data/cafeConfig.ts`; o servidor não importa o front-end em execução.
+Os 21 testes cobrem CRUD, adicional, status inicial, soma das quantidades em todos os status, disponibilidade pública sem dados pessoais, dia lotado, mudanças combinadas de data/quantidade com rollback, redução/exclusão liberando bolos, persistência, migração de base antiga e reabertura, campos inválidos, SQL parametrizado, proteção administrativa, JSON/erros, fuso e reutilização do telefone normalizado em PATCH. Quatro cenários usam processos independentes no mesmo SQLite: última vaga por POST/PATCH, dois pedidos de três bolos e aumentos simultâneos de quantidade. Um teste compara IDs e fuso com `frontend/src/data/cafeConfig.ts`; o servidor não importa o front-end em execução.
 
 ## Limites desta etapa
 

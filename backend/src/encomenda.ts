@@ -60,7 +60,7 @@ export function validarEntrada(entrada: unknown, parcial: boolean, agora: Date):
     resultado.nomeCliente = corpo.nomeCliente.trim().replace(/\s+/g, ' ')
   }
   if (!parcial || Object.hasOwn(corpo, 'telefone')) {
-    if (typeof corpo.telefone !== 'string' || corpo.telefone.length > 25 || !/^(?:\+55)?[1-9]{2}(?:[2-5]\d{7}|9\d{8})$/.test(corpo.telefone.trim().replace(/[\s().-]/g, ''))) {
+    if (typeof corpo.telefone !== 'string' || corpo.telefone.length > 25 || !/^(?:\+?55)?[1-9]{2}(?:[2-5]\d{7}|9\d{8})$/.test(corpo.telefone.trim().replace(/[\s().-]/g, ''))) {
       throw new ApiError(400, 'Informe um telefone brasileiro com DDD (fixo ou celular); +55 é opcional.')
     }
     // Persistimos só os dígitos; o prefixo 55 é preservado quando informado.
