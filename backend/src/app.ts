@@ -3,6 +3,7 @@ import type { ErrorRequestHandler } from 'express'
 import type { RepositorioEncomendas } from './database/encomendas.ts'
 import { ApiError } from './errors.ts'
 import { rotasEncomendas } from './routes/encomendas.ts'
+import { rotasDisponibilidade } from './routes/disponibilidade.ts'
 
 export function criarApp(repo: RepositorioEncomendas, opcoes: { agora?: () => Date; adminToken?: string } = {}) {
   const app = express()
@@ -19,6 +20,7 @@ export function criarApp(repo: RepositorioEncomendas, opcoes: { agora?: () => Da
     next()
   })
   app.use(express.json({ limit: '16kb' }))
+  app.use('/api/disponibilidade', rotasDisponibilidade(repo, opcoes.agora ?? (() => new Date())))
   app.use('/api/encomendas', rotasEncomendas(repo, opcoes.agora ?? (() => new Date()), opcoes.adminToken))
   app.use((_req, _res) => { throw new ApiError(404, 'Rota não encontrada.') })
   const tratarErro: ErrorRequestHandler = (erro: unknown, _req, res, _next) => {

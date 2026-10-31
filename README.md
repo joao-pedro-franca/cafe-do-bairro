@@ -6,6 +6,8 @@ Projeto para o desafio técnico da TecnoJr. Os requisitos estão em [BRIEF.md](B
 
 Base React + TypeScript + Vite, com CSS tradicional, cabeçalho, hero, cardápio e formulário expansível integrado à API REST em `backend/`. A confirmação com número do pedido aparece somente após `201 Created`, com a data reservada e pagamento na retirada. A API implementa CRUD e regras de capacidade com SQLite. Contato continua como área-placeholder; não há painel.
 
+**Regra atual de capacidade:** por orientação desta etapa, são **cinco bolos por dia**, calculados pela soma de `quantidadeBolos`, em vez de cinco registros de encomenda. Essa decisão substitui a contagem descrita no brief original, que foi preservado como histórico. Pedidos antigos passam a representar um bolo cada, sem apagar ou recriar a base.
+
 Veja [como iniciar e testar a API](backend/README.md), incluindo contrato, exemplos PowerShell, persistência e proteção administrativa. O back-end usa TypeScript por solicitação desta etapa, atualizando a recomendação inicial de JavaScript do brief; o brief original foi preservado.
 
 **Todos os dados comerciais são fictícios**, incluindo endereço, horários, produtos, preços e tamanhos. Edite `frontend/src/data/cafeConfig.ts` para substituí-los. WhatsApp e Instagram aparecem em modo de demonstração, sem links para terceiros. A ilustração SVG do hero é um placeholder local; substituir por fotografia autorizada e otimizada numa etapa futura.
@@ -70,7 +72,8 @@ npm.cmd install
 - `src/sections/Hero.tsx`: apresentação e dois CTAs com âncoras nativas.
 - `src/sections/Cardapio.tsx`: categorias e cartões do cardápio; `components/ProductIllustration.tsx` fornece desenhos provisórios enquanto não há fotos autorizadas.
 - `src/sections/Encomendas.tsx`: abertura/fechamento, campos controlados, foco e mensagens de validação.
-- `src/services/encomendas.ts`: POST público, verificação da resposta e mensagens de erro; sem token e sem repetição automática de requisições.
+- `src/services/encomendas.ts`: consulta pública de disponibilidade e POST, verificação das respostas e mensagens de erro; sem token e sem repetição automática de POST.
+- `src/hooks/useDisponibilidade.ts`: consulta ao mudar a data, cancelamento de consultas antigas e atualização após sucesso ou conflito.
 - `src/utils/encomenda.ts`: calendário no fuso do café, formato de telefone e validações iniciais, sem chamadas de rede.
 - `src/styles/encomendas.css`: gaveta animada e formulário em uma coluna no celular e duas em telas maiores.
 - `tests/encomenda.test.mjs`: testes das validações com o executor nativo do Node, sem dependências extras.
@@ -104,11 +107,17 @@ O formulário exige nome e sobrenome, telefone brasileiro com DDD (fixo ou celul
 
 Depois de selecionar um bolo, aparece a opção de adicionar uma dúzia de pão de queijo, com preço vindo da configuração. Não há quantidade, carrinho ou pedido independente desse acompanhamento. Cafés e itens natalinos não aparecem no seletor.
 
-**Confirmar encomenda** valida os campos localmente e envia os cinco campos do formulário ao `POST /api/encomendas`, sem `id`, `status` ou credenciais administrativas. Campos e envio ficam bloqueados enquanto aparece **Enviando encomenda…**. Uma trava imediata com `useRef` impede dois envios antes de a atualização visual do React terminar; a gaveta pode ser fechada/reaberta durante a espera.
+O formulário começa **somente pela data**. Uma data válida dispara `GET /api/disponibilidade?data=YYYY-MM-DD`. A tela apresenta capacidade total, bolos já reservados e bolos disponíveis. Enquanto consulta, mostra carregamento; se falhar, permite tentar novamente. Dia lotado mostra uma mensagem para escolher outra data. A consulta não ocupa capacidade nem garante reserva.
+
+Com saldo, aparecem bolo, quantidade, nome e telefone. Os botões de aumentar/diminuir e o campo numérico permitem escolher de 1 até o saldo consultado. Um registro contém **um sabor e sua quantidade de bolos**, sem carrinho de sabores. O adicional continua sendo uma única dúzia por pedido, independentemente da quantidade de bolos, sem consumir capacidade de produção de bolos.
+
+**Confirmar encomenda** valida os campos localmente e envia `nomeCliente`, `telefone`, `produto`, `dataEntrega`, `quantidadeBolos` e `incluirPaoDeQueijo` ao `POST /api/encomendas`, sem `id`, `status` ou credenciais administrativas. Campos e envio ficam bloqueados enquanto aparece **Enviando encomenda…**. Uma trava imediata com `useRef` impede dois envios antes de a atualização visual do React terminar; a gaveta pode ser fechada/reaberta durante a espera.
 
 Somente uma resposta `201`, com ID positivo e status `recebida`, permite mostrar **Encomenda nº … confirmada**, reserva da data e pagamento na retirada. Depois disso, o mesmo formulário não reenvia o pedido. **Fazer outra encomenda** limpa os campos e libera explicitamente uma nova solicitação. Fechar e reabrir preserva os dados e o resultado.
 
-Um `409` exibe que a data tem cinco pedidos, destaca o campo de data e permite corrigi-lo sem apagar o resto. Um `400` mostra a validação do servidor. Falhas de rede, timeout de 20 segundos, respostas inesperadas e erros do servidor não viram confirmação. Como a conexão pode falhar depois da gravação, a interface avisa que o pedido pode ter sido recebido e pede conferir com o café antes de reenviar. Não há retry automático nem idempotência entre recarregamentos/dispositivos nesta etapa.
+O servidor soma novamente os bolos dentro da transação ao confirmar. Se o saldo cair durante o preenchimento e faltar capacidade, responde `409`. A tela consulta o saldo de novo, mantendo sabor, quantidade, contato e adicional. Se a quantidade escolhida ficou maior que o saldo, ela é indicada como inválida, sem redução silenciosa; o cliente pode diminuí-la ou escolher outro dia. Dia lotado oculta os demais campos, mas preserva seus valores para quando outra data for selecionada. Depois de um `201`, uma nova consulta atualiza o saldo exibido; se essa consulta falhar, o pedido continua confirmado.
+
+Um `400` mostra a validação do servidor. Falhas de rede, timeout de 20 segundos, respostas inesperadas e erros do servidor não viram confirmação. Como a conexão pode falhar depois da gravação, a interface avisa que o pedido pode ter sido recebido e pede conferir com o café antes de reenviar. Não há retry automático de POST nem idempotência entre recarregamentos/dispositivos nesta etapa. Consultas GET são canceladas ao trocar de data, e respostas antigas não substituem o saldo atual.
 
 O rascunho fica apenas na memória da página; recarregar apaga o preenchimento. Pedidos confirmados persistem no SQLite e não são cancelados ao recarregar. Dados do cliente são enviados somente ao endpoint público de criação; não há consulta administrativa pelo site nem integração com WhatsApp.
 
@@ -124,17 +133,19 @@ Na etapa do formulário, lint, build e os sete testes automatizados das validaç
 
 Na integração, passaram os **19 testes do front-end** (incluindo seis cenários de interação com DOM simulado, proxy Vite, API e SQLite reais), os **13 testes do back-end**, lint e build do front-end e verificação de tipos/build do back-end. Foram conferidos sucesso somente após `201`, bloqueio de envio simultâneo, preservação da gaveta, `400`, `409`, falha de rede e bloqueio das rotas administrativas pelo proxy. A inspeção visual em navegador real permanece pendente porque o controle de navegador estava indisponível; DOM simulado não verifica o layout renderizado.
 
+Na etapa atual de disponibilidade por quantidade, os testes cobrem também saldo 3 reservados/2 disponíveis, quantidade limitada, dia lotado, consulta com falha e nova tentativa, resposta atrasada, atualização após `201`/`409`, soma por data, migração idempotente e concorrência entre processos. Os resultados atuais são **27 testes no front-end e 20 no back-end**, além de lint, builds e verificação de tipos. A inspeção visual em navegador real continua sendo uma verificação manual; DOM simulado não valida o layout.
+
 O proxy segue a opção oficial [`server.proxy` do Vite](https://vite.dev/config/server-options#server-proxy), mantendo o caminho `/api/encomendas` sem reescrita e sem adicionar credenciais administrativas.
 
 ### Testar a gaveta e as validações
 
 1. Execute `npm.cmd run dev` dentro de `frontend/`. Siga os CTAs do Hero e do cardápio e confira se ambos chegam a **Faça sua encomenda**.
-2. Clique em **Quero encomendar**. Preencha parcialmente os campos, selecione um bolo e marque o adicional. Use **Fechar e manter os dados**, reabra e confira os mesmos valores. Repita com o botão de fechamento acima da gaveta.
-3. Clique em **Confirmar encomenda** com campos vazios. Confira o resumo focado, os links e as mensagens abaixo de cada campo; nenhuma requisição deve ser enviada.
+2. Clique em **Quero encomendar**. Inicialmente apenas a data deve aparecer. Escolha uma data futura, confira os três contadores e, com saldo, selecione sabor/quantidade e preencha os contatos. Feche e reabra para conferir a preservação dos valores.
+3. Com data válida e saldo consultado, clique em **Confirmar encomenda** com os demais campos vazios. Confira os erros; nenhum POST deve ser enviado. A consulta GET não grava pedidos.
 4. Teste um nome sem sobrenome, telefone curto/sem DDD e datas de hoje ou anteriores. O calendário deve bloquear os dias anteriores a amanhã; a validação também rejeita uma data anterior digitada manualmente quando o navegador permitir.
 5. Com os dois servidores ativos, use dados fictícios completos, por exemplo `Cliente de Teste`, `(73) 99999-9999`, um bolo e amanhã. Confira o estado de envio e a confirmação com número do pedido e pagamento na retirada. Esta ação grava um pedido de teste.
 6. Navegue por Tab/Shift+Tab e Enter/Espaço. A gaveta fechada não deve receber foco; ao fechar, o foco deve retornar ao botão de abertura. Confira em 360, 390, 768 e 1280 px e com a preferência de movimento reduzido ativada no dispositivo.
-7. Para conferir `409`, use uma data já preenchida por cinco pedidos de teste e tente o sexto: os campos devem permanecer preenchidos, sem confirmação, permitindo escolher outro dia. Os testes automatizados cobrem isso sem modificar a base local.
+7. Reserve três bolos de teste: a consulta deve mostrar limite 5, reservados 3 e disponíveis 2. Para testar concorrência manual, deixe um formulário com quantidade 3 aberto em uma data livre, reserve três bolos nessa mesma data por outra aba e envie o primeiro: ele recebe `409`, atualiza o saldo para 2 e permite diminuir a quantidade sem apagar os demais dados. Os testes automatizados cobrem isso sem modificar a base local.
 8. Pare a API antes de enviar um novo pedido para verificar o erro de conexão, sem confirmação automática. Reinicie a API para continuar. Não reenvie às cegas se a conexão caiu durante um pedido que já estava em andamento.
 
 ## Próxima etapa

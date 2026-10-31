@@ -17,7 +17,7 @@ test('CRUD HTTP completo: cria recebida, lista, consulta, edita dados/status e r
   assert.deepEqual((await api.request('GET', '/1')).dados, criado.dados)
   const alterado = await api.request('PATCH', '/1', { nomeCliente: 'Outra Cliente', telefone: '+55 (73) 3333-3333', produto: 'bolo-coco', dataEntrega: '2026-11-03', incluirPaoDeQueijo: false, status: 'em preparo' })
   assert.equal(alterado.status, 200)
-  assert.deepEqual(alterado.dados, { id: 1, nomeCliente: 'Outra Cliente', telefone: '557333333333', produto: 'bolo-coco', dataEntrega: '2026-11-03', incluirPaoDeQueijo: false, status: 'em preparo' })
+  assert.deepEqual(alterado.dados, { id: 1, nomeCliente: 'Outra Cliente', telefone: '557333333333', produto: 'bolo-coco', dataEntrega: '2026-11-03', incluirPaoDeQueijo: false, quantidadeBolos: 1, status: 'em preparo' })
   assert.equal((await api.request('PATCH', '/1', { status: 'entregue' })).dados.status, 'entregue')
   assert.equal((await api.request('DELETE', '/1')).status, 204)
   assert.deepEqual((await api.request('GET')).dados, [])

@@ -8,7 +8,7 @@ import { abrirEncomendas } from '../src/database/encomendas.ts'
 
 // Credencial fictícia e exclusiva dos testes; o servidor não tem token padrão.
 export const TOKEN_TESTE = 'token-ficticio-exclusivo-dos-testes-12345'
-export const pedido = { nomeCliente: 'Cliente de Teste', telefone: '(73) 99999-9999', produto: 'bolo-cenoura', dataEntrega: '2026-11-02', incluirPaoDeQueijo: true }
+export const pedido = { nomeCliente: 'Cliente de Teste', telefone: '(73) 99999-9999', produto: 'bolo-cenoura', dataEntrega: '2026-11-02', incluirPaoDeQueijo: true, quantidadeBolos: 1 }
 
 const limpezas = new WeakMap<TestContext, (() => Promise<unknown>)[]>()
 export function aoTerminar(t: TestContext, limpeza: () => Promise<unknown>) {

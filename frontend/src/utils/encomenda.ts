@@ -6,9 +6,10 @@ export interface DadosEncomenda {
   produto: string
   dataEntrega: string
   incluirPaoDeQueijo: boolean
+  quantidadeBolos: number
 }
 
-export type CampoEncomenda = 'nomeCliente' | 'telefone' | 'produto' | 'dataEntrega'
+export type CampoEncomenda = 'nomeCliente' | 'telefone' | 'produto' | 'dataEntrega' | 'quantidadeBolos'
 export type ErrosEncomenda = Partial<Record<CampoEncomenda, string>>
 
 export function dataMinimaEncomenda(fusoHorario: string, agora = new Date()) {
@@ -37,7 +38,15 @@ export function produtoEncomendavel(produto: Produto) {
   return produto.encomenda.tipo === 'principal' && produto.sazonalidade === null
 }
 
-export function validarEncomenda(dados: DadosEncomenda, produtos: readonly Produto[], dataMinima: string): ErrosEncomenda {
+export function erroDataEntrega(dataEntrega: string, dataMinima: string): string | undefined {
+  const data = new Date(`${dataEntrega}T12:00:00Z`)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dataEntrega) || Number.isNaN(data.getTime()) || data.toISOString().slice(0, 10) !== dataEntrega) {
+    return 'Escolha uma data válida para a encomenda.'
+  }
+  if (dataEntrega < dataMinima) return 'Escolha amanhã ou uma data posterior, considerando o horário do café.'
+}
+
+export function validarEncomenda(dados: DadosEncomenda, produtos: readonly Produto[], dataMinima: string, disponiveis?: number): ErrosEncomenda {
   const erros: ErrosEncomenda = {}
   if (dados.nomeCliente.trim().split(/\s+/).length < 2) {
     erros.nomeCliente = 'Informe seu nome e sobrenome.'
@@ -48,14 +57,9 @@ export function validarEncomenda(dados: DadosEncomenda, produtos: readonly Produ
   if (!produtos.some((produto) => produto.id === dados.produto && produtoEncomendavel(produto))) {
     erros.produto = 'Selecione um dos bolos disponíveis para encomenda.'
   }
-  // A comparação textual só é segura após validar o calendário e o formato ISO.
-  const data = new Date(`${dados.dataEntrega}T12:00:00Z`)
-  const dataValida = /^\d{4}-\d{2}-\d{2}$/.test(dados.dataEntrega)
-    && !Number.isNaN(data.getTime()) && data.toISOString().slice(0, 10) === dados.dataEntrega
-  if (!dataValida) {
-    erros.dataEntrega = 'Escolha uma data válida para a encomenda.'
-  } else if (dados.dataEntrega < dataMinima) {
-    erros.dataEntrega = 'Escolha amanhã ou uma data posterior, considerando o horário do café.'
-  }
+  const erroData = erroDataEntrega(dados.dataEntrega, dataMinima)
+  if (erroData) erros.dataEntrega = erroData
+  if (!Number.isSafeInteger(dados.quantidadeBolos) || dados.quantidadeBolos < 1) erros.quantidadeBolos = 'Escolha uma quantidade inteira de bolos, a partir de 1.'
+  else if (disponiveis !== undefined && dados.quantidadeBolos > disponiveis) erros.quantidadeBolos = `Há ${disponiveis} bolo(s) disponíveis. Ajuste a quantidade ou escolha outra data.`
   return erros
 }

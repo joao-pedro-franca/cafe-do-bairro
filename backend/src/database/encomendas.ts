@@ -14,6 +14,11 @@ export function abrirEncomendas(caminho: string) {
   db.exec(`
     PRAGMA busy_timeout = 5000;
     PRAGMA journal_mode = WAL;
+  `)
+  // A migração é aditiva e protegida pelo mesmo bloqueio entre processos que as reservas.
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    db.exec(`
     CREATE TABLE IF NOT EXISTS encomendas (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nomeCliente TEXT NOT NULL,
@@ -21,10 +26,21 @@ export function abrirEncomendas(caminho: string) {
       produto TEXT NOT NULL,
       dataEntrega TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'recebida' CHECK(status IN ('recebida', 'em preparo', 'entregue')),
-      incluirPaoDeQueijo INTEGER NOT NULL DEFAULT 0 CHECK(incluirPaoDeQueijo IN (0, 1))
+      incluirPaoDeQueijo INTEGER NOT NULL DEFAULT 0 CHECK(incluirPaoDeQueijo IN (0, 1)),
+      quantidadeBolos INTEGER NOT NULL DEFAULT 1 CHECK(quantidadeBolos > 0)
     ) STRICT;
     CREATE INDEX IF NOT EXISTS idx_encomendas_data ON encomendas(dataEntrega);
   `)
+    const colunas = db.prepare('PRAGMA table_info(encomendas)').all() as { name: string }[]
+    if (!colunas.some((coluna) => coluna.name === 'quantidadeBolos')) {
+      db.exec('ALTER TABLE encomendas ADD COLUMN quantidadeBolos INTEGER NOT NULL DEFAULT 1 CHECK(quantidadeBolos > 0)')
+    }
+    db.exec('COMMIT')
+  } catch (erro) {
+    db.exec('ROLLBACK')
+    db.close()
+    throw erro
+  }
 
   function converter(registro: unknown): Encomenda {
     const linha = registro as Registro
@@ -35,9 +51,14 @@ export function abrirEncomendas(caminho: string) {
     if (!linha) throw new ApiError(404, 'Encomenda não encontrada.')
     return converter(linha)
   }
-  function exigirVaga(data: string, ignorarId = 0) {
-    const { total } = db.prepare('SELECT COUNT(*) AS total FROM encomendas WHERE dataEntrega = ? AND id <> ?').get(data, ignorarId) as { total: number }
-    if (total >= LIMITE_DIARIO) throw new ApiError(409, 'Essa data já tem cinco encomendas. Escolha outra data.')
+  function quantidadeReservada(data: string, ignorarId = 0) {
+    const { total } = db.prepare('SELECT COALESCE(SUM(quantidadeBolos), 0) AS total FROM encomendas WHERE dataEntrega = ? AND id <> ?').get(data, ignorarId) as { total: number }
+    return total
+  }
+  function exigirVaga(data: string, quantidade: number, ignorarId = 0) {
+    if (quantidadeReservada(data, ignorarId) + quantidade > LIMITE_DIARIO) {
+      throw new ApiError(409, 'A quantidade de bolos solicitada ultrapassa a disponibilidade dessa data. Consulte o saldo e ajuste a quantidade ou escolha outro dia.')
+    }
   }
   function transacao<T>(acao: () => T): T {
     // Reserva o direito de escrita ANTES de contar. Outro processo precisa esperar o COMMIT.
@@ -54,14 +75,18 @@ export function abrirEncomendas(caminho: string) {
   return {
     fechar: () => db.close(),
     buscar,
+    disponibilidade(data: string) {
+      const reservada = quantidadeReservada(data)
+      return { data, limiteDiario: LIMITE_DIARIO, quantidadeReservada: reservada, quantidadeDisponivel: Math.max(0, LIMITE_DIARIO - reservada) }
+    },
     listar: () => db.prepare('SELECT * FROM encomendas ORDER BY dataEntrega, id').all().map(converter),
     criar(dados: DadosEncomenda, agora: () => Date) {
       return transacao(() => {
         validarData(dados.dataEntrega, agora())
-        exigirVaga(dados.dataEntrega)
+        exigirVaga(dados.dataEntrega, dados.quantidadeBolos)
         const registro = db.prepare(`INSERT INTO encomendas
-          (nomeCliente, telefone, produto, dataEntrega, incluirPaoDeQueijo) VALUES (?, ?, ?, ?, ?)`)
-          .run(dados.nomeCliente, dados.telefone, dados.produto, dados.dataEntrega, Number(dados.incluirPaoDeQueijo))
+          (nomeCliente, telefone, produto, dataEntrega, incluirPaoDeQueijo, quantidadeBolos) VALUES (?, ?, ?, ?, ?, ?)`)
+          .run(dados.nomeCliente, dados.telefone, dados.produto, dados.dataEntrega, Number(dados.incluirPaoDeQueijo), dados.quantidadeBolos)
         return buscar(Number(registro.lastInsertRowid))
       })
     },
@@ -69,14 +94,14 @@ export function abrirEncomendas(caminho: string) {
       return transacao(() => {
         const anterior = buscar(id)
         const atual = { ...anterior, ...alteracoes }
-        // Status e contato podem ser corrigidos até em pedidos antigos; só trocar a data exige nova antecedência.
-        if (atual.dataEntrega !== anterior.dataEntrega) {
+        // Status e contato continuam editáveis em pedidos antigos; produção nova exige data futura.
+        if (atual.dataEntrega !== anterior.dataEntrega || atual.quantidadeBolos !== anterior.quantidadeBolos) {
           validarData(atual.dataEntrega, agora())
-          exigirVaga(atual.dataEntrega, id)
+          exigirVaga(atual.dataEntrega, atual.quantidadeBolos, id)
         }
         db.prepare(`UPDATE encomendas SET nomeCliente = ?, telefone = ?, produto = ?, dataEntrega = ?,
-          status = ?, incluirPaoDeQueijo = ? WHERE id = ?`)
-          .run(atual.nomeCliente, atual.telefone, atual.produto, atual.dataEntrega, atual.status, Number(atual.incluirPaoDeQueijo), id)
+          status = ?, incluirPaoDeQueijo = ?, quantidadeBolos = ? WHERE id = ?`)
+          .run(atual.nomeCliente, atual.telefone, atual.produto, atual.dataEntrega, atual.status, Number(atual.incluirPaoDeQueijo), atual.quantidadeBolos, id)
         return buscar(id)
       })
     },

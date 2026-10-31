@@ -7,6 +7,7 @@ export interface DadosEncomenda {
   produto: string
   dataEntrega: string
   incluirPaoDeQueijo: boolean
+  quantidadeBolos: number
 }
 export interface Encomenda extends DadosEncomenda {
   id: number
@@ -41,11 +42,17 @@ export function validarEntrada(entrada: unknown, parcial: boolean, agora: Date):
     throw new ApiError(400, 'Envie um objeto JSON com os dados da encomenda.')
   }
   const corpo = entrada as Record<string, unknown>
-  const campos = ['nomeCliente', 'telefone', 'produto', 'dataEntrega', 'incluirPaoDeQueijo', ...(parcial ? ['status'] : [])]
+  const campos = ['nomeCliente', 'telefone', 'produto', 'dataEntrega', 'incluirPaoDeQueijo', 'quantidadeBolos', ...(parcial ? ['status'] : [])]
   if (!Object.keys(corpo).length || Object.keys(corpo).some((campo) => !campos.includes(campo))) {
     throw new ApiError(400, 'Envie apenas os campos permitidos. O status inicial é definido pelo servidor.')
   }
   const resultado: AlteracaoEncomenda = {}
+  if (!parcial || Object.hasOwn(corpo, 'quantidadeBolos')) {
+    if (typeof corpo.quantidadeBolos !== 'number' || !Number.isSafeInteger(corpo.quantidadeBolos) || corpo.quantidadeBolos < 1) {
+      throw new ApiError(400, 'quantidadeBolos deve ser um número inteiro positivo.')
+    }
+    resultado.quantidadeBolos = corpo.quantidadeBolos
+  }
   if (!parcial || Object.hasOwn(corpo, 'nomeCliente')) {
     if (typeof corpo.nomeCliente !== 'string' || corpo.nomeCliente.trim().length > 100 || corpo.nomeCliente.trim().split(/\s+/).length < 2) {
       throw new ApiError(400, 'Informe nome e sobrenome, com até 100 caracteres.')

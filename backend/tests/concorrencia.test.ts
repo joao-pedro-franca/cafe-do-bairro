@@ -41,6 +41,30 @@ test('dois processos concorrentes disputam a última vaga sem criar a sexta', { 
   assert.equal((await requisicao(a, 'GET')).dados.length, 5)
 })
 
+test('dois pedidos simultâneos de três bolos não ultrapassam cinco bolos', { timeout: 15000 }, async (t) => {
+  const pasta = await pastaTemporaria(t)
+  const arquivo = join(pasta, 'quantidades.sqlite')
+  const a = await processo(t, arquivo)
+  const b = await processo(t, arquivo)
+  const respostas = await Promise.all([requisicao(a, 'POST', '', { ...pedido, quantidadeBolos: 3 }), requisicao(b, 'POST', '', { ...pedido, quantidadeBolos: 3 })])
+  assert.deepEqual(respostas.map((resposta) => resposta.status).sort(), [201, 409])
+  const todos = (await requisicao(a, 'GET')).dados as { quantidadeBolos: number }[]
+  assert.equal(todos.reduce((total, item) => total + item.quantidadeBolos, 0), 3)
+})
+
+test('aumentos simultâneos de quantidade na mesma data respeitam soma e rollback', { timeout: 15000 }, async (t) => {
+  const pasta = await pastaTemporaria(t)
+  const arquivo = join(pasta, 'aumentos.sqlite')
+  const a = await processo(t, arquivo)
+  const b = await processo(t, arquivo)
+  await requisicao(a, 'POST', '', pedido)
+  await requisicao(a, 'POST', '', pedido)
+  const respostas = await Promise.all([requisicao(a, 'PATCH', '/1', { quantidadeBolos: 3 }), requisicao(b, 'PATCH', '/2', { quantidadeBolos: 3 })])
+  assert.deepEqual(respostas.map((resposta) => resposta.status).sort(), [200, 409])
+  const todos = (await requisicao(a, 'GET')).dados as { quantidadeBolos: number }[]
+  assert.deepEqual(todos.map((item) => item.quantidadeBolos).sort(), [1, 3])
+})
+
 test('trocas de data concorrentes também disputam uma única vaga com rollback do perdedor', { timeout: 15000 }, async (t) => {
   const pasta = await pastaTemporaria(t)
   const arquivo = join(pasta, 'troca.sqlite')

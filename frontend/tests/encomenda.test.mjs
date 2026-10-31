@@ -5,7 +5,7 @@ import { dataMinimaEncomenda, formatarTelefone, produtoEncomendavel, telefoneVal
 
 const dadosValidos = {
   nomeCliente: 'Cliente de Teste', telefone: '(73) 99999-9999', produto: 'bolo-cenoura',
-  dataEntrega: '2026-11-01', incluirPaoDeQueijo: false,
+  dataEntrega: '2026-11-01', incluirPaoDeQueijo: false, quantidadeBolos: 1,
 }
 const validar = (alteracoes = {}, minima = '2026-11-01') => validarEncomenda({ ...dadosValidos, ...alteracoes }, cafeConfig.produtos, minima)
 
@@ -50,4 +50,10 @@ test('somente os seis bolos são produtos principais; café, dúzia e Natal não
 
 test('adicional opcional não impede a validação de um bolo', () => {
   assert.deepEqual(validar({ incluirPaoDeQueijo: true }), {})
+})
+
+test('quantidade deve ser inteira positiva e caber na disponibilidade consultada', () => {
+  for (const quantidadeBolos of [0, -1, 1.5, NaN]) assert(validar({ quantidadeBolos }).quantidadeBolos)
+  assert(validarEncomenda({ ...dadosValidos, quantidadeBolos: 3 }, cafeConfig.produtos, '2026-11-01', 2).quantidadeBolos)
+  assert.deepEqual(validarEncomenda({ ...dadosValidos, quantidadeBolos: 2 }, cafeConfig.produtos, '2026-11-01', 2), {})
 })

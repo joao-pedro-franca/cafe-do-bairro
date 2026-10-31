@@ -2,6 +2,8 @@
 
 API REST local em Node.js, Express, TypeScript e SQLite. O formulário público já envia pedidos por `POST /api/encomendas` usando o proxy de desenvolvimento do Vite; a confirmação aparece somente após `201`. A API usa TypeScript por solicitação do projeto, no lugar da recomendação inicial de JavaScript no brief.
 
+**Mudança confirmada nesta etapa:** a produção diária é de **cinco bolos**, não cinco registros. A soma de `quantidadeBolos` em todos os pedidos de uma data determina a capacidade ocupada. Essa orientação substitui a contagem original do brief, preservado como histórico.
+
 Para rodar site e API juntos, veja o [README principal](../README.md). O envio público não precisa de token: você pode executar `npm.cmd run dev` sem configurar `ADMIN_TOKEN`. As rotas administrativas continuarão bloqueadas. Os exemplos abaixo configuram token apenas para testar o CRUD administrativo; ele nunca deve ir para o front-end.
 
 ## Instalar e iniciar
@@ -46,6 +48,7 @@ Não há carregamento automático de `.env`. Defina as variáveis no terminal ou
 | Método | Rota | Acesso | Resultado |
 | --- | --- | --- | --- |
 | `POST` | `/api/encomendas` | Público | `201`, encomenda registrada com status `recebida`. |
+| `GET` | `/api/disponibilidade?data=YYYY-MM-DD` | Público | `200`, apenas data e quantidades agregadas, sem dados pessoais. |
 | `GET` | `/api/encomendas` | Administrativo | `200`, lista ordenada por data e ID. |
 | `GET` | `/api/encomendas/:id` | Administrativo | `200`, encomenda por ID. |
 | `PATCH` | `/api/encomendas/:id` | Administrativo | `200`, encomenda atualizada. |
@@ -61,24 +64,46 @@ Exemplo de corpo do POST (a data precisa ser futura ao executar):
   "telefone": "(73) 99999-9999",
   "produto": "bolo-cenoura",
   "dataEntrega": "2099-12-25",
-  "incluirPaoDeQueijo": true
+  "incluirPaoDeQueijo": true,
+  "quantidadeBolos": 2
 }
 ```
 
 São os mesmos campos do estado do formulário atual. `produto` recebe um **ID**, conforme o `<select>` do front-end, em vez do nome ilustrativo usado no exemplo original do brief. IDs permitidos: `bolo-cenoura`, `bolo-chocolate`, `bolo-milho`, `bolo-fuba`, `bolo-laranja`, `bolo-coco`. Cafés, Natal e pão de queijo como produto independente são recusados.
 
-`incluirPaoDeQueijo` é booleano; omitido no POST, vira `false`. `true` significa **uma dúzia junto com o bolo**, no mesmo registro e ocupando **uma única vaga**. Não há carrinho ou quantidade. Essa regra mantém a revisão da entrevista já documentada no README principal.
+`quantidadeBolos` é obrigatório no POST e deve ser um número inteiro positivo seguro, sem conversão de strings. Zero, negativos e frações retornam `400`; uma quantidade positiva que ultrapassa o saldo retorna `409`. A quantidade corresponde ao mesmo sabor selecionado em `produto`. Clientes anteriores precisam passar a enviar esse campo; o valor padrão de um bolo é destinado à migração dos registros existentes.
+
+`incluirPaoDeQueijo` é booleano; omitido no POST, vira `false`. `true` significa **uma dúzia junto com os bolos**, independentemente da quantidade de bolos. O acompanhamento não ocupa nenhuma parte da capacidade de bolos. Não há quantidade de dúzias, pedido independente do acompanhamento ou carrinho.
 
 O POST define `id` e `status` no servidor e rejeita esses campos na entrada. A resposta contém os dados registrados, `id`, `status: "recebida"` e o adicional como booleano. O telefone é normalizado para dígitos (mantendo o `55` se informado como `+55`). O cabeçalho `Location` aponta para a consulta administrativa do novo ID.
 
-PATCH aceita qualquer combinação dos mesmos campos e `status`: `recebida`, `em preparo` ou `entregue`. Campos omitidos são preservados; corpo vazio, campos desconhecidos e valores de tipo incorreto são recusados. Uma mudança somente de status/contato pode ser feita em pedido antigo, sem alterar sua data. Se enviar `dataEntrega`, ela precisa ser amanhã ou depois; trocar a data também exige vaga no destino.
+PATCH aceita qualquer combinação dos mesmos campos e `status`: `recebida`, `em preparo` ou `entregue`. Campos omitidos são preservados; corpo vazio, campos desconhecidos e valores de tipo incorreto são recusados. Uma mudança somente de status/contato pode ser feita em pedido antigo, sem alterar sua data. Se enviar `dataEntrega`, ela precisa ser amanhã ou depois. Trocar a data ou a quantidade revalida a data futura e o saldo dentro da transação, excluindo a quantidade anterior desse mesmo ID da soma. Assim, aumentar não conta o próprio pedido duas vezes; reduzir libera a diferença. Falhar preserva todo o registro anterior.
+
+### Consulta pública de disponibilidade
+
+```http
+GET /api/disponibilidade?data=2099-12-25
+```
+
+Exemplo de resposta, quando há três bolos reservados:
+
+```json
+{
+  "data": "2099-12-25",
+  "limiteDiario": 5,
+  "quantidadeReservada": 3,
+  "quantidadeDisponivel": 2
+}
+```
+
+Não exige token e nunca retorna ID de pedido, nome ou telefone. Valida data existente e a mesma antecedência do POST em `America/Bahia`; ausência, parâmetros de data repetidos, hoje e passado retornam `400`. Responde com `Cache-Control: no-store`. Consultar não grava nem garante reserva: o saldo pode mudar antes do POST. Dia lotado responde `200` com disponível `0`, não erro.
 
 Erros têm formato `{ "erro": "Mensagem compreensível." }`:
 
 - `400`: campos, JSON, data, status ou ID inválidos.
 - `401`: token administrativo ausente/incorreto quando o acesso está configurado.
 - `404`: encomenda ou rota inexistente.
-- `409`: data esgotada; nada é gravado.
+- `409`: quantidade solicitada ultrapassa o saldo da data; nada é gravado.
 - `413` / `415`: corpo grande demais / conteúdo diferente de JSON.
 - `503`: administração não configurada ou banco temporariamente ocupado.
 - `500`: erro inesperado, sem SQL ou stack trace na resposta.
@@ -97,7 +122,12 @@ $corpo = @{
   produto = 'bolo-cenoura'
   dataEntrega = (Get-Date).AddDays(2).ToString('yyyy-MM-dd')
   incluirPaoDeQueijo = $true
+  quantidadeBolos = 2
 } | ConvertTo-Json
+
+# Consultar antes de criar: não exige token e não reserva capacidade.
+$data = (Get-Date).AddDays(2).ToString('yyyy-MM-dd')
+Invoke-RestMethod -Uri "http://127.0.0.1:3001/api/disponibilidade?data=$data"
 
 # Criar: não precisa de token; a data acima deixa margem de dois dias no exemplo.
 $pedido = Invoke-RestMethod -Method Post -Uri $base -ContentType 'application/json; charset=utf-8' -Body $corpo
@@ -115,15 +145,17 @@ Invoke-RestMethod -Method Patch -Uri "$base/$($pedido.id)" -Headers $headers -Co
 Invoke-RestMethod -Method Delete -Uri "$base/$($pedido.id)" -Headers $headers
 ```
 
-Use somente dados fictícios nesta fase. Uma encomenda criada pela API já fica registrada e ocupa vaga; não há aprovação manual. O pagamento é na retirada. Conversas no WhatsApp não são sincronizadas.
+Use somente dados fictícios nesta fase. Uma encomenda criada pela API já fica registrada e ocupa sua quantidade de bolos na data; não há aprovação manual. O pagamento é na retirada. Conversas no WhatsApp não são sincronizadas.
 
 ## Persistência, capacidade e concorrência
 
 `src/database/encomendas.ts` cria a tabela e o índice por data na primeira abertura. Os dados persistem em arquivo ao reiniciar; os testes usam bancos isolados e temporários. Arquivos SQLite e `backend/data/` ficam fora do Git.
 
+Na próxima inicialização, a migração verifica as colunas sob `BEGIN IMMEDIATE`. Se `quantidadeBolos` ainda não existir, executa `ALTER TABLE ... ADD COLUMN quantidadeBolos INTEGER NOT NULL DEFAULT 1 CHECK(quantidadeBolos > 0)`. Cada registro antigo passa a representar um bolo, mantendo ID, nome, telefone, sabor, data, status e acompanhamento. Não é necessário apagar nem recriar o banco. Reabrir uma base já migrada não muda as quantidades existentes. Pare versões antigas da API antes de iniciar a versão nova, para que todos os escritores usem a regra atualizada.
+
 Uma **transação** agrupa operações: tudo é concluído com `COMMIT`, ou é desfeito com `ROLLBACK`. `BEGIN IMMEDIATE` obtém o direito de escrita antes da contagem de vagas. Outro processo que usa o mesmo arquivo precisa esperar; quando consegue escrever, conta novamente. Assim, contar e inserir/mover não ficam separados por uma janela em que dois pedidos possam pegar a mesma vaga. Isso acompanha o modelo de escrita única por vez do [SQLite](https://www.sqlite.org/lang_transaction.html).
 
-Todos os status entram na contagem de cinco por data. Alterar status não cria registro adicional. Ao mover uma encomenda, a nova data é verificada dentro da transação; falhar preserva todos os dados anteriores. Excluir libera uma vaga. WAL permite leituras durante escritas; `busy_timeout` aguarda até cinco segundos por bloqueios. Banco ainda ocupado responde `503`, sem simular reserva.
+Todos os status entram em `SUM(quantidadeBolos)` por data, inclusive `entregue`. A soma é consultada dentro de `BEGIN IMMEDIATE` antes de inserir ou alterar data/quantidade; o resultado mais a quantidade solicitada deve ser no máximo 5. Alterar status não aumenta o consumo. Excluir libera todos os bolos do registro. WAL permite leituras durante escritas; `busy_timeout` aguarda até cinco segundos por bloqueios. Banco ainda ocupado responde `503`, sem simular reserva.
 
 As datas são strings `YYYY-MM-DD`, dias do calendário da Bahia. `Intl.DateTimeFormat` identifica o dia atual em `America/Bahia`, sem depender do fuso do servidor. Amanhã ou depois é válido; não é necessário esperar 24 horas exatas. A data é validada novamente dentro da transação depois de obter o bloqueio.
 
@@ -136,6 +168,7 @@ Para começar novamente **apenas com dados fictícios descartáveis**, pare todo
 - `src/server.ts`: configuração do processo, porta e encerramento.
 - `src/app.ts`: Express, JSON, cabeçalhos e respostas de erro.
 - `src/routes/encomendas.ts`: métodos e códigos HTTP.
+- `src/routes/disponibilidade.ts`: consulta pública de agregados por data, sem dados pessoais.
 - `src/encomenda.ts`: tipos e validação das entradas.
 - `src/database/encomendas.ts`: SQL, persistência e transações.
 - `src/middleware/admin.ts`: verificação do token das operações administrativas.
@@ -149,7 +182,7 @@ npm.cmd run typecheck
 npm.cmd run build
 ```
 
-Os 13 testes passaram com Node 24.11: CRUD, adicional, status inicial, cinco vagas incluindo todos os status, mudança de data com rollback, exclusão liberando vaga, persistência, campos inválidos, SQL parametrizado, proteção administrativa, JSON/erros e fuso. Dois cenários iniciam processos independentes no mesmo arquivo SQLite e disputam a quinta vaga por POST e por PATCH. Um teste compara IDs e fuso com `frontend/src/data/cafeConfig.ts` para detectar divergências; o servidor não importa o front-end em execução.
+Os 20 testes cobrem CRUD, adicional, status inicial, soma das quantidades em todos os status, disponibilidade pública sem dados pessoais, dia lotado, mudanças combinadas de data/quantidade com rollback, redução/exclusão liberando bolos, persistência, migração de base antiga e reabertura, campos inválidos, SQL parametrizado, proteção administrativa, JSON/erros e fuso. Quatro cenários usam processos independentes no mesmo SQLite: última vaga por POST/PATCH, dois pedidos de três bolos e aumentos simultâneos de quantidade. Um teste compara IDs e fuso com `frontend/src/data/cafeConfig.ts`; o servidor não importa o front-end em execução.
 
 ## Limites desta etapa
 

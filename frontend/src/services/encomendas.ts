@@ -23,6 +23,7 @@ export async function criarEncomenda(dados: DadosEncomenda): Promise<{ id: numbe
         nomeCliente: dados.nomeCliente.trim(), telefone: dados.telefone,
         produto: dados.produto, dataEntrega: dados.dataEntrega,
         incluirPaoDeQueijo: dados.incluirPaoDeQueijo,
+        quantidadeBolos: dados.quantidadeBolos,
       }),
     })
   } catch {
@@ -32,7 +33,7 @@ export async function criarEncomenda(dados: DadosEncomenda): Promise<{ id: numbe
   let corpo: unknown
   try { corpo = await resposta.json() } catch { corpo = null }
   if (resposta.status === 409) {
-    throw new ErroEncomenda('Essa data já tem cinco encomendas. Escolha outra data e tente novamente.', 409)
+    throw new ErroEncomenda('A disponibilidade mudou e não há bolos suficientes para essa quantidade. Confira o saldo atualizado e ajuste a quantidade ou escolha outra data.', 409)
   }
   if (resposta.status === 400) {
     const mensagem = corpo && typeof corpo === 'object' && 'erro' in corpo ? corpo.erro : null
@@ -44,4 +45,26 @@ export async function criarEncomenda(dados: DadosEncomenda): Promise<{ id: numbe
     throw new ErroEncomenda(resultadoIncerto, resposta.status)
   }
   return { id: corpo.id, status: 'recebida' }
+}
+
+export interface Disponibilidade {
+  data: string
+  limiteDiario: number
+  quantidadeReservada: number
+  quantidadeDisponivel: number
+}
+
+export async function consultarDisponibilidade(data: string, signal?: AbortSignal): Promise<Disponibilidade> {
+  const resposta = await fetch(`/api/disponibilidade?data=${encodeURIComponent(data)}`, {
+    credentials: 'omit', cache: 'no-store', redirect: 'error',
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10_000)]) : AbortSignal.timeout(10_000),
+  })
+  const corpo: unknown = await resposta.json()
+  if (resposta.status !== 200 || !corpo || typeof corpo !== 'object') throw new Error('Disponibilidade indisponível.')
+  const valor = corpo as Disponibilidade
+  if (valor.data !== data || !Number.isSafeInteger(valor.limiteDiario) || valor.limiteDiario < 1
+    || !Number.isSafeInteger(valor.quantidadeReservada) || valor.quantidadeReservada < 0
+    || valor.quantidadeReservada > valor.limiteDiario
+    || valor.quantidadeDisponivel !== valor.limiteDiario - valor.quantidadeReservada) throw new Error('Resposta de disponibilidade inválida.')
+  return { data: valor.data, limiteDiario: valor.limiteDiario, quantidadeReservada: valor.quantidadeReservada, quantidadeDisponivel: valor.quantidadeDisponivel }
 }
