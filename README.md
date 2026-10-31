@@ -4,7 +4,9 @@ Projeto para o desafio técnico da TecnoJr. Os requisitos estão em [BRIEF.md](B
 
 ## Etapa atual
 
-Base React + TypeScript + Vite, com CSS tradicional, cabeçalho, hero, cardápio e seção de encomendas com formulário expansível e validações locais. Contato continua como área-placeholder. Não há API, banco ou painel nesta etapa: nenhum pedido é enviado ou reservado.
+Base React + TypeScript + Vite, com CSS tradicional, cabeçalho, hero, cardápio e seção de encomendas com formulário expansível e validações locais. Contato continua como área-placeholder. A API REST em `backend/` já implementa CRUD e regras de reserva com SQLite, mas **o formulário ainda não está integrado**: ele não envia nem reserva pedidos. Não há painel.
+
+Veja [como iniciar e testar a API](backend/README.md), incluindo contrato, exemplos PowerShell, persistência e proteção administrativa. O back-end usa TypeScript por solicitação desta etapa, atualizando a recomendação inicial de JavaScript do brief; o brief original foi preservado.
 
 **Todos os dados comerciais são fictícios**, incluindo endereço, horários, produtos, preços e tamanhos. Edite `frontend/src/data/cafeConfig.ts` para substituí-los. WhatsApp e Instagram aparecem em modo de demonstração, sem links para terceiros. A ilustração SVG do hero é um placeholder local; substituir por fotografia autorizada e otimizada numa etapa futura.
 
@@ -97,4 +99,4 @@ Na etapa do formulário, lint, build e os sete testes automatizados das validaç
 
 ## Próxima etapa
 
-Revisar as interações e o layout no navegador; depois, construir informações/rodapé. API, regras de capacidade, persistência, integração do formulário e autenticação serão implementadas e testadas em etapas próprias. Não existem comandos ou rotas de back-end ainda.
+Revisar as interações e o layout no navegador; depois, integrar o formulário à API em uma etapa própria, mantendo confirmação somente após resposta bem-sucedida do servidor. Informações/rodapé e painel com autenticação adequada continuam pendentes. O design e a validação local do front-end não foram alterados na etapa da API.
