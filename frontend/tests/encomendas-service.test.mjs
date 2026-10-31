@@ -1,0 +1,50 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+import { criarEncomenda, ErroEncomenda } from '../src/services/encomendas.ts'
+
+const dados = { nomeCliente: 'Cliente de Teste', telefone: '(73) 99999-9999', produto: 'bolo-cenoura', dataEntrega: '2099-12-25', incluirPaoDeQueijo: true }
+
+test('POST público envia os cinco campos sem credenciais e aceita somente 201 com ID/status válidos', async (t) => {
+  const chamada = t.mock.method(globalThis, 'fetch', async () => Response.json({ id: 42, status: 'recebida' }, { status: 201 }))
+  assert.deepEqual(await criarEncomenda(dados), { id: 42, status: 'recebida' })
+  const [url, opcoes] = chamada.mock.calls[0].arguments
+  assert.equal(url, '/api/encomendas')
+  assert.equal(opcoes.method, 'POST')
+  assert.deepEqual(JSON.parse(opcoes.body), dados)
+  assert.deepEqual(opcoes.headers, { 'Content-Type': 'application/json' })
+  assert.equal(opcoes.credentials, 'omit')
+  assert.equal(opcoes.redirect, 'error')
+})
+
+test('409 tem mensagem para escolher outra data', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => Response.json({ erro: 'Data esgotada.' }, { status: 409 }))
+  await assert.rejects(criarEncomenda(dados), (erro) => erro instanceof ErroEncomenda && erro.status === 409 && /Escolha outra data/.test(erro.message))
+})
+
+test('400 apresenta a mensagem de validação do servidor', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => Response.json({ erro: 'Escolha amanhã ou depois.' }, { status: 400 }))
+  await assert.rejects(criarEncomenda(dados), { status: 400, message: 'Escolha amanhã ou depois.' })
+})
+
+test('não confirma com outros códigos HTTP nem com resposta 201 incompleta', async (t) => {
+  const chamada = t.mock.method(globalThis, 'fetch')
+  for (const status of [200, 202, 500, 503]) {
+    chamada.mock.mockImplementation(async () => Response.json({ id: 1, status: 'recebida' }, { status }))
+    await assert.rejects(criarEncomenda(dados), /Não foi possível obter a confirmação/)
+  }
+  for (const corpo of [{}, { id: 0, status: 'recebida' }, { id: 1, status: 'entregue' }, { id: '1', status: 'recebida' }]) {
+    chamada.mock.mockImplementation(async () => Response.json(corpo, { status: 201 }))
+    await assert.rejects(criarEncomenda(dados), /Não foi possível obter a confirmação/)
+  }
+})
+
+test('resposta que não é JSON não vira confirmação nem expõe HTML interno', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => new Response('<html>Erro interno</html>', { status: 502 }))
+  await assert.rejects(criarEncomenda(dados), (erro) => !erro.message.includes('<html>') && /confirmação/.test(erro.message))
+})
+
+test('falha de rede/timeout não repete POST automaticamente e avisa sobre resultado incerto', async (t) => {
+  const chamada = t.mock.method(globalThis, 'fetch', async () => { throw new TypeError('Failed to fetch') })
+  await assert.rejects(criarEncomenda(dados), /pode ter sido recebido/)
+  assert.equal(chamada.mock.callCount(), 1)
+})

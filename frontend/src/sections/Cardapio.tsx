@@ -58,7 +58,7 @@ export function Cardapio() {
         ))}
         <div className="menu-order-action">
           <a className="button button-primary" href="#encomendas">Faça sua encomenda <span aria-hidden="true">↓</span></a>
-          <p className="demo-note">Confira as regras e teste o preenchimento do formulário.</p>
+          <p className="demo-note">Confira as regras e escolha a data da sua encomenda.</p>
         </div>
       </div>
       <div className="gingham" aria-hidden="true" />

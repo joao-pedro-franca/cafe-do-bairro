@@ -1,6 +1,8 @@
 # API do Café do Bairro
 
-API REST local em Node.js, Express, TypeScript e SQLite. O front-end continua em demonstração e **ainda não chama esta API**. Esta etapa usa TypeScript por solicitação do projeto, no lugar da recomendação inicial de JavaScript no brief.
+API REST local em Node.js, Express, TypeScript e SQLite. O formulário público já envia pedidos por `POST /api/encomendas` usando o proxy de desenvolvimento do Vite; a confirmação aparece somente após `201`. A API usa TypeScript por solicitação do projeto, no lugar da recomendação inicial de JavaScript no brief.
+
+Para rodar site e API juntos, veja o [README principal](../README.md). O envio público não precisa de token: você pode executar `npm.cmd run dev` sem configurar `ADMIN_TOKEN`. As rotas administrativas continuarão bloqueadas. Os exemplos abaixo configuram token apenas para testar o CRUD administrativo; ele nunca deve ir para o front-end.
 
 ## Instalar e iniciar
 
