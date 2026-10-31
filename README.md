@@ -4,7 +4,7 @@ Projeto para o desafio técnico da TecnoJr. Os requisitos estão em [BRIEF.md](B
 
 ## Etapa atual
 
-Base React + TypeScript + Vite, com CSS tradicional, cabeçalho, hero, cardápio e formulário expansível integrado à API REST em `backend/`. A confirmação com número do pedido aparece somente após `201 Created`, com a data reservada e pagamento na retirada. A API implementa CRUD e regras de capacidade com SQLite. Contato continua como área-placeholder; não há painel.
+Base React + TypeScript + Vite, com CSS tradicional, cabeçalho, hero, cardápio, formulário expansível, informações/contato e rodapé. O formulário é integrado à API REST em `backend/`: a confirmação com número do pedido aparece somente após `201 Created`, com a data reservada e pagamento na retirada. A API implementa CRUD e regras de capacidade com SQLite. O endereço `/admin` apresenta somente um aviso de área futura, sem painel, login ou acesso a pedidos.
 
 **Regra atual de capacidade:** por orientação desta etapa, são **cinco bolos por dia**, calculados pela soma de `quantidadeBolos`, em vez de cinco registros de encomenda. Essa decisão substitui a contagem descrita no brief original, que foi preservado como histórico. Pedidos antigos passam a representar um bolo cada, sem apagar ou recriar a base.
 
@@ -72,6 +72,11 @@ npm.cmd install
 - `src/sections/Hero.tsx`: apresentação e dois CTAs com âncoras nativas.
 - `src/sections/Cardapio.tsx`: categorias e cartões do cardápio; `components/ProductIllustration.tsx` fornece desenhos provisórios enquanto não há fotos autorizadas.
 - `src/sections/Encomendas.tsx`: abertura/fechamento, campos controlados, foco e mensagens de validação.
+- `src/sections/InformacoesContato.tsx`: endereço semântico, horário e canais lidos da configuração central.
+- `src/components/Footer.tsx`: marca, navegação, contatos e link discreto para a futura área administrativa.
+- `src/components/AdminNotice.tsx`: aviso público em `/admin`, sem formulário nem acesso à API.
+- `src/utils/contato.ts`: formação dos links externos somente quando confirmados e válidos.
+- `src/styles/contato.css`: seção em papel creme e rodapé chocolate, com disposição adaptada ao celular.
 - `src/services/encomendas.ts`: consulta pública de disponibilidade e POST, verificação das respostas e mensagens de erro; sem token e sem repetição automática de POST.
 - `src/hooks/useDisponibilidade.ts`: consulta ao mudar a data, cancelamento de consultas antigas e atualização após sucesso ou conflito.
 - `src/utils/encomenda.ts`: calendário no fuso do café, formato de telefone e validações iniciais, sem chamadas de rede.
@@ -85,6 +90,20 @@ npm.cmd install
 - `public/images/`: ilustração provisória, sem dependência de imagem externa.
 
 A navegação fica visível no celular, sem menu expansível nesta etapa. HTML semântico, foco visível, link para pular ao conteúdo e respeito a movimento reduzido dão uma base acessível. Os contatos usam detalhes expansíveis nativos enquanto os dados não forem confirmados; não simulam envio ou reserva.
+
+### Informações, contato e rodapé
+
+A seção `#contato` substitui o placeholder e apresenta horário, endereço e canais. Usa `<address>`, títulos e listas descritivas, com ícones decorativos e aviso de dados fictícios. No celular os blocos ficam empilhados; telas maiores passam a duas ou três colunas. O rodapé mantém a marca com xícara, navegação pelas âncoras e os mesmos acessos de contato. Foco visível e alvos de pelo menos 44 px são mantidos nos controles.
+
+`ContactLinks` é compartilhado pelo hero, contato e rodapé. Para liberar canais oficiais, edite **somente `frontend/src/data/cafeConfig.ts`**:
+
+- WhatsApp: preencha `contato.whatsapp.numero` com o número autorizado incluindo DDI `55`, DDD e número; atualize `exibicao` e `mensagem`, e só então marque `confirmado: true`. O destino usa `https://wa.me/` com mensagem codificada. Número ausente, formato inválido ou `confirmado: false` mantém a interface de demonstração, sem link telefônico externo.
+- Instagram: preencha `contato.instagram.url` com a URL HTTPS do perfil oficial em `instagram.com` ou `www.instagram.com`, atualize `exibicao` e marque `confirmado: true`. Sem esses dados, permanece em demonstração, sem inventar um perfil.
+- Atualize também `endereco` e `horario` com os dados reais antes de um uso público; os avisos de protótipo devem ser revistos quando todo o conteúdo estiver confirmado.
+
+Links oficiais abrem em nova aba, com indicação no texto e `rel="noopener noreferrer"`, preservando a página do café. Abrir uma conversa não registra nem sincroniza encomendas: a seção orienta reservar pelo formulário. Nenhum dado de formulário é incluído na mensagem de WhatsApp.
+
+O link **Área administrativa · em breve** leva a `/admin`, cujo único conteúdo é um aviso e um link para voltar ao café. Isso é apenas um destino informativo para o link futuro, sem painel, credencial, listagem ou chamadas à API. A proteção administrativa do back-end permanece inalterada.
 
 ### Revisão do cardápio
 
@@ -135,6 +154,8 @@ Na integração, passaram os **19 testes do front-end** (incluindo seis cenário
 
 Na etapa atual de disponibilidade por quantidade, os testes cobrem também saldo 3 reservados/2 disponíveis, quantidade limitada, dia lotado, consulta com falha e nova tentativa, resposta atrasada, atualização após `201`/`409`, soma por data, migração idempotente e concorrência entre processos. Os resultados atuais são **27 testes no front-end e 20 no back-end**, além de lint, builds e verificação de tipos. A inspeção visual em navegador real continua sendo uma verificação manual; DOM simulado não valida o layout.
 
+Na etapa de informações/rodapé, passaram **31 testes no front-end e 20 no back-end**, lint e build do front-end, verificação de tipos e build do back-end. Os quatro testes novos verificam o bloqueio de destinos fictícios/não confirmados, normalização do WhatsApp, codificação da mensagem e validação do perfil Instagram. Os testes anteriores foram mantidos. Formulário, disponibilidade e código da API não foram alterados. A inspeção visual em navegador real permanece pendente por indisponibilidade do controle de navegador nesta sessão.
+
 O proxy segue a opção oficial [`server.proxy` do Vite](https://vite.dev/config/server-options#server-proxy), mantendo o caminho `/api/encomendas` sem reescrita e sem adicionar credenciais administrativas.
 
 ### Testar a gaveta e as validações
@@ -148,6 +169,13 @@ O proxy segue a opção oficial [`server.proxy` do Vite](https://vite.dev/config
 7. Reserve três bolos de teste: a consulta deve mostrar limite 5, reservados 3 e disponíveis 2. Para testar concorrência manual, deixe um formulário com quantidade 3 aberto em uma data livre, reserve três bolos nessa mesma data por outra aba e envie o primeiro: ele recebe `409`, atualiza o saldo para 2 e permite diminuir a quantidade sem apagar os demais dados. Os testes automatizados cobrem isso sem modificar a base local.
 8. Pare a API antes de enviar um novo pedido para verificar o erro de conexão, sem confirmação automática. Reinicie a API para continuar. Não reenvie às cegas se a conexão caiu durante um pedido que já estava em andamento.
 
+### Conferir contato e rodapé
+
+1. Siga o link **Contato** do cabeçalho ou rodapé e confira o destino `#contato`, o endereço e o horário da configuração.
+2. Com a configuração fictícia atual, abra os controles **WhatsApp · demo** e **Instagram · demo**: devem explicar a demonstração, sem abrir site externo. Confira usando Tab e Enter/Espaço.
+3. No rodapé, confira os links de navegação e o link **Área administrativa · em breve**. Em `/admin`, deve haver somente o aviso e **Voltar para o café**.
+4. Revise em 360, 390, 768 e 1280 px, sem rolagem horizontal e com leitura confortável. Os testes de contato não enviam requisições a WhatsApp ou Instagram.
+
 ## Próxima etapa
 
-Conferir a apresentação em navegador real e concluir informações/rodapé. Painel com autenticação adequada e implantação continuam para etapas futuras. A identidade visual e a gaveta foram preservadas na integração.
+Conferir a apresentação em navegador real e substituir os dados/imagens fictícios por materiais autorizados quando fornecidos. Painel com autenticação adequada e implantação continuam para etapas futuras. A identidade visual, a gaveta e as regras de reserva foram preservadas nesta etapa.

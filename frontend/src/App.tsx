@@ -2,8 +2,12 @@
 import { Hero } from './sections/Hero'
 import { Cardapio } from './sections/Cardapio'
 import { Encomendas } from './sections/Encomendas'
+import { InformacoesContato } from './sections/InformacoesContato'
+import { Footer } from './components/Footer'
+import { AdminNotice } from './components/AdminNotice'
 
 function App() {
+  if (window.location.pathname.replace(/\/$/, '') === '/admin') return <AdminNotice />
   return (
     <>
       <a className="skip-link" href="#conteudo">Pular para o conteúdo</a>
@@ -12,13 +16,9 @@ function App() {
         <Hero />
         <Cardapio />
         <Encomendas />
-        <div className="container placeholders">
-          <section className="placeholder" id="contato" aria-labelledby="contato-title" tabIndex={-1}>
-            <h2 id="contato-title">Informações e contato</h2>
-            <p>Os acessos de demonstração estão no início da página. Esta área será construída em uma etapa futura.</p>
-          </section>
-        </div>
+        <InformacoesContato />
       </main>
+      <Footer />
     </>
   )
 }
