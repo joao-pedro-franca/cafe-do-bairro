@@ -24,13 +24,14 @@ export function dataMinimaEncomenda(fusoHorario: string, agora = new Date()) {
 
 export function telefoneValido(telefone: string) {
   const compacto = telefone.trim().replace(/[\s().-]/g, '')
-  return /^(?:\+55)?[1-9]{2}(?:[2-5]\d{7}|9\d{8})$/.test(compacto)
+  return /^(?:\+?55)?[1-9]{2}(?:[2-5]\d{7}|9\d{8})$/.test(compacto)
 }
 
 export function formatarTelefone(telefone: string) {
   if (!telefoneValido(telefone)) return telefone
-  const prefixo = telefone.trim().startsWith('+55') ? '+55 ' : ''
-  const digitos = telefone.replace(/\D/g, '').slice(prefixo ? 2 : 0)
+  const todosDigitos = telefone.replace(/\D/g, '')
+  const prefixo = todosDigitos.length > 11 ? '+55 ' : ''
+  const digitos = todosDigitos.slice(prefixo ? 2 : 0)
   return `${prefixo}(${digitos.slice(0, 2)}) ${digitos.slice(2, -4)}-${digitos.slice(-4)}`
 }
 

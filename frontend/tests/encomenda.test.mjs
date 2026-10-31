@@ -33,6 +33,12 @@ test('valida formato brasileiro e formata telefone sem apagar entrada inválida'
   assert.equal(formatarTelefone('123'), '123')
 })
 
+test('telefone normalizado com DDI é aceito sem confundir DDD 55 com prefixo internacional', () => {
+  assert(telefoneValido('5573999999999'))
+  assert.equal(formatarTelefone('5573999999999'), '+55 (73) 99999-9999')
+  assert.equal(formatarTelefone('55999999999'), '(55) 99999-9999')
+})
+
 test('aceita amanhã e datas futuras, rejeita hoje, passado e calendário inválido', () => {
   assert.deepEqual(validar(), {})
   assert.deepEqual(validar({ dataEntrega: '2026-12-20' }), {})

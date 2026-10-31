@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { cafeConfig } from '../data/cafeConfig'
 import { useDisponibilidade } from '../hooks/useDisponibilidade'
@@ -177,10 +177,11 @@ export function Encomendas() {
                   <div className="order-fields">
                     <div className="order-field">
                       <label htmlFor="pedido-produto">Bolo escolhido <span aria-hidden="true">*</span></label>
-                      <select id="pedido-produto" name="produto" required value={dados.produto} onChange={(e) => atualizar('produto', e.target.value)} aria-invalid={Boolean(erros.produto)} aria-describedby={erros.produto ? 'erro-produto' : undefined}>
+                      <select id="pedido-produto" name="produto" required value={dados.produto} onChange={(e) => atualizar('produto', e.target.value)} aria-invalid={Boolean(erros.produto)} aria-describedby={`produto-ajuda${erros.produto ? ' erro-produto' : ''}`}>
                         <option value="">Selecione um bolo</option>
-                        {produtosPrincipais.map((produto) => <option key={produto.id} value={produto.id}>{produto.nome} · {moeda.format(produto.preco)} por bolo</option>)}
+                        {produtosPrincipais.map((produto) => <option key={produto.id} value={produto.id}>{produto.nome}</option>)}
                       </select>
+                      <p className="field-hint" id="produto-ajuda">{selecionado ? `${moeda.format(selecionado.preco)} por bolo · ${selecionado.tamanho}` : 'Selecione um sabor para ver o preço por bolo.'}</p>
                       {erros.produto && <p className="field-error" id="erro-produto">{erros.produto}</p>}
                     </div>
                     <div className="order-field">

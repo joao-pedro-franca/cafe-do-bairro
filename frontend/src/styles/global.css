@@ -43,7 +43,8 @@ nav a:hover { text-decoration: underline; }
 .hero-layout { display: grid; gap: var(--space-4); padding-top: var(--space-4); padding-bottom: var(--space-5); }
 .eyebrow { color: var(--coffee); text-transform: uppercase; letter-spacing: .13em; font-size: .7rem; font-weight: 700; margin-bottom: var(--space-2); }
 h1 { max-width: 10ch; font: italic 500 clamp(3.3rem, 7vw, 5.7rem)/1.05 var(--serif); letter-spacing: -.05em; }
-.handmade-heart { display: inline-block; color: var(--coffee); font-size: .6em; vertical-align: top; margin-left: .15em; transform: rotate(12deg); }
+.hero-copy h1 { max-width: none; }
+.handmade-heart { display: none; color: var(--coffee); font-size: .45em; vertical-align: top; margin-left: .15em; transform: rotate(12deg); }
 .hero-description { font: 400 clamp(1.25rem, 2.1vw, 1.6rem)/1.5 var(--serif); margin-top: var(--space-3); max-width: 32ch; }
 .hero-invitation { margin-top: var(--space-1); color: var(--coffee); font-size: .9rem; }
 .cafe-info { display: grid; gap: var(--space-3); margin-block: var(--space-3); font-size: .85rem; }
@@ -68,7 +69,10 @@ h1 { max-width: 10ch; font: italic 500 clamp(3.3rem, 7vw, 5.7rem)/1.05 var(--ser
 .placeholder { padding: var(--space-3) 0; border-bottom: 1px dashed var(--sand); }
 .placeholder h2 { font: italic 400 1.7rem/1.4 var(--serif); margin-bottom: .5rem; }
 .placeholder p { color: var(--coffee); font-size: .9rem; max-width: 65ch; }
-@media (min-width: 390px) { .cafe-info { grid-template-columns: 1fr 1fr; gap: var(--space-2); } }
+@media (min-width: 390px) {
+  .cafe-info { grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+  .handmade-heart { display: inline-block; }
+}
 @media (min-width: 768px) {
   .header-content { flex-direction: row; justify-content: space-between; gap: var(--space-3); }
   nav { gap: 1.4rem; }
