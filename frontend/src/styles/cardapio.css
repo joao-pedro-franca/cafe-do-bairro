@@ -1,0 +1,25 @@
+.menu-section { padding-top: var(--space-5); }
+.menu-order-action { max-width: 380px; margin: 0 auto var(--space-5); text-align: center; }
+.menu-heading { text-align: center; }
+.menu-heading h2 { font: italic 400 clamp(2rem, 5vw, 3rem)/1.2 var(--serif); }
+.menu-heading h2 span { color: var(--coffee); }
+.menu-heading > p { margin-top: var(--space-1); }
+.menu-heading .menu-demo-note { max-width: 65ch; margin: var(--space-2) auto 0; font-size: .8rem; color: var(--coffee); }
+.menu-category { margin-block: var(--space-5); }
+.category-heading { margin-bottom: var(--space-3); padding-left: var(--space-2); border-left: 3px solid var(--terracotta); }
+.category-heading h3 { margin: 0 0 .35rem; font: 400 1.6rem/1.3 var(--serif); }
+.category-heading p { max-width: 65ch; color: var(--coffee); font-size: .9rem; }
+.product-grid { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+.product-grid > li { min-width: 0; }
+.product-card { height: 100%; overflow: hidden; border: 1px solid var(--sand); border-radius: var(--radius); background: #fffaf2; box-shadow: 0 4px 9px #39261e0a; }
+.product-image { background: #f0e2cf; aspect-ratio: 16 / 9; }
+.product-image svg, .product-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.product-content { padding: var(--space-3); }
+.product-content h4 { margin: 0 0 .6rem; font: 700 1.2rem/1.3 var(--serif); }
+.product-description { color: var(--coffee); font: 400 1rem/1.5 var(--serif); }
+.product-size { font-size: .8rem; color: var(--coffee); margin-top: var(--space-2); }
+.product-price { margin-block: .25rem var(--space-2); color: var(--coffee); font: 700 1.25rem/1.5 var(--serif); }
+.product-availability { border-top: 1px dashed var(--sand); padding-top: .65rem; font-size: .8rem; }
+.seasonal-label { display: inline-block; margin-bottom: .75rem; padding: .2rem .6rem; border-radius: .2rem; background: var(--sand); font-size: .75rem; font-weight: 700; }
+@media (min-width: 600px) { .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1000px) { .product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
