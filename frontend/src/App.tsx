@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { ativarRolagemSuave } from './utils/rolagem'
 import { Header } from './components/Header'
 import { Hero } from './sections/Hero'
 import { Cardapio } from './sections/Cardapio'
@@ -7,6 +9,7 @@ import { Footer } from './components/Footer'
 import { Admin } from './pages/Admin'
 
 function App() {
+  useEffect(ativarRolagemSuave, [])
   if (window.location.pathname.replace(/\/$/, '') === '/admin') return <Admin />
   return (
     <>

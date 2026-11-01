@@ -4,6 +4,14 @@ Projeto para o desafio técnico da TecnoJr. Os requisitos estão em [BRIEF.md](B
 
 ## Etapa atual
 
+### V1.1 — navegação entre seções
+
+Os links continuam sendo âncoras nativas, preservando hash, histórico e navegação pelo teclado. O CSS já solicitava rolagem suave, mas, no Edge deste ambiente, a medição mostrou um salto mesmo com `scroll-behavior: smooth` e movimento reduzido desativado. A especificação [permite que o navegador ignore essa propriedade](https://www.w3.org/TR/css-overflow/#smooth-scrolling).
+
+`src/utils/rolagem.ts` aplica um fallback de 450 ms somente quando identifica esse salto nos destinos Início, Cardápio, Encomendas e Contato. Quando a rolagem nativa está animando, ela é preservada. Nenhum clique é cancelado e não há manipulação manual do histórico ou do foco. Roda, toque, ponteiro e teclado interrompem o fallback. `prefers-reduced-motion: reduce` mantém a navegação direta, inclusive se a preferência mudar durante a animação.
+
+O diagnóstico e o teste de navegador ficam em `scripts/testar-rolagem.mjs` e `docs/v1.1/rolagem*.json`. Para repetir, com as ferramentas Playwright já instaladas em `.audit-tools`, execute `node scripts/testar-rolagem.mjs` na raiz.
+
 Base React + TypeScript + Vite, com CSS tradicional, cabeçalho, hero, cardápio, formulário expansível, informações/contato e rodapé. O formulário é integrado à API REST em `backend/`: a confirmação com número do pedido aparece somente após `201 Created`, com a data reservada e pagamento na retirada. A API implementa CRUD e regras de capacidade com SQLite. `/admin` agora tem login e painel de encomendas com sessão validada no servidor, filtros, alteração de status e exclusão confirmada.
 
 **Regra atual de capacidade:** por orientação desta etapa, são **cinco bolos por dia**, calculados pela soma de `quantidadeBolos`, em vez de cinco registros de encomenda. Essa decisão substitui a contagem descrita no brief original, que foi preservado como histórico. Pedidos antigos passam a representar um bolo cada, sem apagar ou recriar a base.
