@@ -1,0 +1,217 @@
+{
+  "resultados": [
+    {
+      "largura": 360,
+      "produtos": 11,
+      "categorias": 3,
+      "violacoesAxe": 0,
+      "overflow": false,
+      "precos": [
+        {
+          "texto": "R$ 35,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 40,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 35,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 30,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 35,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 38,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 5,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 7,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 3,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 45,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 55,00",
+          "legivel": true
+        }
+      ]
+    },
+    {
+      "largura": 390,
+      "produtos": 11,
+      "categorias": 3,
+      "violacoesAxe": 0,
+      "overflow": false,
+      "precos": [
+        {
+          "texto": "R$ 35,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 40,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 35,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 30,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 35,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 38,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 5,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 7,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 3,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 45,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 55,00",
+          "legivel": true
+        }
+      ]
+    },
+    {
+      "largura": 768,
+      "produtos": 11,
+      "categorias": 3,
+      "violacoesAxe": 0,
+      "overflow": false,
+      "precos": [
+        {
+          "texto": "R$ 35,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 40,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 35,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 30,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 35,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 38,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 5,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 7,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 3,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 45,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 55,00",
+          "legivel": true
+        }
+      ]
+    },
+    {
+      "largura": 1280,
+      "produtos": 11,
+      "categorias": 3,
+      "violacoesAxe": 0,
+      "overflow": false,
+      "precos": [
+        {
+          "texto": "R$ 35,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 40,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 35,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 30,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 35,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 38,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 5,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 7,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 3,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 45,00",
+          "legivel": true
+        },
+        {
+          "texto": "R$ 55,00",
+          "legivel": true
+        }
+      ]
+    }
+  ],
+  "erros": []
+}
