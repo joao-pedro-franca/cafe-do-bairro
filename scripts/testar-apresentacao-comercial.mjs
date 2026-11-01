@@ -75,8 +75,11 @@ try {
       assert.equal(whats.pathname, '/5573988255560')
       assert.equal(whats.searchParams.get('text'), 'Olá! Gostaria de fazer uma encomenda no Café do Bairro.')
       assert.equal(await links.nth(1).getAttribute('href'), 'https://www.instagram.com/tecnojr/')
-      assert((await links.nth(1).textContent()).includes('Instagram da TecnoJr'))
-      for (const link of await links.all()) {
+      for (const [indice, link] of (await links.all()).entries()) {
+        const rotulo = ['WhatsApp', 'Instagram'][indice]
+        assert.equal(await link.innerText(), rotulo)
+        assert.equal(await link.getAttribute('aria-label'), `${rotulo} (abre em nova aba)`)
+        assert.equal(await link.locator('.contact-new-tab').count(), 0)
         assert.equal(await link.getAttribute('target'), '_blank')
         assert.equal(await link.getAttribute('rel'), 'noopener noreferrer')
         assert(await link.locator('.social-icon').evaluate((el) => getComputedStyle(el).maskImage.includes('/images/icons/') && el.getBoundingClientRect().width >= 22))
@@ -92,7 +95,8 @@ try {
     // Teclado: canais habilitados, âncora e formulário; sem abrir contas externas.
     await page.locator('.hero .contact-link').first().focus()
     await page.keyboard.press('Tab')
-    assert((await page.locator(':focus').textContent()).includes('Instagram da TecnoJr'))
+    assert.equal(await page.locator(':focus').innerText(), 'Instagram')
+    assert.equal(await page.locator(':focus').getAttribute('aria-label'), 'Instagram (abre em nova aba)')
     await page.locator('.hero-actions a[href="#encomendas"]').focus()
     await page.keyboard.press('Enter')
     await page.waitForFunction(() => document.activeElement?.id === 'encomendas')

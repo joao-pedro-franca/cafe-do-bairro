@@ -45,11 +45,17 @@ test('canais autorizados geram links seguros e mensagem codificada sem acessar t
   documento.body.innerHTML = html
   const links = [...documento.querySelectorAll('a')]
   assert.equal(links.length, 2)
-  for (const link of links) { assert.equal(link.target, '_blank'); assert.equal(link.rel, 'noopener noreferrer'); assert(link.textContent.includes('nova aba')) }
+  for (const [indice, link] of links.entries()) {
+    const rotulo = ['WhatsApp', 'Instagram'][indice]
+    assert.equal(link.target, '_blank'); assert.equal(link.rel, 'noopener noreferrer')
+    assert.equal(link.textContent, rotulo)
+    assert.equal(link.getAttribute('aria-label'), `${rotulo} (abre em nova aba)`)
+    assert.equal(link.querySelector('.contact-new-tab'), null)
+  }
   assert.equal(new URL(links[0].href).searchParams.get('text'), contato.whatsapp.mensagem)
   assert.equal(links[1].href, contato.instagram.url)
 })
-test('dados fictícios autorizados são consistentes e contatos reais identificam corretamente a TecnoJr', () => {
+test('dados autorizados e rótulos simples preservam os mesmos destinos nas três seções', () => {
   for (const componente of [Hero, InformacoesContato]) {
     const html = renderToStaticMarkup(createElement(componente))
     for (const valor of ['Rua Mariano Gonçalves, 128', 'Bairro das Acácias', 'Vila Aurora – BA', 'Segunda a sábado', '8h às 18h']) assert(html.includes(valor))
@@ -58,6 +64,7 @@ test('dados fictícios autorizados são consistentes e contatos reais identifica
   assert(!/Rua das Flores|Cidade\/UF|XXXXX|em atualização|Em breve|a definir|· demo/.test(html))
   const documento = new Window().document
   documento.body.innerHTML = html
+  assert.equal(documento.querySelectorAll('.contact-links').length, 3)
   for (const grupo of documento.querySelectorAll('.contact-links')) {
     const links = [...grupo.querySelectorAll('a')]
     assert.equal(links.length, 2)
@@ -66,8 +73,11 @@ test('dados fictícios autorizados são consistentes e contatos reais identifica
     assert.equal(whatsapp.pathname, '/5573988255560')
     assert.equal(whatsapp.searchParams.get('text'), 'Olá! Gostaria de fazer uma encomenda no Café do Bairro.')
     assert.equal(links[1].href, 'https://www.instagram.com/tecnojr/')
-    assert(links[1].textContent.includes('Instagram da TecnoJr'))
-    for (const link of links) {
+    for (const [indice, link] of links.entries()) {
+      const rotulo = ['WhatsApp', 'Instagram'][indice]
+      assert.equal(link.textContent, rotulo)
+      assert.equal(link.getAttribute('aria-label'), `${rotulo} (abre em nova aba)`)
+      assert.equal(link.querySelector('.contact-new-tab'), null)
       assert.equal(link.target, '_blank'); assert.equal(link.rel, 'noopener noreferrer')
       assert(link.querySelector('.social-icon[aria-hidden="true"]'))
     }

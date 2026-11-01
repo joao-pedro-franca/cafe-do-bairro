@@ -13,7 +13,8 @@ export const cafeConfig = {
   fusoHorario: 'America/Bahia',
   contato: {
     whatsapp: { numero: '5573988255560' as string | null, confirmado: true, mensagem: `Olá! Gostaria de fazer uma encomenda no ${nomeCafe}.` },
-    instagram: { url: 'https://www.instagram.com/tecnojr/' as string | null, confirmado: true, rotulo: 'Instagram da TecnoJr' },
+    // O destino continua sendo o perfil da TecnoJr; o botão usa apenas o nome da rede.
+    instagram: { url: 'https://www.instagram.com/tecnojr/' as string | null, confirmado: true, rotulo: 'Instagram' },
   },
   // Manter true enquanto o projeto não representar um estabelecimento operacional.
   demonstracao: true,
