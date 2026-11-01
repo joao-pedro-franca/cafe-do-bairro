@@ -8,7 +8,9 @@ Projeto para o desafio técnico da TecnoJr. Os requisitos estão em [BRIEF.md](B
 
 Na branch `feature/apresentacao-comercial`, a landing preserva o visual de casa de vó e apresenta os 11 produtos com **fotografias reais licenciadas**, em WebP local e duas resoluções. O hero permanece com a imagem anterior e sua identificação de IA. Hero, cardápio, informações, rodapé e metadados da página receberam textos comerciais; o aviso honesto de demonstração fica junto do formulário que coleta dados e registra pedidos.
 
-Identidade, título/descrição da página, horários, endereço e contatos são configurados em `frontend/src/data/cafeConfig.ts`. **Horários, endereço, WhatsApp e Instagram reais ainda não foram fornecidos**: não são publicados exemplos como se fossem oficiais. Os controles com ícones de marca mostram **Em breve**, sem links externos falsos, até que os canais estejam autorizados. A condição demonstrativa continua ativa (`demonstracao: true`); pedidos não representam uma cafeteria operacional.
+Identidade, título/descrição da página, horários, endereço e contatos são configurados em `frontend/src/data/cafeConfig.ts`. A apresentação agora usa os **dados fictícios autorizados para o desafio**: Rua Mariano Gonçalves, 128, Bairro das Acácias, Vila Aurora – BA; segunda a sábado, das 8h às 18h. Esses valores não são dados verificados de uma empresa real. O campo `confirmado` libera a publicação dos valores autorizados, sem certificar a existência de um estabelecimento.
+
+O WhatsApp **5573988255560** foi expressamente autorizado pelo proprietário do número para a demonstração e abre `https://wa.me/5573988255560` com a mensagem codificada “Olá! Gostaria de fazer uma encomenda no Café do Bairro.” Nada é enviado automaticamente. O Instagram usa `https://www.instagram.com/tecnojr/`, identificado como **Instagram da TecnoJr**: pertence à TecnoJr, não ao café fictício, e não indica parceria comercial. Os botões compartilhados estão habilitados no hero, contato e rodapé. Conversas não criam pedidos no SQLite; o formulário continua sendo o fluxo de registro. A condição demonstrativa permanece ativa (`demonstracao: true`), com aviso junto dos campos.
 
 Veja [arquivos, decisões, configuração, testes e capturas](docs/apresentacao-comercial/README.md) e os [créditos individuais das fotografias](docs/creditos-imagens.md). Preços continuam somente em `backend/src/catalogo.ts`; disponibilidade continua no SQLite. API, banco, regras de produção, precificação e autenticação não foram modificados nesta etapa.
 
@@ -78,7 +80,7 @@ Base React + TypeScript + Vite, com CSS tradicional, cabeçalho, hero, cardápio
 
 Veja [como iniciar e testar a API](backend/README.md), incluindo contrato, exemplos PowerShell, persistência e proteção administrativa. O back-end usa TypeScript por solicitação desta etapa, atualizando a recomendação inicial de JavaScript do brief; o brief original foi preservado.
 
-**Os dados comerciais do desafio não comprovam uma empresa operacional.** Produtos, preços e tamanhos continuam como referências do projeto; endereço, horários e contatos reais seguem pendentes e vazios na configuração pública. Nomes, descrições, tamanhos e caminhos de fotos ficam em `backend/src/produtos.ts`; identidade e informações comerciais ficam em `frontend/src/data/cafeConfig.ts`; preços ficam em `backend/src/catalogo.ts`, em centavos. A identificação discreta de demonstração permanece junto ao formulário de pedidos. O hero criado com IA continua identificado; as 11 fotografias do cardápio são referências licenciadas, não fotos dos produtos de um estabelecimento real.
+**Os dados comerciais do desafio não comprovam uma empresa operacional.** Endereço e horários são fictícios e autorizados para apresentação; o WhatsApp é do proprietário que autorizou seu uso e o Instagram pertence à TecnoJr. Produtos, preços e tamanhos continuam referências do projeto. Nomes, descrições, tamanhos e caminhos de fotos ficam em `backend/src/produtos.ts`; identidade e informações comerciais ficam em `frontend/src/data/cafeConfig.ts`; preços ficam em `backend/src/catalogo.ts`, em centavos. A identificação discreta de demonstração permanece junto ao formulário de pedidos. O hero criado com IA continua identificado; as 11 fotografias do cardápio são referências licenciadas.
 
 ## Executar
 
@@ -287,7 +289,7 @@ O proxy segue a opção oficial [`server.proxy` do Vite](https://vite.dev/config
 ### Conferir contato e rodapé
 
 1. Siga o link **Contato** do cabeçalho ou rodapé e confira o destino `#contato`, o endereço e o horário da configuração.
-2. Sem contatos autorizados, abra **WhatsApp — Em breve** e **Instagram — Em breve**: devem explicar a indisponibilidade, sem abrir site externo. Confira usando Tab e Enter/Espaço. Os testes de links habilitados usam destinos interceptados, sem acessar contas de terceiros.
+2. Confira os botões **WhatsApp** e **Instagram da TecnoJr** no hero, contato e rodapé. Ambos abrem nova aba. O WhatsApp só preenche a conversa; o visitante decide se enviará a mensagem. Os testes de navegador interceptam os destinos, sem acessar as contas nem enviar mensagens. Se os contatos forem desabilitados futuramente, o fallback de indisponibilidade continua protegido pelas validações.
 3. No rodapé, confira os links de navegação e **Área administrativa**. Em `/admin`, sem sessão, deve aparecer o login e **Voltar para o café**; nenhum pedido deve ser exibido.
 4. Revise em 360, 390, 768 e 1280 px, sem rolagem horizontal e com leitura confortável. Os testes de contato não enviam requisições a WhatsApp ou Instagram.
 

@@ -7,12 +7,13 @@ export const cafeConfig = {
   tituloPagina: `${nomeCafe} · Café e carinho à mesa`,
   apresentacao: 'Bolos caseiros, café fresquinho e aquele gostinho de casa de vó.',
   convite: 'Entre, puxe uma cadeira. O café já está passando.',
-  horario: { dias: null as string | null, horas: null as string | null, confirmado: false, pendente: 'Horários em atualização' },
-  endereco: { rua: null as string | null, localidade: null as string | null, confirmado: false, pendente: 'Localização em atualização' },
+  // Dados fictícios autorizados para a apresentação do desafio, não de uma empresa verificada.
+  horario: { dias: 'Segunda a sábado' as string | null, horas: '8h às 18h' as string | null, confirmado: true, pendente: 'Horários em atualização' },
+  endereco: { rua: 'Rua Mariano Gonçalves, 128' as string | null, localidade: 'Bairro das Acácias · Vila Aurora – BA' as string | null, confirmado: true, pendente: 'Localização em atualização' },
   fusoHorario: 'America/Bahia',
   contato: {
-    whatsapp: { numero: null as string | null, confirmado: false, mensagem: `Olá! Gostaria de saber mais sobre os produtos do ${nomeCafe}.` },
-    instagram: { url: null as string | null, confirmado: false },
+    whatsapp: { numero: '5573988255560' as string | null, confirmado: true, mensagem: `Olá! Gostaria de fazer uma encomenda no ${nomeCafe}.` },
+    instagram: { url: 'https://www.instagram.com/tecnojr/' as string | null, confirmado: true, rotulo: 'Instagram da TecnoJr' },
   },
   // Manter true enquanto o projeto não representar um estabelecimento operacional.
   demonstracao: true,

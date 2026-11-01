@@ -14,7 +14,7 @@ const front = createRequire(new URL('../frontend/package.json', import.meta.url)
 const { default: playwright } = await import(pathToFileURL(audit.resolve('playwright')).href)
 const { AxeBuilder } = await import(pathToFileURL(audit.resolve('@axe-core/playwright')).href)
 const { createServer } = await import(pathToFileURL(front.resolve('vite')).href)
-const saida = fileURLToPath(new URL('../docs/apresentacao-comercial/', import.meta.url))
+const saida = fileURLToPath(new URL(process.argv.includes('--contatos') ? '../docs/apresentacao-comercial/contatos-autorizados/' : '../docs/apresentacao-comercial/', import.meta.url))
 await mkdir(saida, { recursive: true })
 const temporaria = await mkdtemp(join(tmpdir(), 'cafe-comercial-'))
 const repo = abrirEncomendas(join(temporaria, 'auditoria.sqlite'))
@@ -44,6 +44,7 @@ try {
     await page.setViewportSize({ width: largura, height: 900 })
     await page.goto(base)
     const fotos = page.locator('.product-image img')
+    await fotos.first().waitFor()
     assert.equal(await fotos.count(), 11)
     // Carrega explicitamente todos os itens lazy antes da inspeção da landing completa.
     for (const foto of await fotos.all()) {
@@ -58,20 +59,38 @@ try {
     assert(await page.locator('.product-price').evaluateAll((precos) => precos.every((el) => el.scrollWidth <= el.clientWidth + 1)))
     const textoComercial = await page.locator('.hero, #cardapio, #contato, .site-footer').allTextContents()
     assert(!/protótipo|demonstração|dados fictícios|provisóri|XXXXX|Rua das Flores|Cidade\/UF|· demo/i.test(textoComercial.join(' ')))
-    assert.equal(await page.locator('.contact-links a').count(), 0)
+    assert.equal(await page.locator('.contact-links a').count(), 6)
+    assert.equal(await page.locator('.contact-pending').count(), 0)
+    for (const secao of ['.hero', '#contato']) {
+      const texto = await page.locator(secao).textContent()
+      for (const valor of ['Rua Mariano Gonçalves, 128', 'Bairro das Acácias', 'Vila Aurora – BA', 'Segunda a sábado', '8h às 18h']) assert(texto.includes(valor))
+    }
+    assert(!/em atualização|a definir|em breve/i.test(textoComercial.join(' ')))
+    for (const grupo of await page.locator('.contact-links').all()) {
+      const links = grupo.locator('a')
+      const whats = new URL(await links.nth(0).getAttribute('href'))
+      assert.equal(whats.origin, 'https://wa.me')
+      assert.equal(whats.pathname, '/5573988255560')
+      assert.equal(whats.searchParams.get('text'), 'Olá! Gostaria de fazer uma encomenda no Café do Bairro.')
+      assert.equal(await links.nth(1).getAttribute('href'), 'https://www.instagram.com/tecnojr/')
+      assert((await links.nth(1).textContent()).includes('Instagram da TecnoJr'))
+      for (const link of await links.all()) {
+        assert.equal(await link.getAttribute('target'), '_blank')
+        assert.equal(await link.getAttribute('rel'), 'noopener noreferrer')
+        assert(await link.locator('.social-icon').evaluate((el) => getComputedStyle(el).maskImage.includes('/images/icons/') && el.getBoundingClientRect().width >= 22))
+        assert((await link.boundingBox()).height >= 44)
+      }
+    }
     assert(await page.locator('.hero-figure figcaption').textContent().then((t) => t.includes('criada com IA')))
     await page.evaluate(() => scrollTo({ top: 0, behavior: 'instant' }))
     await capturar(page, `landing-${largura}`)
     await capturar(page, `cardapio-${largura}`, '#cardapio')
     await axe(page, `landing-${largura}`)
     resultado.larguras.push({ largura, paginaSemTransbordamento: true, precosSemCorte: true })
-    // Teclado: disclosure de contato, âncora e formulário.
-    const contato = page.locator('.hero .contact-pending').first()
-    await contato.locator('summary').focus()
-    await page.keyboard.press('Enter')
-    assert(await contato.evaluate((el) => el.open))
-    await page.keyboard.press('Enter')
-    assert(!(await contato.evaluate((el) => el.open)))
+    // Teclado: canais habilitados, âncora e formulário; sem abrir contas externas.
+    await page.locator('.hero .contact-link').first().focus()
+    await page.keyboard.press('Tab')
+    assert((await page.locator(':focus').textContent()).includes('Instagram da TecnoJr'))
     await page.locator('.hero-actions a[href="#encomendas"]').focus()
     await page.keyboard.press('Enter')
     await page.waitForFunction(() => document.activeElement?.id === 'encomendas')
@@ -90,7 +109,7 @@ try {
   await page.keyboard.press('Enter')
   assert.equal(await page.locator(':focus').getAttribute('id'), 'conteudo')
 
-  // Valores exclusivos desta fixture em memória. Rotas interceptadas impedem contato externo.
+  // Exercita os contatos autorizados sem alcançar as contas: interceptação antes da rede.
   await contexto.route('https://wa.me/**', async (route) => { resultado.contatosInterceptados.push(route.request().url()); await route.fulfill({ contentType: 'text/html', body: '<title>Destino de teste interceptado</title>' }) })
   await contexto.route('https://www.instagram.com/**', async (route) => { resultado.contatosInterceptados.push(route.request().url()); await route.fulfill({ contentType: 'text/html', body: '<title>Destino de teste interceptado</title>' }) })
   await page.evaluate(async () => {
@@ -100,7 +119,7 @@ try {
     const createRoot = dom.createRoot ?? dom.default.createRoot
     const { ContactLinks } = await import('/src/components/ContactLinks.tsx')
     const teste = document.createElement('section'); teste.id = 'contatos-teste'; teste.setAttribute('aria-label', 'Canais de teste'); document.querySelector('main').append(teste)
-    createRoot(teste).render(createElement(ContactLinks, { contato: { whatsapp: { numero: '+55 (73) 99999-9999', confirmado: true, mensagem: 'Mensagem controlada & café' }, instagram: { url: 'https://www.instagram.com/perfil_de_teste/', confirmado: true } } }))
+    createRoot(teste).render(createElement(ContactLinks))
   })
   await page.locator('#contatos-teste a').first().waitFor()
   await page.setViewportSize({ width: 390, height: 844 })
@@ -116,8 +135,9 @@ try {
   }
   assert.equal(resultado.contatosInterceptados.length, 2)
   const whatsapp = new URL(resultado.contatosInterceptados[0])
-  assert.equal(whatsapp.pathname, '/5573999999999')
-  assert.equal(whatsapp.searchParams.get('text'), 'Mensagem controlada & café')
+  assert.equal(whatsapp.pathname, '/5573988255560')
+  assert.equal(whatsapp.searchParams.get('text'), 'Olá! Gostaria de fazer uma encomenda no Café do Bairro.')
+  assert.equal(resultado.contatosInterceptados[1], 'https://www.instagram.com/tecnojr/')
   await capturar(page, 'contatos-autorizados-teste-390', '#contatos-teste')
   await axe(page, 'contatos-autorizados-teste-390')
   resultado.passos.push('WhatsApp/Instagram autorizados com SVG, nova aba, rel seguro e destinos interceptados; nenhuma conta externa acessada.')

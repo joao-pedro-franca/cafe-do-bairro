@@ -30,7 +30,8 @@ after(async () => {
 })
 
 test('canais sem dados autorizados mostram controles com ícones, sem destinos externos falsos', () => {
-  const html = renderToStaticMarkup(createElement(ContactLinks))
+  const contato = { whatsapp: { numero: null, confirmado: false, mensagem: '' }, instagram: { url: null, confirmado: false } }
+  const html = renderToStaticMarkup(createElement(ContactLinks, { contato }))
   assert(!html.includes('href='))
   assert(!/demo|ilustrativo|XXXXX/.test(html))
   assert.equal((html.match(/<summary>/g) ?? []).length, 2)
@@ -48,11 +49,29 @@ test('canais autorizados geram links seguros e mensagem codificada sem acessar t
   assert.equal(new URL(links[0].href).searchParams.get('text'), contato.whatsapp.mensagem)
   assert.equal(links[1].href, contato.instagram.url)
 })
-test('hero, informações e rodapé não publicam endereço, horários ou contatos inventados', () => {
-  assert.equal(cafeConfig.horario.confirmado, false)
-  assert.equal(cafeConfig.endereco.confirmado, false)
+test('dados fictícios autorizados são consistentes e contatos reais identificam corretamente a TecnoJr', () => {
+  for (const componente of [Hero, InformacoesContato]) {
+    const html = renderToStaticMarkup(createElement(componente))
+    for (const valor of ['Rua Mariano Gonçalves, 128', 'Bairro das Acácias', 'Vila Aurora – BA', 'Segunda a sábado', '8h às 18h']) assert(html.includes(valor))
+  }
   const html = [Hero, InformacoesContato, Footer].map((componente) => renderToStaticMarkup(createElement(componente))).join('')
-  assert(!/Rua das Flores|Cidade\/UF|XXXXX|8h às 18h|dados fictícios|Protótipo|· demo/.test(html))
+  assert(!/Rua das Flores|Cidade\/UF|XXXXX|em atualização|Em breve|a definir|· demo/.test(html))
+  const documento = new Window().document
+  documento.body.innerHTML = html
+  for (const grupo of documento.querySelectorAll('.contact-links')) {
+    const links = [...grupo.querySelectorAll('a')]
+    assert.equal(links.length, 2)
+    const whatsapp = new URL(links[0].href)
+    assert.equal(whatsapp.origin, 'https://wa.me')
+    assert.equal(whatsapp.pathname, '/5573988255560')
+    assert.equal(whatsapp.searchParams.get('text'), 'Olá! Gostaria de fazer uma encomenda no Café do Bairro.')
+    assert.equal(links[1].href, 'https://www.instagram.com/tecnojr/')
+    assert(links[1].textContent.includes('Instagram da TecnoJr'))
+    for (const link of links) {
+      assert.equal(link.target, '_blank'); assert.equal(link.rel, 'noopener noreferrer')
+      assert(link.querySelector('.social-icon[aria-hidden="true"]'))
+    }
+  }
   assert(html.includes('imagem criada com IA'))
   assert(html.includes('/creditos-imagens.html'))
   assert.equal(cafeConfig.demonstracao, true)

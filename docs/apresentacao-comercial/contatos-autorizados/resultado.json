@@ -1,0 +1,418 @@
+{
+  "larguras": [
+    {
+      "largura": 360,
+      "paginaSemTransbordamento": true,
+      "precosSemCorte": true
+    },
+    {
+      "largura": 390,
+      "paginaSemTransbordamento": true,
+      "precosSemCorte": true
+    },
+    {
+      "largura": 768,
+      "paginaSemTransbordamento": true,
+      "precosSemCorte": true
+    },
+    {
+      "largura": 1280,
+      "paginaSemTransbordamento": true,
+      "precosSemCorte": true
+    }
+  ],
+  "fotografias": [
+    {
+      "largura": 360,
+      "carregadas": 11,
+      "imagens": [
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-cenoura-480.webp",
+          "alt": "Bolo de cenoura com cobertura de chocolate e uma fatia cortada.",
+          "largura": 324,
+          "altura": 243,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-chocolate-480.webp",
+          "alt": "Bolo de chocolate com cobertura cremosa e uma fatia à frente.",
+          "largura": 324,
+          "altura": 243,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-milho-480.webp",
+          "alt": "Fatia de bolo de milho dourado em um prato.",
+          "largura": 324,
+          "altura": 243,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-fuba-480.webp",
+          "alt": "Bolo de fubá redondo sobre uma mesa de madeira.",
+          "largura": 324,
+          "altura": 243,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-laranja-480.webp",
+          "alt": "Bolo de laranja em formato de anel, com cobertura clara e uma fatia cortada.",
+          "largura": 324,
+          "altura": 243,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-coco-480.webp",
+          "alt": "Fatia de bolo de coco em prato escuro, com o restante do bolo ao fundo.",
+          "largura": 324,
+          "altura": 243,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/cafe-coado-480.webp",
+          "alt": "Café preto em xícara com pires sobre uma mesa de madeira.",
+          "largura": 324,
+          "altura": 243,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/cafe-leite-480.webp",
+          "alt": "Café com leite em xícara branca sobre um pires.",
+          "largura": 324,
+          "altura": 243,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/pao-queijo-480.webp",
+          "alt": "Pães de queijo dourados em uma travessa sobre a mesa.",
+          "largura": 324,
+          "altura": 243,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/panetone-480.webp",
+          "alt": "Panetone com uma fatia cortada, mostrando a massa com frutas.",
+          "largura": 324,
+          "altura": 243,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-natal-480.webp",
+          "alt": "Bolo de frutas com frutas cristalizadas e fatias sobre uma tábua.",
+          "largura": 324,
+          "altura": 243,
+          "loading": "lazy"
+        }
+      ]
+    },
+    {
+      "largura": 390,
+      "carregadas": 11,
+      "imagens": [
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-cenoura-480.webp",
+          "alt": "Bolo de cenoura com cobertura de chocolate e uma fatia cortada.",
+          "largura": 351,
+          "altura": 263,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-chocolate-480.webp",
+          "alt": "Bolo de chocolate com cobertura cremosa e uma fatia à frente.",
+          "largura": 351,
+          "altura": 263,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-milho-480.webp",
+          "alt": "Fatia de bolo de milho dourado em um prato.",
+          "largura": 351,
+          "altura": 263,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-fuba-480.webp",
+          "alt": "Bolo de fubá redondo sobre uma mesa de madeira.",
+          "largura": 351,
+          "altura": 263,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-laranja-480.webp",
+          "alt": "Bolo de laranja em formato de anel, com cobertura clara e uma fatia cortada.",
+          "largura": 351,
+          "altura": 263,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-coco-480.webp",
+          "alt": "Fatia de bolo de coco em prato escuro, com o restante do bolo ao fundo.",
+          "largura": 351,
+          "altura": 263,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/cafe-coado-480.webp",
+          "alt": "Café preto em xícara com pires sobre uma mesa de madeira.",
+          "largura": 351,
+          "altura": 263,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/cafe-leite-480.webp",
+          "alt": "Café com leite em xícara branca sobre um pires.",
+          "largura": 351,
+          "altura": 263,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/pao-queijo-480.webp",
+          "alt": "Pães de queijo dourados em uma travessa sobre a mesa.",
+          "largura": 351,
+          "altura": 263,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/panetone-480.webp",
+          "alt": "Panetone com uma fatia cortada, mostrando a massa com frutas.",
+          "largura": 351,
+          "altura": 263,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-natal-480.webp",
+          "alt": "Bolo de frutas com frutas cristalizadas e fatias sobre uma tábua.",
+          "largura": 351,
+          "altura": 263,
+          "loading": "lazy"
+        }
+      ]
+    },
+    {
+      "largura": 768,
+      "carregadas": 11,
+      "imagens": [
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-cenoura-480.webp",
+          "alt": "Bolo de cenoura com cobertura de chocolate e uma fatia cortada.",
+          "largura": 345,
+          "altura": 259,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-chocolate-480.webp",
+          "alt": "Bolo de chocolate com cobertura cremosa e uma fatia à frente.",
+          "largura": 345,
+          "altura": 259,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-milho-480.webp",
+          "alt": "Fatia de bolo de milho dourado em um prato.",
+          "largura": 345,
+          "altura": 259,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-fuba-480.webp",
+          "alt": "Bolo de fubá redondo sobre uma mesa de madeira.",
+          "largura": 345,
+          "altura": 259,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-laranja-480.webp",
+          "alt": "Bolo de laranja em formato de anel, com cobertura clara e uma fatia cortada.",
+          "largura": 345,
+          "altura": 259,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-coco-480.webp",
+          "alt": "Fatia de bolo de coco em prato escuro, com o restante do bolo ao fundo.",
+          "largura": 345,
+          "altura": 259,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/cafe-coado-480.webp",
+          "alt": "Café preto em xícara com pires sobre uma mesa de madeira.",
+          "largura": 345,
+          "altura": 259,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/cafe-leite-480.webp",
+          "alt": "Café com leite em xícara branca sobre um pires.",
+          "largura": 345,
+          "altura": 259,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/pao-queijo-480.webp",
+          "alt": "Pães de queijo dourados em uma travessa sobre a mesa.",
+          "largura": 345,
+          "altura": 259,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/panetone-480.webp",
+          "alt": "Panetone com uma fatia cortada, mostrando a massa com frutas.",
+          "largura": 345,
+          "altura": 259,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-natal-480.webp",
+          "alt": "Bolo de frutas com frutas cristalizadas e fatias sobre uma tábua.",
+          "largura": 345,
+          "altura": 259,
+          "loading": "lazy"
+        }
+      ]
+    },
+    {
+      "largura": 1280,
+      "carregadas": 11,
+      "imagens": [
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-cenoura-480.webp",
+          "alt": "Bolo de cenoura com cobertura de chocolate e uma fatia cortada.",
+          "largura": 360,
+          "altura": 270,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-chocolate-480.webp",
+          "alt": "Bolo de chocolate com cobertura cremosa e uma fatia à frente.",
+          "largura": 360,
+          "altura": 270,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-milho-480.webp",
+          "alt": "Fatia de bolo de milho dourado em um prato.",
+          "largura": 360,
+          "altura": 270,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-fuba-480.webp",
+          "alt": "Bolo de fubá redondo sobre uma mesa de madeira.",
+          "largura": 360,
+          "altura": 270,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-laranja-480.webp",
+          "alt": "Bolo de laranja em formato de anel, com cobertura clara e uma fatia cortada.",
+          "largura": 360,
+          "altura": 270,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-coco-480.webp",
+          "alt": "Fatia de bolo de coco em prato escuro, com o restante do bolo ao fundo.",
+          "largura": 360,
+          "altura": 270,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/cafe-coado-480.webp",
+          "alt": "Café preto em xícara com pires sobre uma mesa de madeira.",
+          "largura": 360,
+          "altura": 270,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/cafe-leite-480.webp",
+          "alt": "Café com leite em xícara branca sobre um pires.",
+          "largura": 360,
+          "altura": 270,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/pao-queijo-480.webp",
+          "alt": "Pães de queijo dourados em uma travessa sobre a mesa.",
+          "largura": 360,
+          "altura": 270,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/panetone-480.webp",
+          "alt": "Panetone com uma fatia cortada, mostrando a massa com frutas.",
+          "largura": 360,
+          "altura": 270,
+          "loading": "lazy"
+        },
+        {
+          "src": "http://127.0.0.1:49490/images/produtos/bolo-natal-480.webp",
+          "alt": "Bolo de frutas com frutas cristalizadas e fatias sobre uma tábua.",
+          "largura": 360,
+          "altura": 270,
+          "loading": "lazy"
+        }
+      ]
+    }
+  ],
+  "acessibilidade": [
+    {
+      "estado": "landing-360",
+      "violacoes": []
+    },
+    {
+      "estado": "formulario-360",
+      "violacoes": []
+    },
+    {
+      "estado": "landing-390",
+      "violacoes": []
+    },
+    {
+      "estado": "formulario-390",
+      "violacoes": []
+    },
+    {
+      "estado": "landing-768",
+      "violacoes": []
+    },
+    {
+      "estado": "formulario-768",
+      "violacoes": []
+    },
+    {
+      "estado": "landing-1280",
+      "violacoes": []
+    },
+    {
+      "estado": "formulario-1280",
+      "violacoes": []
+    },
+    {
+      "estado": "contatos-autorizados-teste-390",
+      "violacoes": []
+    },
+    {
+      "estado": "creditos-390",
+      "violacoes": []
+    },
+    {
+      "estado": "fallback-foto-390",
+      "violacoes": []
+    }
+  ],
+  "passos": [
+    "Onze fotografias locais decodificadas, preços legíveis, hero identificado e teclado nas quatro larguras.",
+    "WhatsApp/Instagram autorizados com SVG, nova aba, rel seguro e destinos interceptados; nenhuma conta externa acessada.",
+    "Créditos públicos dos onze produtos com fontes, autores, licenças e alterações.",
+    "Falha de arquivo apresenta fallback acessível, sem ícone de imagem quebrada."
+  ],
+  "errosPagina": [],
+  "contatosInterceptados": [
+    "https://wa.me/5573988255560?text=Ol%C3%A1!%20Gostaria%20de%20fazer%20uma%20encomenda%20no%20Caf%C3%A9%20do%20Bairro.",
+    "https://www.instagram.com/tecnojr/"
+  ],
+  "falhasEsperadas": [
+    "http://127.0.0.1:49490/images/produtos/bolo-cenoura-480.webp"
+  ]
+}

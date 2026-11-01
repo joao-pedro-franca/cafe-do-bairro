@@ -2,14 +2,16 @@
 
 Implementação na branch `feature/apresentacao-comercial`, criada a partir de `feature/produtos-sazonais`. Sem merge na Main. A estrutura da landing, madeira, papel creme, rendas, flores, cores terrosas e navegação suave foram preservadas.
 
+**Atualização dos dados comerciais:** o endereço e o horário fictícios fornecidos para o desafio estão publicados no hero e no contato. O WhatsApp `5573988255560` foi autorizado pelo seu proprietário e o perfil `https://www.instagram.com/tecnojr/` está identificado como **Instagram da TecnoJr**, sem atribuí-lo ao café ou declarar parceria. A mensagem inicial é “Olá! Gostaria de fazer uma encomenda no Café do Bairro.”, codificada na URL. Nenhuma mensagem é enviada automaticamente; conversas não registram pedidos no SQLite. O aviso de pedidos demonstrativos permanece no formulário. Veja o [registro e as capturas desta atualização](contatos-autorizados/README.md).
+
 ## O que mudou
 
 | Área | Acabamento |
 | --- | --- |
-| Hero | Removida a nota repetitiva de dados fictícios. Contatos com ícones de marca; valores de endereço/horários não confirmados deixaram de ser publicados. Mantidos foto, overlay, CTAs e identificação de IA. |
+| Hero | Removida a nota repetitiva de dados fictícios. Contatos com ícones de marca; endereço e horário fictícios autorizados para apresentação. Mantidos foto, overlay, CTAs e identificação de IA. |
 | Cardápio | Onze fotografias reais licenciadas no lugar dos SVGs principais. Recortes 4:3 valorizam os alimentos; cartões, categorias, preços e disponibilidade foram preservados. Removida a nota acadêmica repetitiva do cabeçalho. |
 | Formulário | Texto introdutório natural. Uma identificação clara e discreta de demonstração aparece junto dos campos, explicando que os pedidos não serão preparados por um estabelecimento. Registro, disponibilidade, preços e pagamento na retirada permanecem iguais. |
-| Informações | Retirados endereço e horários de exemplo, telefone fictício e perfil ilustrativo. Dados ausentes aparecem como informações em atualização; contatos não habilitados mostram **Em breve**. |
+| Informações | Endereço e horário fictícios definidos para o desafio; WhatsApp autorizado e Instagram identificado como da TecnoJr, sem estados pendentes. |
 | Rodapé | Assinatura comercial, contatos com ícones e acesso discreto aos créditos das fotografias e à administração. |
 | Metadados | Título e descrição sem texto acadêmico, gerados a partir de `cafeConfig.ts` no desenvolvimento e no build. |
 
@@ -31,7 +33,7 @@ Edite somente `frontend/src/data/cafeConfig.ts` para identidade e dados comercia
 | Hero | `hero.imagem`, `hero.imagemPequena`, `hero.descricaoImagem`, `hero.legenda`. A legenda atual identifica corretamente a imagem criada com IA. |
 | Ambiente de demonstração | `demonstracao` e `avisoEncomendas`. Manter ativo enquanto os registros não representarem uma empresa operacional. Essa configuração muda somente a apresentação, não o registro de encomendas. |
 
-**Estado entregue:** número, perfil, endereço e horários reais continuam ausentes/não confirmados. Nenhum número aleatório, perfil de terceiros ou localização fictícia foi ativado. Preencha os dados fornecidos pelo responsável antes de habilitá-los; não basta trocar uma legenda ou marcar um booleano com valores de exemplo.
+**Estado atual:** endereço Rua Mariano Gonçalves, 128, Bairro das Acácias, Vila Aurora – BA e horário segunda a sábado, das 8h às 18h são fictícios e autorizados para a apresentação. WhatsApp e Instagram estão habilitados com os destinos expressamente fornecidos. `confirmado` indica autorização para exibir a configuração; não verifica uma empresa real. O Instagram pertence à TecnoJr, não ao café fictício.
 
 Os mesmos `ContactLinks` atendem hero, informações e rodapé. Quando habilitados, geram `wa.me` com mensagem codificada e perfil Instagram validado, em nova aba com `noopener noreferrer`. Sem autorização, são disclosures nativos acessíveis por teclado, sem destino externo. Portas alternativas, credenciais em URL, parâmetros/fragmentos e rotas reservadas de Instagram são recusados. Os ícones são dois SVGs locais do Simple Icons, CC0, sem nova biblioteca ou dependência de rede.
 
@@ -119,4 +121,4 @@ node --experimental-strip-types scripts/testar-rolagem.mjs --comercial
 
 ## Pendências comerciais
 
-Faltam número de WhatsApp autorizado, perfil Instagram autorizado, horários e endereço reais, além da confirmação de uso por uma empresa operacional. Os preços e tamanhos herdados continuam referências do desafio e devem ser revisados pelo responsável antes desse uso. Não há pendência de fotografia para os 11 produtos; substituir por fotos próprias do estabelecimento no futuro requer autorização e atualização dos créditos. Não foram adicionados depoimentos, avaliações, prêmios, pagamentos ou outra funcionalidade de negócio.
+Não há pendência para apresentar a cafeteria fictícia com os dados autorizados. O projeto continua sem representar uma empresa operacional: endereço, horários, produtos, preços e tamanhos são referências do desafio. Um uso comercial real exigiria revisar esses dados com o responsável. O Instagram da TecnoJr não é um perfil próprio do café nem declara parceria. Não foram adicionados depoimentos, avaliações, prêmios, pagamentos ou outra funcionalidade de negócio.
