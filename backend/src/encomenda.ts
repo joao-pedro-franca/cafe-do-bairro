@@ -1,15 +1,37 @@
 import { FUSO_HORARIO, PRODUTOS_ENCOMENDAVEIS, STATUS } from './config.ts'
 import { ApiError } from './errors.ts'
 
+export interface ItemEncomenda { produto: string; quantidade: number }
+export const totalBolos = (itens: readonly ItemEncomenda[]) => itens.reduce((total, item) => total + item.quantidade, 0)
+
+export function validarItens(valor: unknown): ItemEncomenda[] {
+  if (!Array.isArray(valor) || valor.length < 1 || valor.length > PRODUTOS_ENCOMENDAVEIS.length) {
+    throw new ApiError(400, 'Inclua de um a seis sabores de bolo, sem repetições.')
+  }
+  const sabores = new Set<string>()
+  const itens = valor.map((item: unknown) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) throw new ApiError(400, 'Cada item deve conter produto e quantidade.')
+    const { produto, quantidade } = item as Record<string, unknown>
+    if (Object.keys(item).some((campo) => !['produto', 'quantidade'].includes(campo))
+      || typeof produto !== 'string' || !PRODUTOS_ENCOMENDAVEIS.some((id) => id === produto)) throw new ApiError(400, 'Selecione o ID de um bolo caseiro disponível para encomenda.')
+    if (sabores.has(produto)) throw new ApiError(400, 'Não repita sabores: reúna a quantidade na mesma linha.')
+    if (typeof quantidade !== 'number' || !Number.isSafeInteger(quantidade) || quantidade < 1) throw new ApiError(400, 'A quantidade de cada sabor deve ser um número inteiro positivo.')
+    sabores.add(produto)
+    return { produto, quantidade }
+  })
+  if (!Number.isSafeInteger(totalBolos(itens))) throw new ApiError(400, 'O total de bolos é inválido.')
+  return itens
+}
+
 export interface DadosEncomenda {
   nomeCliente: string
   telefone: string
-  produto: string
+  itens: ItemEncomenda[]
   dataEntrega: string
   incluirPaoDeQueijo: boolean
-  quantidadeBolos: number
 }
 export interface Encomenda extends DadosEncomenda {
+  totalBolos: number
   id: number
   status: typeof STATUS[number]
 }
@@ -42,17 +64,12 @@ export function validarEntrada(entrada: unknown, parcial: boolean, agora: Date):
     throw new ApiError(400, 'Envie um objeto JSON com os dados da encomenda.')
   }
   const corpo = entrada as Record<string, unknown>
-  const campos = ['nomeCliente', 'telefone', 'produto', 'dataEntrega', 'incluirPaoDeQueijo', 'quantidadeBolos', ...(parcial ? ['status'] : [])]
+  const campos = ['nomeCliente', 'telefone', 'itens', 'dataEntrega', 'incluirPaoDeQueijo', ...(parcial ? ['status'] : [])]
   if (!Object.keys(corpo).length || Object.keys(corpo).some((campo) => !campos.includes(campo))) {
     throw new ApiError(400, 'Envie apenas os campos permitidos. O status inicial é definido pelo servidor.')
   }
   const resultado: AlteracaoEncomenda = {}
-  if (!parcial || Object.hasOwn(corpo, 'quantidadeBolos')) {
-    if (typeof corpo.quantidadeBolos !== 'number' || !Number.isSafeInteger(corpo.quantidadeBolos) || corpo.quantidadeBolos < 1) {
-      throw new ApiError(400, 'quantidadeBolos deve ser um número inteiro positivo.')
-    }
-    resultado.quantidadeBolos = corpo.quantidadeBolos
-  }
+  if (!parcial || Object.hasOwn(corpo, 'itens')) resultado.itens = validarItens(corpo.itens)
   if (!parcial || Object.hasOwn(corpo, 'nomeCliente')) {
     if (typeof corpo.nomeCliente !== 'string' || corpo.nomeCliente.trim().length > 100 || corpo.nomeCliente.trim().split(/\s+/).length < 2) {
       throw new ApiError(400, 'Informe nome e sobrenome, com até 100 caracteres.')
@@ -65,12 +82,6 @@ export function validarEntrada(entrada: unknown, parcial: boolean, agora: Date):
     }
     // Persistimos só os dígitos; o prefixo 55 é preservado quando informado.
     resultado.telefone = corpo.telefone.replace(/\D/g, '')
-  }
-  if (!parcial || Object.hasOwn(corpo, 'produto')) {
-    if (typeof corpo.produto !== 'string' || !PRODUTOS_ENCOMENDAVEIS.some((id) => id === corpo.produto)) {
-      throw new ApiError(400, 'Selecione o ID de um bolo caseiro disponível para encomenda.')
-    }
-    resultado.produto = corpo.produto
   }
   if (!parcial || Object.hasOwn(corpo, 'dataEntrega')) {
     validarData(corpo.dataEntrega, agora)

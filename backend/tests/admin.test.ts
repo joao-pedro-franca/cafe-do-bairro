@@ -158,18 +158,18 @@ test('não há conta padrão; configuração inválida falha e login não config
 test('edição completa por sessão move bolos sem dupla contagem e conflito não salva nenhum campo', async (t) => {
   const a = await ambiente(t)
   const agora = () => new Date('2026-10-31T12:00:00Z')
-  const original = a.repo.criar({ ...pedido, quantidadeBolos: 2 }, agora)
-  a.repo.criar({ ...pedido, dataEntrega: '2026-11-03', quantidadeBolos: 3 }, agora)
+  const original = a.repo.criar({ ...pedido, itens: [{ produto: 'bolo-cenoura', quantidade: 2 }] }, agora)
+  a.repo.criar({ ...pedido, dataEntrega: '2026-11-03', itens: [{ produto: 'bolo-cenoura', quantidade: 3 }] }, agora)
   const s = await a.login()
   const headers = { Cookie: s.cookie, Origin: origem, 'X-CSRF-Token': s.csrf }
-  const alteracoes = { nomeCliente: 'Cliente Revisado', telefone: '73988888888', produto: 'bolo-coco', quantidadeBolos: 2, dataEntrega: '2026-11-03', incluirPaoDeQueijo: false, status: 'em preparo' }
+  const alteracoes = { nomeCliente: 'Cliente Revisado', telefone: '73988888888', dataEntrega: '2026-11-03', incluirPaoDeQueijo: false, status: 'em preparo', itens: [{ produto: 'bolo-coco', quantidade: 2 }] }
   assert.equal((await a.request(`/encomendas/${original.id}`, 'PATCH', alteracoes, headers)).status, 200)
-  assert.deepEqual(a.repo.buscar(original.id), { id: original.id, ...alteracoes })
+  assert.deepEqual(a.repo.buscar(original.id), { id: original.id, ...alteracoes, totalBolos: 2 })
   assert.equal(a.repo.disponibilidade(pedido.dataEntrega).quantidadeDisponivel, 5)
   assert.equal(a.repo.disponibilidade('2026-11-03').quantidadeDisponivel, 0)
   const antes = a.repo.buscar(original.id)
-  assert.equal((await a.request(`/encomendas/${original.id}`, 'PATCH', { quantidadeBolos: 3, nomeCliente: 'Não Pode Salvar', status: 'entregue' }, headers)).status, 409)
+  assert.equal((await a.request(`/encomendas/${original.id}`, 'PATCH', { nomeCliente: 'Não Pode Salvar', status: 'entregue', itens: [{ produto: 'bolo-cenoura', quantidade: 3 }] }, headers)).status, 409)
   assert.deepEqual(a.repo.buscar(original.id), antes)
-  assert.equal((await a.request(`/encomendas/${original.id}`, 'PATCH', { quantidadeBolos: 1 }, headers)).status, 200)
+  assert.equal((await a.request(`/encomendas/${original.id}`, 'PATCH', { itens: [{ produto: 'bolo-cenoura', quantidade: 1 }] }, headers)).status, 200)
   assert.equal(a.repo.disponibilidade('2026-11-03').quantidadeDisponivel, 1)
 })

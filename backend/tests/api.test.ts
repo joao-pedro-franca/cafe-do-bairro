@@ -10,14 +10,14 @@ test('CRUD HTTP completo: cria recebida, lista, consulta, edita dados/status e r
   const api = await apiTeste(t)
   const criado = await api.request('POST', '', pedido, false)
   assert.equal(criado.status, 201)
-  assert.deepEqual(criado.dados, { ...pedido, telefone: '73999999999', id: 1, status: 'recebida' })
+  assert.deepEqual(criado.dados, { ...pedido, telefone: '73999999999', id: 1, status: 'recebida', totalBolos: 1 })
   assert.equal(criado.headers.get('location'), '/api/encomendas/1')
   assert.equal(criado.headers.get('cache-control'), 'no-store')
   assert.deepEqual((await api.request('GET')).dados, [criado.dados])
   assert.deepEqual((await api.request('GET', '/1')).dados, criado.dados)
-  const alterado = await api.request('PATCH', '/1', { nomeCliente: 'Outra Cliente', telefone: '+55 (73) 3333-3333', produto: 'bolo-coco', dataEntrega: '2026-11-03', incluirPaoDeQueijo: false, status: 'em preparo' })
+  const alterado = await api.request('PATCH', '/1', { nomeCliente: 'Outra Cliente', telefone: '+55 (73) 3333-3333', dataEntrega: '2026-11-03', incluirPaoDeQueijo: false, status: 'em preparo', itens: [{ produto: 'bolo-coco', quantidade: 1 }] })
   assert.equal(alterado.status, 200)
-  assert.deepEqual(alterado.dados, { id: 1, nomeCliente: 'Outra Cliente', telefone: '557333333333', produto: 'bolo-coco', dataEntrega: '2026-11-03', incluirPaoDeQueijo: false, quantidadeBolos: 1, status: 'em preparo' })
+  assert.deepEqual(alterado.dados, { totalBolos: 1, id: 1, nomeCliente: 'Outra Cliente', telefone: '557333333333', dataEntrega: '2026-11-03', incluirPaoDeQueijo: false, status: 'em preparo', itens: [{ produto: 'bolo-coco', quantidade: 1 }] })
   assert.equal((await api.request('PATCH', '/1', { status: 'entregue' })).dados.status, 'entregue')
   assert.equal((await api.request('DELETE', '/1')).status, 204)
   assert.deepEqual((await api.request('GET')).dados, [])
@@ -66,7 +66,7 @@ test('somente mudar status de pedido antigo não exige mudar a data nem ocupa no
 
 test('valida tipos, campos, calendário, telefone, produto e status, sem gravar inválidos', async (t) => {
   const api = await apiTeste(t)
-  const invalidos: unknown[] = [null, [], {}, { ...pedido, nomeCliente: ' ' }, { ...pedido, nomeCliente: 'Nome' }, { ...pedido, telefone: 123 }, { ...pedido, telefone: 'abc73999999999' }, { ...pedido, telefone: '999999999' }, { ...pedido, dataEntrega: '2026-10-31' }, { ...pedido, dataEntrega: '2026-10-30' }, { ...pedido, dataEntrega: '2027-02-29' }, { ...pedido, dataEntrega: '2026-13-01' }, { ...pedido, dataEntrega: '02/11/2026' }, { ...pedido, produto: 'cafe-coado' }, { ...pedido, produto: 'panetone' }, { ...pedido, produto: 'pao-queijo' }, { ...pedido, incluirPaoDeQueijo: 'true' }, { ...pedido, campoExtra: true }]
+  const invalidos: unknown[] = [null, [], {}, { ...pedido, nomeCliente: ' ' }, { ...pedido, nomeCliente: 'Nome' }, { ...pedido, telefone: 123 }, { ...pedido, telefone: 'abc73999999999' }, { ...pedido, telefone: '999999999' }, { ...pedido, dataEntrega: '2026-10-31' }, { ...pedido, dataEntrega: '2026-10-30' }, { ...pedido, dataEntrega: '2027-02-29' }, { ...pedido, dataEntrega: '2026-13-01' }, { ...pedido, dataEntrega: '02/11/2026' }, { ...pedido, itens: [{ produto: 'cafe-coado', quantidade: 1 }] }, { ...pedido, itens: [{ produto: 'panetone', quantidade: 1 }] }, { ...pedido, itens: [{ produto: 'pao-queijo', quantidade: 1 }] }, { ...pedido, incluirPaoDeQueijo: 'true' }, { ...pedido, campoExtra: true }]
   for (const corpo of invalidos) assert.equal((await api.request('POST', '', corpo)).status, 400, JSON.stringify(corpo))
   assert.deepEqual((await api.request('GET')).dados, [])
   await api.request('POST', '', pedido)

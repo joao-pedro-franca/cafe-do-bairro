@@ -1,39 +1,44 @@
 import { DatabaseSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { LIMITE_DIARIO } from '../config.ts'
+import { LIMITE_DIARIO, PRODUTOS_ENCOMENDAVEIS } from '../config.ts'
 import { ApiError } from '../errors.ts'
-import { validarData } from '../encomenda.ts'
-import type { AlteracaoEncomenda, DadosEncomenda, Encomenda } from '../encomenda.ts'
-
-interface Registro extends Omit<Encomenda, 'incluirPaoDeQueijo'> { incluirPaoDeQueijo: number }
+import { totalBolos, validarData, validarItens } from '../encomenda.ts'
+import type { AlteracaoEncomenda, DadosEncomenda, Encomenda, ItemEncomenda } from '../encomenda.ts'
 
 export function abrirEncomendas(caminho: string) {
   if (caminho !== ':memory:') mkdirSync(dirname(resolve(caminho)), { recursive: true })
   const db = new DatabaseSync(caminho)
-  db.exec(`
-    PRAGMA busy_timeout = 5000;
-    PRAGMA journal_mode = WAL;
-  `)
-  // A migração é aditiva e protegida pelo mesmo bloqueio entre processos que as reservas.
+  db.exec('PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL;')
   db.exec('BEGIN IMMEDIATE')
   try {
     db.exec(`
-    CREATE TABLE IF NOT EXISTS encomendas (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      nomeCliente TEXT NOT NULL,
-      telefone TEXT NOT NULL,
-      produto TEXT NOT NULL,
-      dataEntrega TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'recebida' CHECK(status IN ('recebida', 'em preparo', 'entregue')),
-      incluirPaoDeQueijo INTEGER NOT NULL DEFAULT 0 CHECK(incluirPaoDeQueijo IN (0, 1)),
-      quantidadeBolos INTEGER NOT NULL DEFAULT 1 CHECK(quantidadeBolos > 0)
-    ) STRICT;
-    CREATE INDEX IF NOT EXISTS idx_encomendas_data ON encomendas(dataEntrega);
-  `)
+      CREATE TABLE IF NOT EXISTS encomendas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nomeCliente TEXT NOT NULL,
+        telefone TEXT NOT NULL,
+        dataEntrega TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'recebida' CHECK(status IN ('recebida', 'em preparo', 'entregue')),
+        incluirPaoDeQueijo INTEGER NOT NULL DEFAULT 0 CHECK(incluirPaoDeQueijo IN (0, 1))
+      ) STRICT;
+      CREATE INDEX IF NOT EXISTS idx_encomendas_data ON encomendas(dataEntrega);
+      CREATE TABLE IF NOT EXISTS encomenda_itens (
+        encomendaId INTEGER NOT NULL REFERENCES encomendas(id) ON DELETE CASCADE,
+        produto TEXT NOT NULL CHECK(produto IN (${PRODUTOS_ENCOMENDAVEIS.map((id) => "'" + id + "'").join(',')})),
+        quantidade INTEGER NOT NULL CHECK(quantidade > 0),
+        ordem INTEGER NOT NULL CHECK(ordem >= 0),
+        PRIMARY KEY(encomendaId, produto),
+        UNIQUE(encomendaId, ordem)
+      ) STRICT;
+    `)
     const colunas = db.prepare('PRAGMA table_info(encomendas)').all() as { name: string }[]
-    if (!colunas.some((coluna) => coluna.name === 'quantidadeBolos')) {
-      db.exec('ALTER TABLE encomendas ADD COLUMN quantidadeBolos INTEGER NOT NULL DEFAULT 1 CHECK(quantidadeBolos > 0)')
+    if (colunas.some((coluna) => coluna.name === 'produto')) {
+      const quantidade = colunas.some((coluna) => coluna.name === 'quantidadeBolos') ? 'quantidadeBolos' : '1'
+      // Copia e remove somente as colunas antigas: IDs, sequência e metadados permanecem.
+      // Tudo ocorre sob o mesmo bloqueio; uma falha reverte inclusive o esquema.
+      db.exec('INSERT INTO encomenda_itens(encomendaId, produto, quantidade, ordem) SELECT id, produto, ' + quantidade + ', 0 FROM encomendas')
+      db.exec('ALTER TABLE encomendas DROP COLUMN produto')
+      if (quantidade !== '1') db.exec('ALTER TABLE encomendas DROP COLUMN quantidadeBolos')
     }
     db.exec('COMMIT')
   } catch (erro) {
@@ -42,35 +47,50 @@ export function abrirEncomendas(caminho: string) {
     throw erro
   }
 
-  function converter(registro: unknown): Encomenda {
-    const linha = registro as Registro
-    return { ...linha, incluirPaoDeQueijo: linha.incluirPaoDeQueijo === 1 }
+  type Linha = Omit<Encomenda, 'itens' | 'totalBolos' | 'incluirPaoDeQueijo'> & { incluirPaoDeQueijo: number; produto: string | null; quantidade: number | null }
+  function ler(id?: number): Encomenda[] {
+    // Um SELECT fornece um snapshot consistente de metadados e itens, inclusive entre processos.
+    const sql = 'SELECT e.*, i.produto, i.quantidade FROM encomendas e LEFT JOIN encomenda_itens i ON i.encomendaId = e.id'
+      + (id === undefined ? '' : ' WHERE e.id = ?') + ' ORDER BY e.dataEntrega, e.id, i.ordem'
+    const linhas = (id === undefined ? db.prepare(sql).all() : db.prepare(sql).all(id)) as Linha[]
+    const pedidos = new Map<number, Encomenda>()
+    for (const linha of linhas) {
+      let pedido = pedidos.get(linha.id)
+      if (!pedido) {
+        pedido = { id: linha.id, nomeCliente: linha.nomeCliente, telefone: linha.telefone, dataEntrega: linha.dataEntrega,
+          status: linha.status, incluirPaoDeQueijo: linha.incluirPaoDeQueijo === 1, itens: [], totalBolos: 0 }
+        pedidos.set(linha.id, pedido)
+      }
+      if (linha.produto !== null && linha.quantidade !== null) {
+        pedido.itens.push({ produto: linha.produto, quantidade: linha.quantidade })
+        pedido.totalBolos += linha.quantidade
+      }
+    }
+    return [...pedidos.values()]
   }
   function buscar(id: number) {
-    const linha = db.prepare('SELECT * FROM encomendas WHERE id = ?').get(id)
-    if (!linha) throw new ApiError(404, 'Encomenda não encontrada.')
-    return converter(linha)
+    const pedido = ler(id)[0]
+    if (!pedido) throw new ApiError(404, 'Encomenda não encontrada.')
+    return pedido
   }
   function quantidadeReservada(data: string, ignorarId = 0) {
-    const { total } = db.prepare('SELECT COALESCE(SUM(quantidadeBolos), 0) AS total FROM encomendas WHERE dataEntrega = ? AND id <> ?').get(data, ignorarId) as { total: number }
+    const { total } = db.prepare('SELECT COALESCE(SUM(i.quantidade), 0) AS total FROM encomenda_itens i JOIN encomendas e ON e.id = i.encomendaId WHERE e.dataEntrega = ? AND e.id <> ?').get(data, ignorarId) as { total: number }
     return total
   }
   function exigirVaga(data: string, quantidade: number, ignorarId = 0) {
     if (quantidadeReservada(data, ignorarId) + quantidade > LIMITE_DIARIO) {
-      throw new ApiError(409, 'A quantidade de bolos solicitada ultrapassa a disponibilidade dessa data. Consulte o saldo e ajuste a quantidade ou escolha outro dia.')
+      throw new ApiError(409, 'A quantidade de bolos solicitada ultrapassa a disponibilidade dessa data. Consulte o saldo e ajuste os itens ou escolha outro dia.')
     }
   }
+  function gravarItens(id: number, itens: ItemEncomenda[]) {
+    db.prepare('DELETE FROM encomenda_itens WHERE encomendaId = ?').run(id)
+    const inserir = db.prepare('INSERT INTO encomenda_itens(encomendaId, produto, quantidade, ordem) VALUES (?, ?, ?, ?)')
+    itens.forEach((item, ordem) => inserir.run(id, item.produto, item.quantidade, ordem))
+  }
   function transacao<T>(acao: () => T): T {
-    // Reserva o direito de escrita ANTES de contar. Outro processo precisa esperar o COMMIT.
     db.exec('BEGIN IMMEDIATE')
-    try {
-      const resultado = acao()
-      db.exec('COMMIT')
-      return resultado
-    } catch (erro) {
-      db.exec('ROLLBACK')
-      throw erro
-    }
+    try { const resultado = acao(); db.exec('COMMIT'); return resultado }
+    catch (erro) { db.exec('ROLLBACK'); throw erro }
   }
   return {
     fechar: () => db.close(),
@@ -79,29 +99,32 @@ export function abrirEncomendas(caminho: string) {
       const reservada = quantidadeReservada(data)
       return { data, limiteDiario: LIMITE_DIARIO, quantidadeReservada: reservada, quantidadeDisponivel: Math.max(0, LIMITE_DIARIO - reservada) }
     },
-    listar: () => db.prepare('SELECT * FROM encomendas ORDER BY dataEntrega, id').all().map(converter),
+    listar: () => ler(),
     criar(dados: DadosEncomenda, agora: () => Date) {
       return transacao(() => {
+        const itens = validarItens(dados.itens)
         validarData(dados.dataEntrega, agora())
-        exigirVaga(dados.dataEntrega, dados.quantidadeBolos)
-        const registro = db.prepare(`INSERT INTO encomendas
-          (nomeCliente, telefone, produto, dataEntrega, incluirPaoDeQueijo, quantidadeBolos) VALUES (?, ?, ?, ?, ?, ?)`)
-          .run(dados.nomeCliente, dados.telefone, dados.produto, dados.dataEntrega, Number(dados.incluirPaoDeQueijo), dados.quantidadeBolos)
-        return buscar(Number(registro.lastInsertRowid))
+        exigirVaga(dados.dataEntrega, totalBolos(itens))
+        const registro = db.prepare('INSERT INTO encomendas(nomeCliente, telefone, dataEntrega, incluirPaoDeQueijo) VALUES (?, ?, ?, ?)')
+          .run(dados.nomeCliente, dados.telefone, dados.dataEntrega, Number(dados.incluirPaoDeQueijo))
+        const id = Number(registro.lastInsertRowid)
+        gravarItens(id, itens)
+        return buscar(id)
       })
     },
     atualizar(id: number, alteracoes: AlteracaoEncomenda, agora: () => Date) {
       return transacao(() => {
         const anterior = buscar(id)
         const atual = { ...anterior, ...alteracoes }
-        // Status e contato continuam editáveis em pedidos antigos; produção nova exige data futura.
-        if (atual.dataEntrega !== anterior.dataEntrega || atual.quantidadeBolos !== anterior.quantidadeBolos) {
+        const itens = validarItens(atual.itens)
+        // Trocar composição sem mudar o total continua permitido em datas antigas.
+        if (atual.dataEntrega !== anterior.dataEntrega || totalBolos(itens) !== anterior.totalBolos) {
           validarData(atual.dataEntrega, agora())
-          exigirVaga(atual.dataEntrega, atual.quantidadeBolos, id)
+          exigirVaga(atual.dataEntrega, totalBolos(itens), id)
         }
-        db.prepare(`UPDATE encomendas SET nomeCliente = ?, telefone = ?, produto = ?, dataEntrega = ?,
-          status = ?, incluirPaoDeQueijo = ?, quantidadeBolos = ? WHERE id = ?`)
-          .run(atual.nomeCliente, atual.telefone, atual.produto, atual.dataEntrega, atual.status, Number(atual.incluirPaoDeQueijo), atual.quantidadeBolos, id)
+        db.prepare('UPDATE encomendas SET nomeCliente = ?, telefone = ?, dataEntrega = ?, status = ?, incluirPaoDeQueijo = ? WHERE id = ?')
+          .run(atual.nomeCliente, atual.telefone, atual.dataEntrega, atual.status, Number(atual.incluirPaoDeQueijo), id)
+        if (alteracoes.itens !== undefined) gravarItens(id, itens)
         return buscar(id)
       })
     },
@@ -111,5 +134,4 @@ export function abrirEncomendas(caminho: string) {
     },
   }
 }
-
 export type RepositorioEncomendas = ReturnType<typeof abrirEncomendas>
