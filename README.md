@@ -92,7 +92,7 @@ As variáveis duram enquanto o terminal estiver aberto. Para manter configuraç�
 ### Demonstrar o painel
 
 1. Faça uma encomenda com dados fictícios pelo formulário público. Entre em `/admin` e confira nome, telefone, sabor, quantidade, data, dúzia opcional e status `recebida`.
-2. Use os filtros por data e status, isolados ou juntos. **Limpar filtros** restaura a listagem; **Atualizar lista** busca encomendas novas e alterações feitas em outra aba.
+2. Use **Ver pedidos dentro dos próximos:** para escolher de 1 a 30 dias (de amanhã até o último dia, inclusive) ou **30+** (após o trigésimo dia, sem teto). **Todos os prazos** também mostra pedidos de hoje e antigos. O prazo segue o calendário de `America/Bahia`, combina com status e alterna com a data específica: escolher um limpa o outro. **Limpar filtros** limpa os três campos; **Atualizar lista** busca encomendas novas e alterações feitas em outra aba. Veja os [detalhes e testes do filtro de prazo](docs/prazos/README.md).
 3. Escolha **em preparo** e clique em **Salvar status**; depois teste **entregue**. A alteração deve persistir após atualizar a página e não liberar capacidade.
 4. Clique em **Excluir pedido**. **Manter pedido** cancela; somente **Sim, excluir pedido nº …** apaga o registro e libera sua quantidade de bolos na data. A exclusão é irreversível.
 5. Use **Sair**, atualize a página e confira que o login é exigido. Acessar `/api/encomendas` sem sessão ou Bearer válido não retorna dados pessoais.

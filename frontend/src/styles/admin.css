@@ -23,6 +23,7 @@
 .admin-toolbar .button { width: auto; flex: 1; }
 .admin-filters { display: grid; gap: 1rem; align-items: end; padding-block: 1.5rem; }
 .admin-filters > div { min-width: 0; }
+.admin-filter-hint { margin: -.5rem 0 1rem; font-size: .85rem; color: var(--coffee); }
 .admin-count { margin-bottom: 1rem; }
 .admin-orders { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; padding: 0; margin: 0; list-style: none; gap: 1.25rem; }
 .admin-card { min-width: 0; overflow-wrap: anywhere; }
@@ -49,8 +50,11 @@
 .admin-confirm .button { margin-top: 1rem; }
 @media (min-width: 768px) {
   .admin-orders { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .admin-filters { grid-template-columns: 1fr 1fr auto; }
+  .admin-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .admin-toolbar h2 { width: auto; margin: 0 auto 0 0; }
   .admin-toolbar .button { flex: initial; }
 }
-@media (min-width: 1100px) { .admin-orders { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1100px) {
+  .admin-orders { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .admin-filters { grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr)) auto; }
+}

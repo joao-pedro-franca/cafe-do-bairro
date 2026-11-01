@@ -1,0 +1,26 @@
+{
+  "fusoDispositivo": "Asia/Tokyo",
+  "viradaBahia": true,
+  "resultados": [
+    {
+      "largura": 360,
+      "overflowHorizontal": false,
+      "violacoesAxe": 0
+    },
+    {
+      "largura": 390,
+      "overflowHorizontal": false,
+      "violacoesAxe": 0
+    },
+    {
+      "largura": 768,
+      "overflowHorizontal": false,
+      "violacoesAxe": 0
+    },
+    {
+      "largura": 1280,
+      "overflowHorizontal": false,
+      "violacoesAxe": 0
+    }
+  ]
+}

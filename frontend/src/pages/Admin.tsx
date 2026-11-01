@@ -5,6 +5,7 @@ import { ResumoItens } from '../components/ItensPedido'
 import { CupIcon } from '../components/CupIcon'
 import { cafeConfig } from '../data/cafeConfig'
 import { formatarTelefone } from '../utils/encomenda'
+import { dentroDoPrazo, hojeNoFuso } from '../utils/prazoEncomenda'
 import { alterarStatus, atualizarPedido, consultarSessao, entrarAdmin, ErroAdmin, excluirPedido, listarPedidos, sairAdmin, statusEncomenda } from '../services/admin'
 import type { PedidoAdmin, SessaoAdmin, StatusEncomenda } from '../services/admin'
 import '../styles/admin.css'
@@ -47,6 +48,8 @@ export function Admin() {
   const [senha, setSenha] = useState('')
   const [pedidos, setPedidos] = useState<PedidoAdmin[]>([])
   const [data, setData] = useState('')
+  const [prazo, setPrazo] = useState('')
+  const [hoje, setHoje] = useState(() => hojeNoFuso(cafeConfig.fusoHorario))
   const [status, setStatus] = useState('')
   const [ocupado, setOcupado] = useState(false)
   const [carregando, setCarregando] = useState(true)
@@ -59,6 +62,21 @@ export function Admin() {
   const cancelar = useRef<HTMLButtonElement>(null)
   const origemExclusao = useRef<HTMLButtonElement | null>(null)
   const focoStatus = useRef<number | null>(null)
+
+  useEffect(() => {
+    // Mantém o cartão e seu rascunho visíveis mesmo na virada do dia.
+    if (edicao) return
+    const atualizarHoje = () => setHoje(hojeNoFuso(cafeConfig.fusoHorario))
+    atualizarHoje()
+    const timer = window.setInterval(atualizarHoje, 30_000)
+    window.addEventListener('focus', atualizarHoje)
+    document.addEventListener('visibilitychange', atualizarHoje)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('focus', atualizarHoje)
+      document.removeEventListener('visibilitychange', atualizarHoje)
+    }
+  }, [edicao])
 
   function encerrarSessao() {
     setSessao(null); setPedidos([]); setExclusao(null); setEdicao(null); setSenha(''); setMensagem('')
@@ -102,11 +120,13 @@ export function Admin() {
   }, [pedidos, ocupado])
   useEffect(() => {
     if (!edicao && origemEdicao.current !== null) {
+      // Aguarda a atualização do calendário antes de restaurar o foco.
+      if (hoje !== hojeNoFuso(cafeConfig.fusoHorario)) return
       const botao = document.getElementById(`editar-botao-${origemEdicao.current}`)
       ;(botao ?? document.getElementById('pedidos-titulo'))?.focus()
       origemEdicao.current = null
     }
-  }, [edicao])
+  }, [edicao, hoje])
 
   async function executar(acao: () => Promise<void>) {
     if (trava.current) return
@@ -124,7 +144,7 @@ export function Admin() {
     setCarregando(true)
     try { setPedidos(await listarPedidos()) } finally { setCarregando(false) }
   }
-  const visiveis = pedidos.filter((pedido) => (!data || pedido.dataEntrega === data) && (!status || pedido.status === status))
+  const visiveis = pedidos.filter((pedido) => (!data || pedido.dataEntrega === data) && dentroDoPrazo(pedido.dataEntrega, prazo, hoje) && (!status || pedido.status === status))
   return <div className="admin-page">
     <a className="skip-link" href="#admin-conteudo">Pular para o conteúdo</a>
     <header className="container admin-header">
@@ -153,13 +173,19 @@ export function Admin() {
           <button className="button" disabled={ocupado} onClick={() => void executar(async () => { await sairAdmin(sessao.csrfToken); encerrarSessao(); setMensagem('Você saiu com segurança.') })}>Sair</button>
         </div>
         <div className="admin-filters">
-          <div><label htmlFor="filtro-data">Filtrar por data</label><input id="filtro-data" type="date" value={data} disabled={Boolean(edicao)} onChange={(event) => setData(event.target.value)} /></div>
+          <div><label htmlFor="filtro-prazo">Ver pedidos dentro dos próximos:</label><select id="filtro-prazo" value={prazo} disabled={Boolean(edicao)} aria-describedby="filtro-prazo-ajuda" onChange={(event) => { setPrazo(event.target.value); setData('') }}>
+            <option value="">Todos os prazos</option>
+            {Array.from({ length: 30 }, (_, i) => i + 1).map((dias) => <option key={dias} value={dias}>{dias} {dias === 1 ? 'dia' : 'dias'}</option>)}
+            <option value="30+">30+ (mais de 30 dias)</option>
+          </select></div>
+          <div><label htmlFor="filtro-data">Filtrar por data</label><input id="filtro-data" type="date" value={data} disabled={Boolean(edicao)} onChange={(event) => { setData(event.target.value); setPrazo('') }} /></div>
           <div><label htmlFor="filtro-status">Filtrar por status</label><select id="filtro-status" value={status} disabled={Boolean(edicao)} onChange={(event) => setStatus(event.target.value)}><option value="">Todos os status</option>{statusEncomenda.map((valor) => <option key={valor} value={valor}>{valor}</option>)}</select></div>
-          <button className="button" disabled={Boolean(edicao)} onClick={() => { setData(''); setStatus('') }}>Limpar filtros</button>
+          <button className="button" disabled={Boolean(edicao)} onClick={() => { setData(''); setPrazo(''); setStatus('') }}>Limpar filtros</button>
         </div>
+        <p id="filtro-prazo-ajuda" className="admin-filter-hint">O prazo conta a partir de amanhã, no horário da Bahia.</p>
         {carregando ? <p role="status">Buscando as encomendas…</p> : <>
           <p className="admin-count" role="status">{visiveis.length} {visiveis.length === 1 ? 'pedido encontrado' : 'pedidos encontrados'}.</p>
-          {!visiveis.length && <p className="admin-empty">Nenhuma encomenda por aqui com esses filtros.</p>}
+          {!visiveis.length && <p className="admin-empty">{prazo ? 'Nenhuma encomenda no prazo selecionado com esses filtros.' : 'Nenhuma encomenda por aqui com esses filtros.'}</p>}
           <ul className="admin-orders">{visiveis.map((pedido) => <CartaoPedido key={`${pedido.id}-${pedido.status}`} pedido={pedido} ocupado={ocupado || Boolean(exclusao) || Boolean(edicao)} editar={() => { setErro(''); setMensagem(''); origemEdicao.current = pedido.id; setEdicao(pedido) }} editor={edicao?.id === pedido.id && <EditarPedido pedido={edicao} ocupado={ocupado} erroApi={erro} cancelar={() => { setEdicao(null); setErro('') }} salvar={(alteracoes) => executar(async () => {
             const atualizado = await atualizarPedido(pedido.id, alteracoes, sessao.csrfToken)
             setPedidos((lista) => lista.map((item) => item.id === pedido.id ? atualizado : item))

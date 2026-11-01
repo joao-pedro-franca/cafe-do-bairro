@@ -8,6 +8,7 @@ import { act, createElement } from 'react'
 import { criarApp } from '../../backend/src/app.ts'
 import { gerarHash } from '../../backend/src/auth/senha.ts'
 import { abrirEncomendas } from '../../backend/src/database/encomendas.ts'
+import { hojeNoFuso } from '../src/utils/prazoEncomenda.ts'
 
 const originalFetch = globalThis.fetch
 const janela = new Window({ url: 'http://127.0.0.1/admin' })
@@ -349,4 +350,106 @@ test('administradora adiciona, remove e recompõe 2 X + 1 Y ↔ 3 X sem mudar o 
   await esperar(() => !container.querySelector('.admin-edit'))
   assert.equal(repo.buscar(id).totalBolos, 3)
   assert.equal(repo.buscar(id).itens.length, 2)
+})
+
+test('prazo filtra a lista carregada com status, alterna com data e limpa todos os filtros', async () => {
+  for (const pedido of repo.listar()) repo.remover(pedido.id)
+  const hoje = hojeNoFuso('America/Bahia')
+  const dataApos = (dias) => new Date(Date.parse(`${hoje}T00:00:00Z`) + dias * 86_400_000).toISOString().slice(0, 10)
+  for (const dias of [-1, 0, 1, 2, 7, 8, 30, 31]) {
+    const pedido = repo.criar({ ...dados, dataEntrega: dataApos(dias) }, () => new Date('1999-01-01T12:00:00Z'))
+    if (dias === 2) repo.atualizar(pedido.id, { status: 'entregue' })
+  }
+  await login()
+  await esperar(() => container.querySelectorAll('.admin-card').length === 8)
+  // Trocar filtros não deve buscar novamente nem alterar pedidos.
+  let consultas = 0
+  interceptar = async (url) => { if (url === '/api/encomendas') consultas++ }
+  const contar = (quantidade) => {
+    assert.equal(container.querySelectorAll('.admin-card').length, quantidade)
+    assert.equal(container.querySelector('.admin-count').textContent, `${quantidade} ${quantidade === 1 ? 'pedido encontrado' : 'pedidos encontrados'}.`)
+  }
+  assert.equal(container.querySelector('#filtro-prazo').options.length, 32)
+  assert.equal(container.querySelector('#filtro-prazo').value, '')
+  for (const [prazo, quantidade] of [['1', 1], ['2', 2], ['7', 3], ['30', 5], ['30+', 1]]) {
+    await preencher('#filtro-prazo', prazo)
+    contar(quantidade)
+  }
+  await preencher('#filtro-prazo', '7')
+  await preencher('#filtro-status', 'entregue')
+  contar(1)
+  await preencher('#filtro-data', dataApos(-1))
+  assert.equal(container.querySelector('#filtro-prazo').value, '')
+  contar(0)
+  await preencher('#filtro-status', '')
+  contar(1)
+  await preencher('#filtro-prazo', '2')
+  assert.equal(container.querySelector('#filtro-data').value, '')
+  contar(2)
+  await preencher('#filtro-status', 'em preparo')
+  contar(0)
+  assert(container.querySelector('.admin-empty').textContent.includes('Nenhuma encomenda no prazo selecionado'))
+  await clicar(botao('Limpar filtros'))
+  for (const campo of ['prazo', 'data', 'status']) assert.equal(container.querySelector(`#filtro-${campo}`).value, '')
+  contar(8)
+  await preencher('#filtro-data', dataApos(2))
+  await preencher('#filtro-status', 'entregue')
+  contar(1)
+  await clicar(botao('Limpar filtros'))
+  contar(8)
+  assert.equal(consultas, 0)
+})
+
+test('virada na Bahia atualiza prazo sem recarregar e preserva rascunho durante edição', async (t) => {
+  await act(async () => raiz.unmount())
+  raiz = createRoot(container)
+  const DataOriginal = globalThis.Date
+  let agora = DataOriginal.parse('2027-01-01T02:59:59Z')
+  let atualizarRelogio
+  t.mock.method(janela, 'setInterval', (callback, intervalo) => {
+    assert.equal(intervalo, 30_000)
+    atualizarRelogio = callback
+    return 123
+  })
+  t.mock.method(janela, 'clearInterval', () => {})
+  globalThis.Date = class extends DataOriginal {
+    constructor(...args) { super(...(args.length ? args : [agora])) }
+    static now() { return agora }
+  }
+  try {
+    await act(async () => raiz.render(createElement(Admin)))
+    await esperar(() => container.querySelector('#admin-usuario'))
+    for (const pedido of repo.listar()) repo.remover(pedido.id)
+    const amanha = repo.criar({ ...dados, dataEntrega: '2027-01-01' }, () => new DataOriginal('2026-12-01T12:00:00Z'))
+    const depois = repo.criar({ ...dados, dataEntrega: '2027-01-02' }, () => new DataOriginal('2026-12-01T12:00:00Z'))
+    await login()
+    await esperar(() => container.querySelectorAll('.admin-card').length === 2)
+    await act(async () => janela.dispatchEvent(new janela.Event('focus')))
+    await preencher('#filtro-prazo', '1')
+    assert(container.querySelector(`#editar-botao-${amanha.id}`))
+    agora = DataOriginal.parse('2027-01-01T03:00:00Z')
+    await act(async () => atualizarRelogio())
+    assert.equal(container.querySelectorAll('.admin-card').length, 1)
+    assert(container.querySelector(`#editar-botao-${depois.id}`))
+    await clicar(botao('Editar pedido'))
+    await preencher(`#editar-${depois.id}-nomeCliente`, 'Rascunho Preservado')
+    for (const campo of ['prazo', 'data', 'status']) assert(container.querySelector(`#filtro-${campo}`).disabled)
+    assert(botao('Limpar filtros').disabled)
+    agora = DataOriginal.parse('2027-01-02T03:00:00Z')
+    await act(async () => {
+      janela.dispatchEvent(new janela.Event('focus'))
+      document.dispatchEvent(new janela.Event('visibilitychange'))
+    })
+    assert.equal(container.querySelector(`#editar-${depois.id}-nomeCliente`).value, 'Rascunho Preservado')
+    await clicar(botao('Cancelar'))
+    assert.equal(container.querySelectorAll('.admin-card').length, 0)
+    assert.equal(container.querySelector('#filtro-prazo').value, '1')
+    assert(!container.querySelector('#filtro-prazo').disabled)
+    assert.equal(document.activeElement?.id, 'pedidos-titulo')
+    assert.equal(repo.buscar(depois.id).nomeCliente, dados.nomeCliente)
+    await clicar(botao('Limpar filtros'))
+    assert.equal(container.querySelectorAll('.admin-card').length, 2)
+  } finally {
+    globalThis.Date = DataOriginal
+  }
 })
