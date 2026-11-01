@@ -22,7 +22,7 @@ test('vários sabores somam capacidade e total é somente calculado pelo servido
 
 test('itens vazios, repetidos, inválidos ou com quantidades inválidas não são gravados', async (t) => {
   const api = await apiTeste(t)
-  const invalidos = [undefined, null, [], {}, [null], [{ produto: 'cafe-coado', quantidade: 1 }], [misto[0], misto[0]], [{ ...misto[0], id: 1 }]]
+  const invalidos = [undefined, null, [], {}, [null], [{ produto: 'desconhecido', quantidade: 1 }], [misto[0], misto[0]], [{ ...misto[0], id: 1 }]]
   for (const quantidade of [undefined, null, '1', true, 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) invalidos.push([{ produto: 'bolo-cenoura', quantidade }] as never)
   for (const itens of invalidos) assert.equal((await api.request('POST', '', { ...pedido, itens })).status, 400, JSON.stringify(itens))
   assert.equal((await api.request('POST', '', { ...pedido, itens: [{ produto: 'bolo-cenoura', quantidade: 3 }, { produto: 'bolo-coco', quantidade: 3 }] })).status, 409)

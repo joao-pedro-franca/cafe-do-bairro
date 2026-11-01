@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { EditarPedido } from '../components/EditarPedido'
+import { DisponibilidadeCardapio } from '../components/DisponibilidadeCardapio'
 import { ResumoFinanceiro } from '../components/ResumoFinanceiro'
 import { CupIcon } from '../components/CupIcon'
 import { cafeConfig } from '../data/cafeConfig'
@@ -25,7 +26,8 @@ function CartaoPedido({ pedido, ocupado, salvar, excluir, editar, editor }: {
     <dl>
       <div><dt>Telefone</dt><dd>{formatarTelefone(pedido.telefone)}</dd></div>
       <div><dt>Retirada</dt><dd><time dateTime={pedido.dataEntrega}>{dataLegivel(pedido.dataEntrega)}</time></dd></div>
-      <div><dt>Quantidade total</dt><dd>{pedido.totalBolos} {pedido.totalBolos === 1 ? 'bolo' : 'bolos'}</dd></div>
+      <div><dt>Quantidade total</dt><dd>{pedido.quantidadeItens} unidade(s) de venda · {pedido.totalBolos} {pedido.totalBolos === 1 ? 'bolo' : 'bolos'}</dd></div>
+      <div><dt>Grupo de produção</dt><dd>{pedido.quantidadeProducao} unidade(s) de bolos/panetones</dd></div>
       <div><dt>Pão de queijo</dt><dd>{pedido.incluirPaoDeQueijo ? 'Sim, uma dúzia' : 'Sem acompanhamento'}</dd></div>
     </dl>
     <ResumoFinanceiro resumo={pedido} />
@@ -78,13 +80,13 @@ export function Admin() {
     }
   }, [edicao])
 
-  function encerrarSessao() {
+  const encerrarSessao = useCallback(() => {
     setSessao(null); setPedidos([]); setExclusao(null); setEdicao(null); setSenha(''); setMensagem('')
-  }
-  function tratarErro(falha: unknown) {
+  }, [])
+  const tratarErro = useCallback((falha: unknown) => {
     if (falha instanceof ErroAdmin && falha.status === 401) encerrarSessao()
     setErro(falha instanceof Error ? falha.message : 'Não foi possível concluir a operação.')
-  }
+  }, [encerrarSessao])
   useEffect(() => {
     let ativo = true
     consultarSessao().then((valor) => { if (ativo) setSessao(valor) }).catch((falha) => {
@@ -96,13 +98,13 @@ export function Admin() {
     if (!sessao) return
     const timer = setTimeout(() => { encerrarSessao(); setErro('Sua sessão terminou. Entre novamente para continuar.') }, Math.max(0, Date.parse(sessao.expiraEm) - Date.now()))
     return () => clearTimeout(timer)
-  }, [sessao])
+  }, [sessao, encerrarSessao])
   useEffect(() => {
     if (!sessao) return
     let ativo = true
     listarPedidos().then((lista) => { if (ativo) setPedidos(lista) }).catch((falha) => { if (ativo) tratarErro(falha) }).finally(() => { if (ativo) setCarregando(false) })
     return () => { ativo = false }
-  }, [sessao])
+  }, [sessao, tratarErro])
   useEffect(() => {
     if (exclusao) cancelar.current?.focus()
     else if (origemExclusao.current) {
@@ -199,13 +201,14 @@ export function Admin() {
         {ocupado && <p role="status">Aguarde, concluindo a operação…</p>}
         {exclusao && <section className="admin-confirm" role="alertdialog" aria-labelledby="excluir-titulo" aria-describedby="excluir-descricao">
           <h2 id="excluir-titulo">Excluir pedido nº {exclusao.id}?</h2>
-          <p id="excluir-descricao">O pedido de {exclusao.nomeCliente} para {dataLegivel(exclusao.dataEntrega)} será apagado e liberará {exclusao.totalBolos} {exclusao.totalBolos === 1 ? 'bolo' : 'bolos'} na data. Esta ação não pode ser desfeita.</p>
+          <p id="excluir-descricao">O pedido de {exclusao.nomeCliente} para {dataLegivel(exclusao.dataEntrega)} será apagado e liberará {exclusao.quantidadeProducao} unidade(s) do grupo de produção na data. Esta ação não pode ser desfeita.</p>
           <button ref={cancelar} className="button" disabled={ocupado} onClick={fecharExclusao}>Manter pedido</button>
           <button className="button admin-danger" disabled={ocupado} onClick={() => void executar(async () => {
             await excluirPedido(exclusao.id, sessao.csrfToken)
             setPedidos((lista) => lista.filter((item) => item.id !== exclusao.id)); setMensagem(`Pedido nº ${exclusao.id} excluído.`); setExclusao(null)
           })}>Sim, excluir pedido nº {exclusao.id}</button>
         </section>}
+        <DisponibilidadeCardapio csrf={sessao.csrfToken} bloqueado={ocupado || Boolean(edicao)} erroSessao={tratarErro} />
       </section>}
     </main>
   </div>

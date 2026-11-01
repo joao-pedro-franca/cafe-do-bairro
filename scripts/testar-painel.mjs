@@ -21,7 +21,7 @@ const integrado = process.argv.includes('--integrado')
 const testarPrecos = process.argv.includes('--precos')
 const testarItens = process.argv.includes('--itens') || testarPrecos
 const testarEdicao = process.argv.includes('--edicao') || testarItens
-const saida = new URL(testarPrecos ? '../docs/precificacao/' : testarItens ? '../docs/multissabores/' : testarEdicao ? '../docs/v1.1/painel/' : integrado ? '../docs/auditoria-final/' : '../docs/painel/', import.meta.url)
+const saida = new URL(process.argv.includes('--sazonais') ? '../docs/produtos-sazonais/regressao-painel/' : testarPrecos ? '../docs/precificacao/' : testarItens ? '../docs/multissabores/' : testarEdicao ? '../docs/v1.1/painel/' : integrado ? '../docs/auditoria-final/' : '../docs/painel/', import.meta.url)
 await mkdir(saida, { recursive: true })
 const temporaria = await mkdtemp(join(tmpdir(), 'cafe-painel-auditoria-'))
 const arquivo = join(temporaria, 'auditoria.sqlite')
@@ -29,18 +29,24 @@ let repo = abrirEncomendas(arquivo)
 const senha = randomBytes(24).toString('hex')
 const admin = { usuario: 'administradora-teste', senhaHash: await gerarHash(senha), origem: 'http://127.0.0.1:5173' }
 let api, vite, browser
-const resultado = { larguras: [], acessibilidade: [], errosPagina: [], errosHttp: [], console: [], falhasRede: [], focoStatus: [], passos: [] }
+const resultado = { larguras: [], acessibilidade: [], errosPagina: [], errosHttp: [], console: [], falhasRede: [], consultasCanceladas: [], focoStatus: [], passos: [] }
 function observar(page) {
   page.on('pageerror', (erro) => resultado.errosPagina.push(erro.message))
   page.on('console', (mensagem) => { if (mensagem.type() === 'error') resultado.console.push(mensagem.text()) })
-  page.on('requestfailed', (req) => resultado.falhasRede.push({ caminho: new URL(req.url()).pathname, erro: req.failure()?.errorText }))
+  page.on('requestfailed', (req) => {
+    const falha = { caminho: new URL(req.url()).pathname, erro: req.failure()?.errorText }
+    // Trocar data/fechar o editor cancela consultas GET antigas com AbortController.
+    if (falha.erro === 'net::ERR_ABORTED' && ['/api/produtos', '/api/disponibilidade'].includes(falha.caminho)) resultado.consultasCanceladas.push(falha)
+    else resultado.falhasRede.push(falha)
+  })
   page.on('response', (res) => { if (res.status() >= 400) resultado.errosHttp.push({ caminho: new URL(res.url()).pathname, status: res.status() }) })
 }
 async function verificar(page, nome, largura) {
   await page.setViewportSize({ width: largura, height: 900 })
   const caminho = fileURLToPath(new URL(`${nome}-${largura}.${testarPrecos ? 'jpg' : 'png'}`, saida))
   const opcoes = { path: caminho, animations: 'disabled', ...(testarPrecos ? { type: 'jpeg', quality: 88 } : {}) }
-  if (nome === '00-formulario-itens') await page.locator('.order-form').screenshot(opcoes)
+  if (process.argv.includes('--sem-capturas')) { /* Mantém geometria e axe sem sobrescrever capturas anteriores. */ }
+  else if (nome === '00-formulario-itens') await page.locator('.order-form').screenshot(opcoes)
   else if (nome === 'financeiro-publico') await page.locator('.form-result').screenshot(opcoes)
   else await page.screenshot({ ...opcoes, fullPage: true })
   const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
@@ -68,13 +74,13 @@ try {
     await cliente.goto(admin.origem)
     await cliente.getByRole('button', { name: 'Quero encomendar', exact: true }).click()
     await cliente.getByLabel('Data desejada').fill(data)
-    await cliente.getByLabel('Sabor 1', { exact: true }).selectOption('bolo-cenoura')
+    await cliente.getByLabel('Produto 1', { exact: true }).selectOption('bolo-cenoura')
     await cliente.getByLabel('Nome completo').fill('Cliente de Demonstração')
     await cliente.getByLabel('Telefone/WhatsApp').fill('(73) 99999-9999')
-    for (let i = 1; i < quantidade; i++) await cliente.getByRole('button', { name: 'Aumentar quantidade do sabor 1' }).click()
+    for (let i = 1; i < quantidade; i++) await cliente.getByRole('button', { name: 'Aumentar quantidade do produto 1' }).click()
     if (testarItens && quantidade > 1) {
-      await cliente.getByLabel('Quantidade do sabor 1', { exact: true }).fill('1')
-      await cliente.getByRole('button', { name: 'Adicionar sabor', exact: true }).click()
+      await cliente.getByLabel('Quantidade do produto 1', { exact: true }).fill('1')
+      await cliente.getByRole('button', { name: 'Adicionar produto', exact: true }).click()
       assert.equal(await cliente.locator(':focus').getAttribute('id'), 'pedido-itens-sabor-1')
       for (const largura of [360, 390, 768, 1280]) await verificar(cliente, '00-formulario-itens', largura)
     }
@@ -214,15 +220,15 @@ try {
     const form = page.locator('.admin-edit')
     await form.getByLabel('Nome completo', { exact: true }).fill('Cliente Revisado')
     await form.getByLabel('Telefone/WhatsApp', { exact: true }).fill('(73) 98888-8888')
-    await form.getByLabel('Sabor 1', { exact: true }).selectOption('bolo-laranja')
-    await form.getByLabel('Quantidade do sabor 1', { exact: true }).fill('3')
+    await form.getByLabel('Produto 1', { exact: true }).selectOption('bolo-laranja')
+    await form.getByLabel('Quantidade do produto 1', { exact: true }).fill('3')
     await form.getByLabel('Data da retirada', { exact: true }).fill(dia)
     await form.getByLabel('Incluir uma dúzia de pão de queijo', { exact: true }).check()
     await form.getByLabel('Status', { exact: true }).selectOption('em preparo')
     if (testarItens) {
-      await form.getByLabel('Quantidade do sabor 1', { exact: true }).fill('2')
-      await form.getByRole('button', { name: 'Adicionar sabor', exact: true }).click()
-      assert.equal(await form.getByLabel('Sabor 2', { exact: true }).inputValue(), 'bolo-cenoura')
+      await form.getByLabel('Quantidade do produto 1', { exact: true }).fill('2')
+      await form.getByRole('button', { name: 'Adicionar produto', exact: true }).click()
+      assert.equal(await form.getByLabel('Produto 2', { exact: true }).inputValue(), 'bolo-cenoura')
     }
     for (const largura of [360, 390, 768, 1280]) await verificar(page, '06-editar-pedido', largura)
     if (testarPrecos) {
@@ -248,14 +254,14 @@ try {
     assert.equal((await clienteContext.request.post(`${admin.origem}/api/encomendas`, { data: { ...dados, dataEntrega: dia, itens: [{ produto: 'bolo-cenoura', quantidade: 2 }] } })).status(), 201)
     await editar()
     await form.getByLabel('Nome completo', { exact: true }).fill('Rascunho Preservado')
-    await form.getByLabel('Quantidade do sabor 1', { exact: true }).fill('4')
+    await form.getByLabel('Quantidade do produto 1', { exact: true }).fill('4')
     await page.getByRole('button', { name: 'Salvar alterações', exact: true }).click()
     await form.getByRole('alert').waitFor()
     assert.equal(await form.getByLabel('Nome completo', { exact: true }).inputValue(), 'Rascunho Preservado')
     assert.equal(await page.locator(':focus').getAttribute('role'), 'alert')
     assert.deepEqual(repo.buscar(editavel.id), atualizado)
     await verificar(page, '07-edicao-conflito', 390)
-    await form.getByLabel('Quantidade do sabor 1', { exact: true }).fill(testarItens ? '1' : '2')
+    await form.getByLabel('Quantidade do produto 1', { exact: true }).fill(testarItens ? '1' : '2')
     await page.getByRole('button', { name: 'Salvar alterações', exact: true }).click()
     await page.getByText(`Pedido nº ${editavel.id} atualizado com sucesso.`, { exact: true }).waitFor()
     assert.equal(repo.disponibilidade(dia).quantidadeReservada, 4)

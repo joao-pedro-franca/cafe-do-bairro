@@ -4,6 +4,8 @@ import { formatarTelefone } from '../utils/encomenda'
 import { ItensPedido } from './ItensPedido'
 import { ResumoFinanceiro } from './ResumoFinanceiro'
 import { previaFinanceira } from '../utils/precificacao'
+import { useProdutos } from '../hooks/useProdutos'
+import { permitidoNaData } from '../services/produtos'
 import { alteracoesPedido, validarEdicao } from '../utils/edicaoEncomenda'
 import type { CamposPedido } from '../utils/edicaoEncomenda'
 import { statusEncomenda } from '../services/admin'
@@ -25,6 +27,7 @@ export function EditarPedido({ pedido, ocupado, erroApi, salvar, cancelar }: {
   const trava = useRef(false)
   const [tentativa, setTentativa] = useState(0)
   const previa = previaFinanceira(campos.itens, campos.incluirPaoDeQueijo, pedido)
+  const cardapio = useProdutos(campos.dataEntrega)
   useEffect(() => { titulo.current?.focus() }, [])
   useEffect(() => { if (tentativa || erroApi) mensagem.current?.focus() }, [tentativa, erroApi])
   function mudar<K extends keyof CamposPedido>(campo: K, valor: CamposPedido[K]) {
@@ -59,12 +62,14 @@ export function EditarPedido({ pedido, ocupado, erroApi, salvar, cancelar }: {
       <legend className="visually-hidden">Informações modificáveis do pedido</legend>
       <div><label htmlFor={id('nomeCliente')}>Nome completo</label><input id={id('nomeCliente')} value={campos.nomeCliente} autoComplete="name" required maxLength={100} onChange={(e) => mudar('nomeCliente', e.target.value)} {...acessibilidade('nomeCliente')} />{erroCampo('nomeCliente')}</div>
       <div><label htmlFor={id('telefone')}>Telefone/WhatsApp</label><input id={id('telefone')} type="tel" autoComplete="tel" inputMode="tel" required maxLength={25} value={campos.telefone} onChange={(e) => mudar('telefone', e.target.value)} onBlur={() => mudar('telefone', formatarTelefone(campos.telefone))} {...acessibilidade('telefone')} />{erroCampo('telefone')}</div>
-      <ItensPedido prefixo={id('itens')} itens={campos.itens} limite={5} administrativo registrados={pedido.itens} alterar={(itens) => mudar('itens', itens)} erro={erros.itens} />
+      {cardapio.falhou && <p>Não foi possível consultar os produtos. Contato e status podem ser mantidos; o servidor validará mudanças ao salvar.</p>}
+      {cardapio.carregando && <p role="status">Consultando produtos para novas inclusões…</p>}
+      <ItensPedido prefixo={id('itens')} itens={campos.itens} limite={5} disponiveis={cardapio.produtos.filter((p) => permitidoNaData(p, campos.dataEntrega)).map((p) => p.id)} administrativo registrados={pedido.itens} alterar={(itens) => mudar('itens', itens)} erro={erros.itens} />
       <div><label htmlFor={id('dataEntrega')}>Data da retirada</label><input id={id('dataEntrega')} type="date" required value={campos.dataEntrega} onChange={(e) => mudar('dataEntrega', e.target.value)} {...acessibilidade('dataEntrega')} />{erroCampo('dataEntrega')}</div>
-      <p className="admin-edit-hint">São até cinco bolos por dia, somando todos os pedidos. Ao mudar data ou quantidade, a retirada precisa ser a partir de amanhã, no horário da Bahia. O servidor confere a capacidade sem contar este pedido duas vezes.</p>
+      <p className="admin-edit-hint">São até cinco unidades de bolos/panetones por dia. Cafés e dúzias não usam esse grupo. Ao mudar data ou quantidade, a retirada precisa ser a partir de amanhã, no horário da Bahia. Produtos antigos desabilitados podem ser mantidos ou reduzidos; novas inclusões e aumentos seguem a disponibilidade vigente.</p>
       <label className="admin-edit-check"><input id={id('incluirPaoDeQueijo')} type="checkbox" checked={campos.incluirPaoDeQueijo} onChange={(e) => mudar('incluirPaoDeQueijo', e.target.checked)} />Incluir uma dúzia de pão de queijo</label>
       <div><label htmlFor={id('status')}>Status</label><select id={id('status')} value={campos.status} onChange={(e) => mudar('status', e.target.value as CamposPedido['status'])} {...acessibilidade('status')}>{statusEncomenda.map((valor) => <option key={valor} value={valor}>{valor}</option>)}</select>{erroCampo('status')}</div>
-      <div aria-live="polite" aria-atomic="true">{previa ? <ResumoFinanceiro resumo={previa} anterior={pedido.totalCentavos} previa /> : <p>Preencha sabores e quantidades válidos para calcular a prévia financeira.</p>}</div>
+      <div aria-live="polite" aria-atomic="true">{previa ? <ResumoFinanceiro resumo={previa} anterior={pedido.totalCentavos} previa /> : <p>Preencha produtos e quantidades válidos para calcular a prévia financeira.</p>}</div>
       <button className="button button-primary" type="submit">{ocupado ? 'Salvando alterações…' : 'Salvar alterações'}</button>
       <button className="button" type="button" onClick={cancelar}>Cancelar</button>
     </fieldset>

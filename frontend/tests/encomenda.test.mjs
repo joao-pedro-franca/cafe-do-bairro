@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { cafeConfig } from '../src/data/cafeConfig.ts'
-import { dataMinimaEncomenda, formatarTelefone, produtoEncomendavel, telefoneValido, validarEncomenda } from '../src/utils/encomenda.ts'
+import { dataMinimaEncomenda, formatarTelefone, telefoneValido, validarEncomenda } from '../src/utils/encomenda.ts'
 
 const dadosValidos = { nomeCliente: 'Cliente de Teste', telefone: '(73) 99999-9999', dataEntrega: '2026-11-01', incluirPaoDeQueijo: false, itens: [{ produto: 'bolo-cenoura', quantidade: 1 }] }
 const validar = (alteracoes = {}, minima = '2026-11-01') => validarEncomenda({ ...dadosValidos, ...alteracoes }, cafeConfig.produtos, minima)
@@ -45,10 +45,9 @@ test('aceita amanhã e datas futuras, rejeita hoje, passado e calendário invál
   assert(validar({}, '2026-11-02').dataEntrega)
 })
 
-test('somente os seis bolos são produtos principais; café, dúzia e Natal não entram no seletor', () => {
-  assert.equal(cafeConfig.produtos.filter(produtoEncomendavel).length, 6)
-  for (const produto of ['cafe-coado', 'cafe-leite', 'pao-queijo', 'panetone', 'bolo-natal', 'inexistente']) assert(validar({ itens: [{ produto: produto, quantidade: 1 }] }).itens)
-  for (const produto of cafeConfig.produtos.filter(produtoEncomendavel)) assert.deepEqual(validar({ itens: [{ produto: produto.id, quantidade: 1 }] }), {})
+test('estrutura aceita todos os produtos conhecidos; disponibilidade é conferida separadamente', () => {
+  assert(validar({ itens: [{ produto: 'inexistente', quantidade: 1 }] }).itens)
+  for (const produto of cafeConfig.produtos) assert.deepEqual(validar({ itens: [{ produto: produto.id, quantidade: 1 }] }), {})
 })
 
 test('adicional opcional não impede a validação de um bolo', () => {

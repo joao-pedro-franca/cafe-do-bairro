@@ -2,7 +2,7 @@
 
 API REST local em Node.js, Express, TypeScript e SQLite. O formulário público já envia pedidos por `POST /api/encomendas` usando o proxy de desenvolvimento do Vite; a confirmação aparece somente após `201`. A API usa TypeScript por solicitação do projeto, no lugar da recomendação inicial de JavaScript no brief.
 
-**Mudança confirmada nesta etapa:** a produção diária é de **cinco bolos**, não cinco registros. A soma das quantidades de todos os itens de todos os pedidos da data determina a capacidade ocupada. `totalBolos` é calculado na resposta, nunca recebido como entrada. Essa orientação substitui a contagem original do brief, preservado como histórico.
+**Capacidade atual:** cinco unidades do grupo de produção por dia, não cinco registros. Bolos e, provisoriamente, panetones compartilham o grupo; cafés e dúzias não têm quota diária inventada. `totalBolos` conta só bolos; `quantidadeProducao` conta o grupo; `quantidadeItens` conta unidades de venda (uma dúzia vale uma unidade, incluindo o adicional legado). Todos são calculados pelo servidor. Veja [disponibilidade, migração e decisões](../docs/produtos-sazonais/README.md).
 
 Para rodar site e API juntos e configurar o login por sessão, veja o [README principal](../README.md#habilitar-o-painel-administrativo). O envio público não precisa de credenciais. O painel usa usuário/hash de senha no ambiente e cookie de sessão; os exemplos Bearer abaixo continuam disponíveis para testar o CRUD pelo PowerShell. O token nunca vai para o front-end.
 
@@ -52,6 +52,9 @@ Não há carregamento automático de `.env`. Defina as variáveis no terminal ou
 | --- | --- | --- | --- |
 | `POST` | `/api/encomendas` | Público | `201`, encomenda registrada com status `recebida`. |
 | `GET` | `/api/disponibilidade?data=YYYY-MM-DD` | Público | `200`, apenas data e quantidades agregadas, sem dados pessoais. |
+| `GET` | `/api/produtos` | Público | `200`, catálogo com preço/unidade de encomenda, estado e meses permitidos. |
+| `GET` | `/api/admin/produtos` | Administrativo | `200`, mesma configuração para gerenciamento. |
+| `PATCH` | `/api/admin/produtos/:id` | Administrativo | `200`, configuração confirmada; cookie exige CSRF e origem. |
 | `GET` | `/api/encomendas` | Administrativo | `200`, lista ordenada por data e ID. |
 | `GET` | `/api/encomendas/:id` | Administrativo | `200`, encomenda por ID. |
 | `PATCH` | `/api/encomendas/:id` | Administrativo | `200`, encomenda atualizada. |
@@ -94,11 +97,15 @@ Exemplo de corpo do POST (a data precisa ser futura ao executar):
 }
 ```
 
-O POST exige `itens`, lista com pelo menos um sabor. Cada item contém apenas `produto` (ID) e `quantidade` (inteiro positivo seguro, sem conversão de strings). IDs: `bolo-cenoura`, `bolo-chocolate`, `bolo-milho`, `bolo-fuba`, `bolo-laranja`, `bolo-coco`. Produtos inválidos, lista vazia e sabores repetidos recebem `400`. São permitidos até seis sabores distintos na estrutura; um total de seis bolos recebe `409` por ultrapassar a capacidade de cinco, mesmo em data livre.
+O POST exige `itens`, lista com pelo menos um produto. Cada item contém apenas `produto` (ID conhecido de `src/produtos.ts`) e `quantidade` (inteiro positivo seguro, sem conversão de strings). Todos os 11 IDs são aceitos estruturalmente; produto desabilitado ou fora dos meses da retirada recebe `409` com `codigo: "PRODUTO_INDISPONIVEL"`. Produto desconhecido, lista vazia ou repetida recebe `400`. A soma de bolos/panetones acima do saldo recebe `409`; cafés e dúzias não consomem produção.
 
-A resposta acrescenta `id`, `status` e `totalBolos`, calculado pela soma dos itens. Cada item também retorna `precoUnitarioCentavos` e `subtotalCentavos`; o pedido retorna `subtotalBolosCentavos`, `valorPaoDeQueijoCentavos`, `totalCentavos` e `precosInicializados`. Os preços unitários e o acompanhamento são persistidos; subtotais e totais são derivados desses registros, sem consultar preços atuais durante a leitura. Nenhum desses campos calculados é permitido no POST/PATCH. `produto` e `quantidadeBolos` na raiz deixaram de fazer parte do contrato. Veja o [contrato financeiro completo](../docs/precificacao/README.md). Publique frontend e backend juntos e pare escritores antigos antes da migração.
+A resposta acrescenta `id`, `status`, `totalBolos`, `quantidadeProducao` e `quantidadeItens`, calculados dos itens e do adicional. Cada item também retorna `precoUnitarioCentavos` e `subtotalCentavos`; o pedido retorna `subtotalBolosCentavos` (nome legado para o subtotal de todos os produtos), `valorPaoDeQueijoCentavos`, `totalCentavos` e `precosInicializados`. Os preços unitários e o acompanhamento são persistidos; subtotais e totais são derivados desses registros, sem consultar preços atuais durante a leitura. Nenhum campo calculado é permitido no POST/PATCH. Veja o [contrato financeiro completo](../docs/precificacao/README.md) e a [ampliação do catálogo](../docs/produtos-sazonais/README.md). Publique frontend e backend juntos e pare escritores antigos antes da migração.
 
-`incluirPaoDeQueijo` é booleano; omitido no POST, vira `false`. `true` significa **uma dúzia junto com os bolos**, independentemente da quantidade de bolos. O acompanhamento não ocupa nenhuma parte da capacidade de bolos. Não há quantidade de dúzias, pedido independente do acompanhamento ou carrinho.
+`incluirPaoDeQueijo` é booleano; omitido no POST, vira `false`. `true` significa **uma dúzia como adicional**, sem produção. Também é possível pedir `pao-queijo` nos itens: quantidade é número de dúzias e preço é `CATALOGO.paoDeQueijoCentavos`. Usar as duas formas no mesmo pedido recebe `400`. Pedidos somente com cafés ou dúzias são válidos quando habilitados.
+
+O PATCH de disponibilidade recebe exatamente `{ "aceitaEncomendas": true, "mesesPermitidos": [12] }`. Meses inteiros distintos de 1 a 12; `[]` significa o ano todo. Booleanos estritos, sem preço ou campos adicionais. ID desconhecido recebe `404`. Não existe atualização pública. O estado e o mês da retirada são conferidos novamente dentro de `BEGIN IMMEDIATE` na criação/edição da encomenda.
+
+Desativar um produto preserva pedidos e preços. Contato/status, itens mantidos e reduções não exigem reativação. Mudança de data verifica todos os produtos; nova inclusão ou aumento verifica os itens afetados. O adicional segue a mesma regra. As exigências anteriores de data futura ao alterar data/quantidade continuam. A migração cria `produto_disponibilidade` e substitui a restrição fixa dos seis IDs por FK do catálogo, copiando preços e ordem sem recalcular. Padrões são inseridos com `INSERT OR IGNORE` na mesma transação; falhas revertem esquema e dados.
 
 O POST define `id` e `status` no servidor e rejeita esses campos na entrada. A resposta contém os dados registrados, `id`, `status: "recebida"` e o adicional como booleano. O telefone é normalizado para dígitos (mantendo o DDI `55` quando informado, com ou sem `+`). Esse valor normalizado também é aceito em atualizações. O cabeçalho `Location` aponta para a consulta administrativa do novo ID.
 
@@ -195,7 +202,7 @@ Ajuste os caminhos caso use `DATABASE_PATH`. Não copie um banco em gravação c
 
 Uma **transação** agrupa operações: tudo é concluído com `COMMIT`, ou é desfeito com `ROLLBACK`. `BEGIN IMMEDIATE` obtém o direito de escrita antes da contagem de vagas. Outro processo que usa o mesmo arquivo precisa esperar; quando consegue escrever, conta novamente. Assim, contar e inserir/mover não ficam separados por uma janela em que dois pedidos possam pegar a mesma vaga. Isso acompanha o modelo de escrita única por vez do [SQLite](https://www.sqlite.org/lang_transaction.html).
 
-Todos os status entram em `SUM(encomenda_itens.quantidade)` por data, inclusive `entregue`. A soma é consultada dentro de `BEGIN IMMEDIATE` antes de inserir ou alterar data/quantidade; o resultado mais a quantidade solicitada deve ser no máximo 5. Alterar status não aumenta o consumo. Excluir libera todos os bolos do registro. WAL permite leituras durante escritas; `busy_timeout` aguarda até cinco segundos por bloqueios. Banco ainda ocupado responde `503`, sem simular reserva.
+Todos os status entram na soma de `encomenda_itens.quantidade` por data, inclusive `entregue`, filtrando somente os produtos com `consomeCapacidade` (bolos/panetones). A soma é consultada dentro de `BEGIN IMMEDIATE` antes de inserir ou alterar data/produção; o resultado mais a produção solicitada deve ser no máximo 5. Alterar status não aumenta consumo. Excluir libera a produção do registro. WAL permite leituras durante escritas; `busy_timeout` aguarda até cinco segundos. Banco ainda ocupado responde `503`, sem simular reserva.
 
 As datas são strings `YYYY-MM-DD`, dias do calendário da Bahia. `Intl.DateTimeFormat` identifica o dia atual em `America/Bahia`, sem depender do fuso do servidor. Amanhã ou depois é válido; não é necessário esperar 24 horas exatas. A data é validada novamente dentro da transação depois de obter o bloqueio.
 

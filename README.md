@@ -4,6 +4,20 @@ Projeto para o desafio técnico da TecnoJr. Os requisitos estão em [BRIEF.md](B
 
 ## Etapa atual
 
+### Disponibilidade de todos os produtos
+
+Na branch `feature/produtos-sazonais`, Dona Marta pode entrar em `/admin` e usar **Disponibilidade do cardápio**, abaixo dos pedidos. Cada cartão mostra nome, categoria, preço por unidade de venda e estado confirmado. Marque **Aceita encomendas**, escolha **O ano todo** ou **Apenas meses selecionados** e clique em **Salvar [produto]**. A confirmação aparece somente após a resposta válida do servidor; erros mantêm o rascunho. Não é necessário alterar código ou publicar novamente para mudar essas configurações.
+
+Os 11 produtos recebem padrões apenas uma vez: seis bolos habilitados o ano todo; pão de queijo habilitado por dúzia; cafés desabilitados; panetone e bolo de Natal desabilitados com dezembro selecionado. As decisões posteriores ficam no SQLite e sobrevivem à reinicialização. Exibição no cardápio e aceitação de encomendas são independentes. Preços e cadastro não são editáveis no painel.
+
+O período considera o **mês da retirada**: em novembro é possível pedir panetone habilitado para dezembro. Café pode ser pedido por xícara e pão de queijo por dúzia, inclusive sem bolos. A dúzia opcional anterior continua funcionando, mas não pode coexistir com pão de queijo nos itens do mesmo pedido. A API valida tudo novamente na transação; se a disponibilidade mudar durante o preenchimento, responde `409`, atualiza a consulta e mantém o rascunho para correção. Nenhum produto é removido silenciosamente.
+
+**Capacidade confirmada:** cinco bolos por dia. **Decisão provisória solicitada para o protótipo:** panetones compartilham essas cinco unidades; cafés e dúzias não têm limite diário inventado. O painel separa unidades de venda, bolos e unidades do grupo de produção. Desativar um produto não cancela nem reprecifica pedidos existentes; contato/status e itens mantidos ou reduzidos continuam editáveis. Novas inclusões, aumentos e mudanças de data precisam seguir a disponibilidade vigente.
+
+Nomes, categorias, unidades e critérios de produção agora vêm de `backend/src/produtos.ts`, compartilhado com o frontend. Para alterar **preços**, edite `backend/src/catalogo.ts` em centavos e publique as duas aplicações juntas; `paoDeQueijoCentavos` é o preço da dúzia e `produtos['pao-queijo']` é o preço unitário exibido no cardápio. Isso afeta novos itens, preservando os preços históricos registrados. Adicionar novos produtos ao catálogo ainda exige código; gerenciar sua disponibilidade depois não exige deploy.
+
+Veja [arquitetura, migração, arquivos alterados, testes e capturas](docs/produtos-sazonais/README.md). Os testes e a auditoria usam exclusivamente bancos temporários. Para uma base existente, pare a API e faça o backup descrito no [README da API](backend/README.md#persistência-capacidade-e-concorrência) antes da primeira inicialização desta versão; a migração é transacional, repetível e preserva dados e preços. Publique frontend e backend juntos.
+
 ### Precificação das encomendas
 
 Pedidos agora registram os preços unitários em centavos e exibem subtotais, acompanhamento e total a pagar na retirada. O painel mostra uma prévia financeira ao editar; o valor definitivo só muda após a resposta confirmada do servidor. A confirmação pública usa o mesmo resumo. A fonte única de preços é `backend/src/catalogo.ts`, também consumida pelo frontend. Veja [contrato, migração, histórico, arquivos e capturas](docs/precificacao/README.md).
@@ -20,7 +34,7 @@ O visual público segue a referência aprovada em `docs/referencia-visual.png`: 
 
 ### Encomendas com múltiplos sabores
 
-Uma encomenda agora contém `itens: [{ produto, quantidade }]`. Cliente e administradora podem adicionar e remover sabores, ajustar cada quantidade e visualizar o total. Somente os seis bolos caseiros são aceitos, sem linhas duplicadas. O total é calculado dos itens; o adicional continua sendo uma única dúzia opcional por pedido.
+Uma encomenda contém `itens: [{ produto, quantidade }]`. Cliente e administradora podem adicionar e remover produtos, ajustar cada quantidade e visualizar o total, sem linhas duplicadas. A seleção foi ampliada dos seis bolos para todos os produtos habilitados na data de retirada. O adicional anterior continua sendo uma única dúzia opcional por pedido.
 
 O painel substitui a composição inteira pelo PATCH existente, sem editar o ID. Cancelar descarta o rascunho. Conflitos `409` não salvam nada e preservam os dados digitados. Trocar sabores sem mudar total/data continua permitido em pedidos antigos. A autenticação, CSRF, origem, rolagem de 1,2 segundo e demais fluxos foram preservados.
 
@@ -50,11 +64,11 @@ Veja o [relatório da V1.1 anterior](docs/v1.1/README.md) e os [resultados atuai
 
 Base React + TypeScript + Vite, com CSS tradicional, cabeçalho, hero, cardápio, formulário expansível, informações/contato e rodapé. O formulário é integrado à API REST em `backend/`: a confirmação com número do pedido aparece somente após `201 Created`, com a data reservada e pagamento na retirada. A API implementa CRUD e regras de capacidade com SQLite. `/admin` tem login e painel de encomendas com sessão validada no servidor, filtros, edição completa, alteração rápida de status e exclusão confirmada.
 
-**Regra atual de capacidade:** por orientação desta etapa, são **cinco bolos por dia**, calculados pela soma de `itens[].quantidade` em todos os pedidos da data, em vez de cinco registros de encomenda. Essa decisão substitui a contagem descrita no brief original, que foi preservado como histórico. Pedidos antigos são convertidos em um item com seu produto e quantidade anteriores; bases sem quantidade usam um bolo. A base e os IDs são preservados.
+**Regra atual de capacidade:** cinco unidades do grupo de produção por dia, somando somente bolos e, provisoriamente, panetones em todos os pedidos da data. Cafés e dúzias não consomem esse grupo. Essa decisão substitui a contagem por registros descrita no brief original, preservado como histórico. A base e os IDs são preservados.
 
 Veja [como iniciar e testar a API](backend/README.md), incluindo contrato, exemplos PowerShell, persistência e proteção administrativa. O back-end usa TypeScript por solicitação desta etapa, atualizando a recomendação inicial de JavaScript do brief; o brief original foi preservado.
 
-**Todos os dados comerciais são fictícios**, incluindo endereço, horários, produtos, preços e tamanhos. Nomes, descrições, tamanhos e contatos ficam em `frontend/src/data/cafeConfig.ts`; os preços ficam somente em `backend/src/catalogo.ts`, em centavos. WhatsApp e Instagram aparecem em modo de demonstração, sem links para terceiros. O hero usa uma imagem ilustrativa criada com IA, identificada na legenda, e não uma fotografia do estabelecimento real.
+**Todos os dados comerciais são fictícios**, incluindo endereço, horários, produtos, preços e tamanhos. Nomes, descrições e tamanhos dos produtos ficam em `backend/src/produtos.ts`; informações do café e contatos ficam em `frontend/src/data/cafeConfig.ts`; preços ficam em `backend/src/catalogo.ts`, em centavos. WhatsApp e Instagram aparecem em modo de demonstração, sem links para terceiros. O hero usa uma imagem ilustrativa criada com IA, identificada na legenda.
 
 ## Executar
 
@@ -194,14 +208,14 @@ O link **Área administrativa** leva ao login em `/admin`. A API só retorna nom
 
 ### Revisão do cardápio
 
-As três categorias e os 11 produtos ficam em `cafeConfig.ts`. `exibirNoCardapio` controla a exibição; `encomenda.tipo` diferencia produtos principais, acompanhamentos e itens indisponíveis para encomenda. Um produto aparecer no cardápio não o torna automaticamente selecionável para encomenda.
+As três categorias e os 11 produtos ficam em `backend/src/produtos.ts`, consumido por `cafeConfig.ts`. `exibirNoCardapio` controla a exibição; `encomenda.tipo` e `sazonalidade` fornecem os padrões iniciais e a unidade do acompanhamento. A disponibilidade vigente vem de `GET /api/produtos`.
 
-- Os seis bolos caseiros são produtos principais encomendáveis.
-- Café coado e café com leite não aceitam encomenda.
-- Pão de queijo é apresentado por unidade (R$ 3,00); a dúzia (R$ 25,00) está configurada como acompanhamento opcional de bolos caseiros, sem pedido independente.
-- Panetone e bolo de Natal são sazonais de dezembro (`meses: [12]`) e têm encomenda indisponível até confirmação. Permanecem visíveis para revisão, sem liberação automática por data.
+- Os seis bolos caseiros começam habilitados o ano todo.
+- Café coado e café com leite começam desabilitados e podem ser habilitados pelo painel.
+- Pão de queijo é apresentado por unidade (R$ 3,00); para encomenda usa dúzia (R$ 25,00), como item independente ou acompanhamento opcional, sem duplicação.
+- Panetone e bolo de Natal começam desabilitados com dezembro selecionado. Podem ser habilitados em quaisquer meses ou no ano todo pelo painel.
 
-Essa revisão foi solicitada após releitura da entrevista e substitui a simplificação anterior do brief, na qual a dúzia era um produto independente em uma encomenda de produto único. O brief original foi preservado; o formulário e a API já consideram o acompanhamento opcional. As descrições, tamanhos e preços continuam ilustrativos. Ainda não há seleção ou registro de encomenda no cardápio.
+O brief original foi preservado como histórico. As descrições, tamanhos e preços continuam ilustrativos. O cardápio apresenta os produtos; o registro acontece no formulário de encomendas.
 
 A apresentação usa listas de cartões, papel claro, bordas discretas e tipografia serifada inspirados no mockup. No celular, os produtos ficam empilhados para permitir leitura sem controles de carrossel. As imagens são desenhos SVG provisórios, não fotografias dos produtos.
 
@@ -209,19 +223,19 @@ A apresentação usa listas de cartões, papel claro, bordas discretas e tipogra
 
 Os links do Hero, da navegação e o novo CTA do cardápio levam a `#encomendas`. O botão **Quero encomendar** abre a gaveta dentro da página. Ela permanece montada, e os campos controlados pelo React preservam os valores ao fechar e reabrir. Campos fechados ficam fora da navegação e da árvore de acessibilidade com `inert` e `aria-hidden`. Ao abrir, o foco e a rolagem levam ao título do formulário; ao fechar, o foco retorna ao botão. A preferência por movimento reduzido desativa a animação.
 
-O formulário exige nome e sobrenome, telefone brasileiro com DDD (fixo ou celular, +55 opcional), um dos seis bolos principais e uma data a partir de amanhã no fuso configurado em `cafeConfig.ts`. O telefone válido ganha formatação ao sair do campo. A data mínima é atualizada ao abrir, ao focar a data, periodicamente enquanto a gaveta está aberta e novamente ao confirmar, para evitar aceitar hoje depois da virada do dia. Não depende do fuso do dispositivo nem interpreta o dia digitado como instante UTC.
+O formulário exige nome e sobrenome, telefone brasileiro com DDD (fixo ou celular, +55 opcional), ao menos um produto habilitado para a retirada e uma data a partir de amanhã no fuso configurado em `cafeConfig.ts`. O telefone válido ganha formatação ao sair do campo. A data mínima é atualizada ao abrir, ao focar a data, periodicamente enquanto a gaveta está aberta e novamente ao confirmar. Não depende do fuso do dispositivo nem interpreta o dia digitado como instante UTC.
 
-Junto dos itens, aparece a opção de adicionar uma dúzia de pão de queijo, com preço vindo da configuração. Não há quantidade, carrinho ou pedido independente desse acompanhamento. Cafés e itens natalinos não aparecem no seletor.
+Junto dos itens, aparece a opção de adicionar uma dúzia de pão de queijo se estiver habilitada para a data; ela fica desabilitada quando pão de queijo já está nos itens. Nos itens é possível escolher múltiplas dúzias. Cafés e receitas natalinas ficam selecionáveis quando habilitados e dentro dos meses permitidos.
 
-O formulário começa **somente pela data**. Uma data válida dispara `GET /api/disponibilidade?data=YYYY-MM-DD`. A tela apresenta capacidade total, bolos já reservados e bolos disponíveis. Enquanto consulta, mostra carregamento; se falhar, permite tentar novamente. Dia lotado mostra uma mensagem para escolher outra data. A consulta não ocupa capacidade nem garante reserva.
+O formulário começa **somente pela data**. Uma data válida dispara `GET /api/disponibilidade?data=YYYY-MM-DD` e atualiza `GET /api/produtos`. A tela apresenta capacidade total, unidades do grupo reservadas e disponíveis. Enquanto consulta, mostra carregamento; se falhar, permite tentar novamente. Dia lotado orienta outra data para bolos/panetones, mantendo produtos sem quota disponíveis. A consulta não ocupa capacidade nem garante reserva.
 
-Com saldo, aparecem bolo, quantidade, nome e telefone. Os botões de aumentar/diminuir e o campo numérico permitem escolher de 1 até o saldo consultado. Um registro contém **vários sabores únicos e suas quantidades individuais**, com total calculado automaticamente. O adicional continua sendo uma única dúzia por pedido, independentemente da quantidade de bolos, sem consumir capacidade de produção de bolos.
+Após consultar a data e os produtos, aparecem itens, quantidades, nome e telefone. Bolos/panetones respeitam o saldo consultado; cafés e dúzias continuam selecionáveis no dia cheio se habilitados. Um registro contém vários produtos únicos e suas quantidades individuais, com unidades de venda e produção calculadas separadamente.
 
 **Confirmar encomenda** valida os campos localmente e envia `nomeCliente`, `telefone`, `itens`, `dataEntrega` e `incluirPaoDeQueijo` ao `POST /api/encomendas`, sem `id`, `status` ou credenciais administrativas. Campos e envio ficam bloqueados enquanto aparece **Enviando encomenda…**. Uma trava imediata com `useRef` impede dois envios antes de a atualização visual do React terminar; a gaveta pode ser fechada/reaberta durante a espera.
 
 Somente uma resposta `201`, com ID positivo e status `recebida`, permite mostrar **Encomenda nº … confirmada**, reserva da data e pagamento na retirada. Depois disso, o mesmo formulário não reenvia o pedido. **Fazer outra encomenda** limpa os campos e libera explicitamente uma nova solicitação. Fechar e reabrir preserva os dados e o resultado.
 
-O servidor soma novamente os bolos dentro da transação ao confirmar. Se o saldo cair durante o preenchimento e faltar capacidade, responde `409`. A tela consulta o saldo de novo, mantendo todos os itens, contato e adicional. Se a quantidade escolhida ficou maior que o saldo, ela é indicada como inválida, sem redução silenciosa; o cliente pode diminuí-la ou escolher outro dia. Dia lotado oculta os demais campos, mas preserva seus valores para quando outra data for selecionada. Depois de um `201`, uma nova consulta atualiza o saldo exibido; se essa consulta falhar, o pedido continua confirmado.
+O servidor soma novamente o grupo de produção e confere disponibilidade e mês de cada produto na transação ao confirmar. Se faltar capacidade ou um produto deixar de ser permitido, responde `409`. A tela consulta saldo e cardápio novamente, mantendo itens, contato e adicional. Ajuste produtos, quantidades ou data para continuar. Dia lotado permite produtos sem quota. Depois de um `201`, uma nova consulta atualiza o saldo; se falhar, o pedido continua confirmado.
 
 Um `400` mostra a validação do servidor. Falhas de rede, timeout de 20 segundos, respostas inesperadas e erros do servidor não viram confirmação. Como a conexão pode falhar depois da gravação, a interface avisa que o pedido pode ter sido recebido e pede conferir com o café antes de reenviar. Não há retry automático de POST nem idempotência entre recarregamentos/dispositivos nesta etapa. Consultas GET são canceladas ao trocar de data, e respostas antigas não substituem o saldo atual.
 

@@ -36,10 +36,6 @@ export function formatarTelefone(telefone: string) {
   return `${prefixo}(${digitos.slice(0, 2)}) ${digitos.slice(2, -4)}-${digitos.slice(-4)}`
 }
 
-export function produtoEncomendavel(produto: Produto) {
-  return produto.encomenda.tipo === 'principal' && produto.sazonalidade === null
-}
-
 export function erroDataEntrega(dataEntrega: string, dataMinima: string): string | undefined {
   const data = new Date(`${dataEntrega}T12:00:00Z`)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dataEntrega) || Number.isNaN(data.getTime()) || data.toISOString().slice(0, 10) !== dataEntrega) {

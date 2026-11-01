@@ -1,4 +1,5 @@
 import type { CatalogoPrecos } from './catalogo.ts'
+import { precoEncomenda } from './disponibilidadeProdutos.ts'
 
 export interface ItemPrecificado {
   produto: string
@@ -18,7 +19,7 @@ export function centavosValidos(valor: unknown): valor is number {
 }
 export function precificarItens(itens: readonly { produto: string; quantidade: number }[], catalogo: CatalogoPrecos, anteriores: readonly ItemPrecificado[] = []): ItemPrecificado[] {
   return itens.map(({ produto, quantidade }) => {
-    const precoUnitarioCentavos = anteriores.find((item) => item.produto === produto)?.precoUnitarioCentavos ?? catalogo.produtos[produto]
+    const precoUnitarioCentavos = anteriores.find((item) => item.produto === produto)?.precoUnitarioCentavos ?? precoEncomenda(produto, catalogo)
     const subtotalCentavos = quantidade * precoUnitarioCentavos
     if (!Number.isSafeInteger(quantidade) || quantidade < 1 || !centavosValidos(precoUnitarioCentavos) || precoUnitarioCentavos === 0 || !centavosValidos(subtotalCentavos)) throw new Error('Valores monetários inválidos.')
     return { produto, quantidade, precoUnitarioCentavos, subtotalCentavos }

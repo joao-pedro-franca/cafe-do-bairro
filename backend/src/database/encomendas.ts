@@ -9,6 +9,9 @@ import { CATALOGO } from '../catalogo.ts'
 import type { CatalogoPrecos } from '../catalogo.ts'
 import { centavosValidos, precificarItens, resumirValores } from '../precificacao.ts'
 import type { ItemPrecificado } from '../precificacao.ts'
+import { PRODUTOS, produtoPorId, unidadesItens, unidadesProducao } from '../produtos.ts'
+import { configuracaoPadrao, permitidoNaData, produtoDisponivel, validarConfiguracao } from '../disponibilidadeProdutos.ts'
+import type { ConfiguracaoProduto } from '../disponibilidadeProdutos.ts'
 
 export function abrirEncomendas(caminho: string, catalogo: CatalogoPrecos = CATALOGO) {
   // Congela a referência desta instância; mudanças de catálogo exigem novo deploy.
@@ -68,6 +71,28 @@ export function abrirEncomendas(caminho: string, catalogo: CatalogoPrecos = CATA
       db.prepare('UPDATE encomendas SET valorPaoDeQueijoCentavos = CASE WHEN incluirPaoDeQueijo = 1 THEN ? ELSE 0 END, precosInicializados = 1').run(catalogo.paoDeQueijoCentavos)
       db.exec('DROP TABLE encomenda_itens_sem_precos')
     }
+    db.exec(`CREATE TABLE IF NOT EXISTS produto_disponibilidade (
+      id TEXT PRIMARY KEY, aceitaEncomendas INTEGER NOT NULL CHECK(aceitaEncomendas IN (0, 1)),
+      mesesPermitidos TEXT NOT NULL CHECK(json_valid(mesesPermitidos) AND json_type(mesesPermitidos) = 'array')
+    ) STRICT;`)
+    const configurar = db.prepare('INSERT OR IGNORE INTO produto_disponibilidade VALUES (?, ?, ?)')
+    for (const produto of PRODUTOS) {
+      const padrao = configuracaoPadrao(produto.id)
+      configurar.run(produto.id, Number(padrao.aceitaEncomendas), JSON.stringify(padrao.mesesPermitidos))
+    }
+    const chaves = db.prepare('PRAGMA foreign_key_list(encomenda_itens)').all() as { from: string }[]
+    if (!chaves.some((chave) => chave.from === 'produto')) {
+      db.exec(`ALTER TABLE encomenda_itens RENAME TO encomenda_itens_restritos;
+        CREATE TABLE encomenda_itens (
+          encomendaId INTEGER NOT NULL REFERENCES encomendas(id) ON DELETE CASCADE,
+          produto TEXT NOT NULL REFERENCES produto_disponibilidade(id),
+          quantidade INTEGER NOT NULL CHECK(quantidade > 0), ordem INTEGER NOT NULL CHECK(ordem >= 0),
+          precoUnitarioCentavos INTEGER NOT NULL CHECK(precoUnitarioCentavos > 0),
+          PRIMARY KEY(encomendaId, produto), UNIQUE(encomendaId, ordem)
+        ) STRICT;
+        INSERT INTO encomenda_itens SELECT encomendaId, produto, quantidade, ordem, precoUnitarioCentavos FROM encomenda_itens_restritos;
+        DROP TABLE encomenda_itens_restritos;`)
+    }
     db.exec('COMMIT')
   } catch (erro) {
     db.exec('ROLLBACK')
@@ -86,13 +111,15 @@ export function abrirEncomendas(caminho: string, catalogo: CatalogoPrecos = CATA
       let pedido = pedidos.get(linha.id)
       if (!pedido) {
         pedido = { id: linha.id, nomeCliente: linha.nomeCliente, telefone: linha.telefone, dataEntrega: linha.dataEntrega,
-          status: linha.status, incluirPaoDeQueijo: linha.incluirPaoDeQueijo === 1, totalBolos: 0,
+          status: linha.status, incluirPaoDeQueijo: linha.incluirPaoDeQueijo === 1, totalBolos: 0, quantidadeProducao: 0, quantidadeItens: linha.incluirPaoDeQueijo === 1 ? 1 : 0,
           ...resumirValores([], linha.valorPaoDeQueijoCentavos, linha.precosInicializados === 1) }
         pedidos.set(linha.id, pedido)
       }
       if (linha.produto !== null && linha.quantidade !== null) {
         pedido.itens.push({ produto: linha.produto, quantidade: linha.quantidade, precoUnitarioCentavos: linha.precoUnitarioCentavos, subtotalCentavos: linha.quantidade * linha.precoUnitarioCentavos })
-        pedido.totalBolos += linha.quantidade
+        pedido.totalBolos += totalBolos([{ produto: linha.produto, quantidade: linha.quantidade }])
+        pedido.quantidadeProducao += produtoPorId(linha.produto)?.consomeCapacidade ? linha.quantidade : 0
+        pedido.quantidadeItens += linha.quantidade
         Object.assign(pedido, resumirValores(pedido.itens, pedido.valorPaoDeQueijoCentavos, pedido.precosInicializados))
       }
     }
@@ -104,11 +131,12 @@ export function abrirEncomendas(caminho: string, catalogo: CatalogoPrecos = CATA
     return pedido
   }
   function quantidadeReservada(data: string, ignorarId = 0) {
-    const { total } = db.prepare('SELECT COALESCE(SUM(i.quantidade), 0) AS total FROM encomenda_itens i JOIN encomendas e ON e.id = i.encomendaId WHERE e.dataEntrega = ? AND e.id <> ?').get(data, ignorarId) as { total: number }
+    const ids = PRODUTOS.filter((p) => p.consomeCapacidade).map((p) => p.id)
+    const { total } = db.prepare(`SELECT COALESCE(SUM(i.quantidade), 0) AS total FROM encomenda_itens i JOIN encomendas e ON e.id = i.encomendaId WHERE e.dataEntrega = ? AND e.id <> ? AND i.produto IN (${ids.map(() => '?').join(',')})`).get(data, ignorarId, ...ids) as { total: number }
     return total
   }
   function exigirVaga(data: string, quantidade: number, ignorarId = 0) {
-    if (quantidadeReservada(data, ignorarId) + quantidade > LIMITE_DIARIO) {
+    if (quantidade > 0 && quantidadeReservada(data, ignorarId) + quantidade > LIMITE_DIARIO) {
       throw new ApiError(409, 'A quantidade de bolos solicitada ultrapassa a disponibilidade dessa data. Consulte o saldo e ajuste os itens ou escolha outro dia.')
     }
   }
@@ -122,9 +150,36 @@ export function abrirEncomendas(caminho: string, catalogo: CatalogoPrecos = CATA
     try { const resultado = acao(); db.exec('COMMIT'); return resultado }
     catch (erro) { db.exec('ROLLBACK'); throw erro }
   }
+  function configuracoes(): ConfiguracaoProduto[] {
+    return (db.prepare('SELECT * FROM produto_disponibilidade').all() as { id: string; aceitaEncomendas: number; mesesPermitidos: string }[])
+      .filter((linha) => produtoPorId(linha.id)).map((linha) => ({ id: linha.id, aceitaEncomendas: linha.aceitaEncomendas === 1, mesesPermitidos: JSON.parse(linha.mesesPermitidos) as number[] }))
+  }
+  function exigirProduto(id: string, data: string) {
+    const config = configuracoes().find((c) => c.id === id)
+    if (!config || !permitidoNaData(config, data)) throw new ApiError(409, `${produtoPorId(id)?.nome ?? id} não aceita encomendas para esse mês de retirada. Confira os produtos e a data.`, 'PRODUTO_INDISPONIVEL')
+  }
+  function conferirPao(itens: { produto: string }[], incluir: boolean) {
+    if (incluir && itens.some((i) => i.produto === 'pao-queijo')) throw new ApiError(400, 'Escolha pão de queijo nos itens ou como acompanhamento, sem duplicar a dúzia.')
+  }
+  function precos(itens: { produto: string; quantidade: number }[], anteriores: ItemPrecificado[] = [], pao = 0) {
+    try {
+      const valores = precificarItens(itens, catalogo, anteriores)
+      resumirValores(valores, pao)
+      return valores
+    } catch { throw new ApiError(400, 'A quantidade resulta em um valor monetário inválido. Reduza a quantidade.') }
+  }
   return {
     fechar: () => db.close(),
     buscar,
+    listarProdutos: () => PRODUTOS.map((p) => produtoDisponivel(configuracoes().find((c) => c.id === p.id)!, catalogo)),
+    configurarProduto(id: string, valor: unknown) {
+      if (!produtoPorId(id)) throw new ApiError(404, 'Produto não encontrado.')
+      const config = validarConfiguracao(valor)
+      return transacao(() => {
+        db.prepare('UPDATE produto_disponibilidade SET aceitaEncomendas = ?, mesesPermitidos = ? WHERE id = ?').run(Number(config.aceitaEncomendas), JSON.stringify(config.mesesPermitidos), id)
+        return produtoDisponivel({ id, ...config }, catalogo)
+      })
+    },
     disponibilidade(data: string) {
       const reservada = quantidadeReservada(data)
       return { data, limiteDiario: LIMITE_DIARIO, quantidadeReservada: reservada, quantidadeDisponivel: Math.max(0, LIMITE_DIARIO - reservada) }
@@ -134,11 +189,14 @@ export function abrirEncomendas(caminho: string, catalogo: CatalogoPrecos = CATA
       return transacao(() => {
         const itens = validarItens(dados.itens)
         validarData(dados.dataEntrega, agora())
-        exigirVaga(dados.dataEntrega, totalBolos(itens))
+        conferirPao(itens, dados.incluirPaoDeQueijo)
+        for (const item of itens) exigirProduto(item.produto, dados.dataEntrega)
+        if (dados.incluirPaoDeQueijo) exigirProduto('pao-queijo', dados.dataEntrega)
+        exigirVaga(dados.dataEntrega, unidadesProducao(itens))
         const registro = db.prepare('INSERT INTO encomendas(nomeCliente, telefone, dataEntrega, incluirPaoDeQueijo, valorPaoDeQueijoCentavos) VALUES (?, ?, ?, ?, ?)')
           .run(dados.nomeCliente, dados.telefone, dados.dataEntrega, Number(dados.incluirPaoDeQueijo), dados.incluirPaoDeQueijo ? catalogo.paoDeQueijoCentavos : 0)
         const id = Number(registro.lastInsertRowid)
-        gravarItens(id, precificarItens(itens, catalogo))
+        gravarItens(id, precos(itens, [], dados.incluirPaoDeQueijo ? catalogo.paoDeQueijoCentavos : 0))
         return buscar(id)
       })
     },
@@ -148,14 +206,22 @@ export function abrirEncomendas(caminho: string, catalogo: CatalogoPrecos = CATA
         const atual = { ...anterior, ...alteracoes }
         const itens = alteracoes.itens === undefined ? anterior.itens.map(({ produto, quantidade }) => ({ produto, quantidade })) : validarItens(alteracoes.itens)
         const valorPaoDeQueijoCentavos = atual.incluirPaoDeQueijo ? (anterior.incluirPaoDeQueijo ? anterior.valorPaoDeQueijoCentavos : catalogo.paoDeQueijoCentavos) : 0
-        // Trocar composição sem mudar o total continua permitido em datas antigas.
-        if (atual.dataEntrega !== anterior.dataEntrega || totalBolos(itens) !== anterior.totalBolos) {
-          validarData(atual.dataEntrega, agora())
-          exigirVaga(atual.dataEntrega, totalBolos(itens), id)
+        conferirPao(itens, atual.incluirPaoDeQueijo)
+        const mudaData = atual.dataEntrega !== anterior.dataEntrega
+        for (const item of itens) {
+          const antigo = anterior.itens.find((i) => i.produto === item.produto)
+          if (mudaData || !antigo || item.quantidade > antigo.quantidade) exigirProduto(item.produto, atual.dataEntrega)
         }
+        if (atual.incluirPaoDeQueijo && (mudaData || !anterior.incluirPaoDeQueijo)) exigirProduto('pao-queijo', atual.dataEntrega)
+        // Trocar composição sem mudar o total continua permitido em datas antigas.
+        if (mudaData || unidadesItens(itens) !== unidadesItens(anterior.itens)) {
+          validarData(atual.dataEntrega, agora())
+        }
+        if (mudaData || unidadesProducao(itens) !== anterior.quantidadeProducao) exigirVaga(atual.dataEntrega, unidadesProducao(itens), id)
+        const itensPrecificados = precos(itens, anterior.itens, valorPaoDeQueijoCentavos)
         db.prepare('UPDATE encomendas SET nomeCliente = ?, telefone = ?, dataEntrega = ?, status = ?, incluirPaoDeQueijo = ?, valorPaoDeQueijoCentavos = ? WHERE id = ?')
           .run(atual.nomeCliente, atual.telefone, atual.dataEntrega, atual.status, Number(atual.incluirPaoDeQueijo), valorPaoDeQueijoCentavos, id)
-        if (alteracoes.itens !== undefined) gravarItens(id, precificarItens(itens, catalogo, anterior.itens))
+        if (alteracoes.itens !== undefined) gravarItens(id, itensPrecificados)
         return buscar(id)
       })
     },

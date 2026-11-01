@@ -5,6 +5,8 @@ export interface PedidoAdmin extends Financeiro {
   nomeCliente: string
   telefone: string
   totalBolos: number
+  quantidadeProducao: number
+  quantidadeItens: number
   dataEntrega: string
   incluirPaoDeQueijo: boolean
   status: StatusEncomenda
@@ -15,7 +17,7 @@ export class ErroAdmin extends Error {
   status: number | undefined
   constructor(mensagem: string, status?: number) { super(mensagem); this.status = status }
 }
-async function solicitar<T>(caminho: string, metodo = 'GET', corpo?: unknown, csrf?: string): Promise<T> {
+export async function solicitarAdmin<T>(caminho: string, metodo = 'GET', corpo?: unknown, csrf?: string): Promise<T> {
   let resposta: Response
   try {
     resposta = await fetch(`/api${caminho}`, {
@@ -29,11 +31,12 @@ async function solicitar<T>(caminho: string, metodo = 'GET', corpo?: unknown, cs
     : 'Não foi possível falar com o café. Confira a conexão e atualize a lista antes de repetir uma alteração.') }
   const dados = resposta.status === 204 ? null : await resposta.json().catch(() => null)
   if (!resposta.ok) {
-    if (metodo === 'PATCH' && resposta.status === 409) throw new ErroAdmin('A quantidade de bolos ultrapassa a disponibilidade dessa data. Diminua a quantidade ou escolha outra data. Nenhuma alteração foi salva.', 409)
+    if (metodo === 'PATCH' && resposta.status === 409 && dados?.codigo !== 'PRODUTO_INDISPONIVEL') throw new ErroAdmin('A quantidade de bolos/panetones ultrapassa a disponibilidade dessa data. Diminua a quantidade ou escolha outra data. Nenhuma alteração foi salva.', 409)
     throw new ErroAdmin(typeof dados?.erro === 'string' ? dados.erro : 'Não foi possível concluir a operação.', resposta.status)
   }
   return dados as T
 }
+const solicitar = solicitarAdmin
 function respostaInvalida() {
   return new ErroAdmin('A resposta do servidor está incompleta ou inválida. Atualize a página ou a lista antes de repetir uma alteração.')
 }
@@ -48,7 +51,7 @@ function pedidoValido(valor: unknown): valor is PedidoAdmin {
   return Boolean(pedido && Number.isSafeInteger(pedido.id) && pedido.id > 0
     && typeof pedido.nomeCliente === 'string' && typeof pedido.telefone === 'string' && itensConfirmados(pedido.itens)
     && typeof pedido.dataEntrega === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(pedido.dataEntrega)
-    && pedido.totalBolos === totalBolos(pedido.itens) && financeiroValido(pedido)
+    && pedido.totalBolos === totalBolos(pedido.itens) && financeiroValido(pedido) && contagensValidas(pedido)
     && typeof pedido.incluirPaoDeQueijo === 'boolean' && statusEncomenda.some((status) => status === pedido.status))
 }
 // O navegador envia o cookie HttpOnly; apenas o token CSRF fica na memória da página.
@@ -67,7 +70,7 @@ export const atualizarPedido = async (id: number, alteracoes: AlteracoesPedido, 
 }
 export const alterarStatus = (id: number, status: StatusEncomenda, csrf: string) => atualizarPedido(id, { status }, csrf)
 export const excluirPedido = (id: number, csrf: string) => solicitar<void>(`/encomendas/${id}`, 'DELETE', undefined, csrf)
-import { itensConfirmados, totalBolos } from '../utils/itens.ts'
+import { itensConfirmados, totalBolos, contagensValidas } from '../utils/itens.ts'
 import type { ItemEncomenda } from '../utils/itens.ts'
 import { financeiroValido } from '../utils/precificacao.ts'
 import type { Financeiro } from '../utils/precificacao.ts'

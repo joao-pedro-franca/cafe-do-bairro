@@ -10,6 +10,7 @@ import { gerarHash } from '../../backend/src/auth/senha.ts'
 import { abrirEncomendas } from '../../backend/src/database/encomendas.ts'
 import { hojeNoFuso } from '../src/utils/prazoEncomenda.ts'
 import { comPrecos } from './fixtures/precos.mjs'
+import { configuracaoPadrao } from '../../backend/src/disponibilidadeProdutos.ts'
 
 const originalFetch = globalThis.fetch
 const janela = new Window({ url: 'http://127.0.0.1/admin' })
@@ -41,13 +42,13 @@ beforeEach(async () => {
   cookie = ''
   interceptar = null
   globalThis.fetch = async (url, opcoes) => {
-    assert.equal(opcoes.credentials, 'same-origin')
-    assert.equal(opcoes.headers.Authorization, undefined)
+    assert.equal(opcoes.credentials, url === '/api/produtos' ? 'omit' : 'same-origin')
+    assert.equal(opcoes.headers?.Authorization, undefined)
     if (interceptar) {
       const resposta = await interceptar(url, opcoes)
       if (resposta) return resposta
     }
-    const res = await originalFetch(new URL(url, base), { ...opcoes, headers: { ...opcoes.headers, Origin: base, ...(cookie ? { Cookie: cookie } : {}) } })
+    const res = await originalFetch(new URL(url, base), { ...opcoes, headers: { ...opcoes.headers, Origin: base, ...(cookie && opcoes.credentials !== 'omit' ? { Cookie: cookie } : {}) } })
     // O Node não tem cookie jar: simula apenas o transporte que o navegador faz.
     const novoCookie = res.headers.get('set-cookie')
     if (novoCookie) cookie = novoCookie.split(';')[0]
@@ -63,6 +64,7 @@ afterEach(async () => {
   await act(async () => raiz.unmount())
   container.remove()
   for (const pedido of repo.listar()) repo.remover(pedido.id)
+  for (const produto of repo.listarProdutos()) { const { id, ...config } = configuracaoPadrao(produto.id); repo.configurarProduto(id, config) }
   globalThis.fetch = originalFetch
 })
 after(async () => {
@@ -241,8 +243,8 @@ test('cancelar edição descarta rascunho sem PATCH e devolve foco ao cartão', 
   let chamadas = 0
   interceptar = async (_url, opcoes) => { if (opcoes.method === 'PATCH') chamadas++ }
   await preencher(`#editar-${id}-nomeCliente`, 'Rascunho Cancelado')
-  await clicar(botao('Adicionar sabor'))
-  await clicar(container.querySelector('[aria-label="Remover sabor 1"]'))
+  await clicar(botao('Adicionar produto'))
+  await clicar(container.querySelector('[aria-label="Remover produto 1"]'))
   await clicar(botao('Cancelar'))
   assert.equal(chamadas, 0)
   assert.equal(repo.buscar(id).nomeCliente, dados.nomeCliente)
@@ -334,19 +336,21 @@ test('edição que deixa de corresponder ao filtro devolve foco ao título da li
 
 test('administradora adiciona, remove e recompõe 2 X + 1 Y ↔ 3 X sem mudar o ID', async () => {
   const id = await abrirEdicao()
-  await clicar(botao('Adicionar sabor'))
+  await esperar(() => !botao('Adicionar produto').disabled)
+  await clicar(botao('Adicionar produto'))
   await enviar(container.querySelector('.admin-edit'))
   await esperar(() => !container.querySelector('.admin-edit'))
   assert.deepEqual(repo.buscar(id).itens, comPrecos({ itens: [{ produto: 'bolo-cenoura', quantidade: 2 }, { produto: 'bolo-chocolate', quantidade: 1 }] }).itens)
   await clicar(botao('Editar pedido'))
-  await clicar(container.querySelector('[aria-label="Remover sabor 2"]'))
+  await clicar(container.querySelector('[aria-label="Remover produto 2"]'))
   await preencher(`#editar-${id}-itens-quantidade-0`, '3')
   await enviar(container.querySelector('.admin-edit'))
   await esperar(() => !container.querySelector('.admin-edit'))
   assert.deepEqual(repo.buscar(id).itens, comPrecos({ itens: [{ produto: 'bolo-cenoura', quantidade: 3 }] }).itens)
   await clicar(botao('Editar pedido'))
   await preencher(`#editar-${id}-itens-quantidade-0`, '2')
-  await clicar(botao('Adicionar sabor'))
+  await esperar(() => !botao('Adicionar produto').disabled)
+  await clicar(botao('Adicionar produto'))
   await enviar(container.querySelector('.admin-edit'))
   await esperar(() => !container.querySelector('.admin-edit'))
   assert.equal(repo.buscar(id).totalBolos, 3)
@@ -401,6 +405,112 @@ test('prazo filtra a lista carregada com status, alterna com data e limpa todos 
   assert.equal(consultas, 0)
 })
 
+test('prévia financeira muda imediatamente, cancelamento não grava e resposta confirmada atualiza cartão', async () => {
+  const id = await abrirEdicao()
+  const original = repo.buscar(id)
+  const definitivo = () => container.querySelector('.admin-card > .financial-summary .financial-total dd').textContent.replace(/\s/g, ' ')
+  const previa = () => container.querySelector('.admin-edit .financial-total dd').textContent.replace(/\s/g, ' ')
+  assert.equal(definitivo(), 'R$ 95,00')
+  await preencher(`#editar-${id}-itens-quantidade-0`, '3')
+  assert.equal(previa(), 'R$ 130,00')
+  assert.equal(container.querySelector('.financial-previous dd').textContent.replace(/\s/g, ' '), 'R$ 95,00')
+  assert.deepEqual(repo.buscar(id), original)
+  assert.equal(definitivo(), 'R$ 95,00')
+  await clicar(botao('Cancelar'))
+  assert.deepEqual(repo.buscar(id), original)
+  assert.equal(definitivo(), 'R$ 95,00')
+  await clicar(botao('Editar pedido'))
+  await esperar(() => !botao('Adicionar produto').disabled)
+  await clicar(botao('Adicionar produto'))
+  assert.equal(previa(), 'R$ 135,00')
+  await clicar(container.querySelector(`#editar-${id}-incluirPaoDeQueijo`))
+  assert.equal(previa(), 'R$ 110,00')
+  let liberar
+  const espera = new Promise((resolve) => { liberar = resolve })
+  interceptar = async (_url, opcoes) => { if (opcoes.method === 'PATCH') { assert.deepEqual(JSON.parse(opcoes.body), { itens: [{ produto: 'bolo-cenoura', quantidade: 2 }, { produto: 'bolo-chocolate', quantidade: 1 }], incluirPaoDeQueijo: false }); await espera } }
+  await enviar(container.querySelector('.admin-edit'))
+  assert.equal(definitivo(), 'R$ 95,00')
+  assert.equal(repo.buscar(id).totalCentavos, 9500)
+  liberar()
+  await esperar(() => !container.querySelector('.admin-edit'))
+  assert.equal(repo.buscar(id).totalCentavos, 11000)
+  assert.equal(definitivo(), 'R$ 110,00')
+})
+
+test('erro de API e conflito mantêm prévia, rascunho e total definitivo anterior', async () => {
+  const id = await abrirEdicao()
+  const original = repo.buscar(id)
+  await preencher(`#editar-${id}-itens-sabor-0`, 'bolo-chocolate')
+  for (const falhar of [async () => { throw new Error('Falha de rede') }, async () => Response.json({ erro: 'Sem capacidade' }, { status: 409 })]) {
+    interceptar = async (_url, opcoes) => { if (opcoes.method === 'PATCH') return falhar() }
+    await enviar(container.querySelector('.admin-edit'))
+    await esperar(() => container.querySelector('.admin-edit [role="alert"]'))
+    assert.deepEqual(repo.buscar(id), original)
+    assert.equal(container.querySelector('.admin-edit .financial-total dd').textContent.replace(/\s/g, ' '), 'R$ 105,00')
+    assert.equal(container.querySelector('.admin-card > .financial-summary .financial-total dd').textContent.replace(/\s/g, ' '), 'R$ 95,00')
+    assert.equal(container.querySelector(`#editar-${id}-itens-sabor-0`).value, 'bolo-chocolate')
+  }
+})
+
+const cartaoProduto = (nome) => [...container.querySelectorAll('.product-settings-card')].find((el) => el.querySelector('h3').textContent === nome)
+test('cardápio: salva meses, aguarda confirmação e bloqueia envios duplicados', async () => {
+  await login()
+  await esperar(() => cartaoProduto('Panetone'))
+  assert.equal(container.querySelectorAll('.product-settings-card').length, 11)
+  const cartao = cartaoProduto('Panetone')
+  assert(cartao.querySelector('.product-current').textContent.includes('Não aceita encomendas'))
+  await clicar(cartao.querySelector('input[type="checkbox"]'))
+  await clicar([...cartao.querySelectorAll('.months-grid label')].find((l) => l.textContent === 'Julho').querySelector('input'))
+  let liberar, chamadas = 0
+  const espera = new Promise((r) => { liberar = r })
+  interceptar = async (url, opcoes) => {
+    if (url === '/api/admin/produtos/panetone' && opcoes.method === 'PATCH') {
+      chamadas++
+      assert.deepEqual(JSON.parse(opcoes.body), { aceitaEncomendas: true, mesesPermitidos: [7, 12] })
+      assert(opcoes.headers['X-CSRF-Token'])
+      await espera
+    }
+  }
+  await act(async () => { cartao.querySelector('form').requestSubmit(); cartao.querySelector('form').requestSubmit() })
+  assert.equal(chamadas, 1)
+  assert(cartao.querySelector('fieldset').disabled)
+  assert(cartao.querySelector('.product-current').textContent.includes('Não aceita encomendas'))
+  assert(!cartao.querySelector('[role="status"]'))
+  liberar()
+  await esperar(() => cartao.querySelector('[role="status"]'))
+  assert.deepEqual(repo.listarProdutos().find((p) => p.id === 'panetone').mesesPermitidos, [7, 12])
+  assert(cartao.querySelector('.product-current').textContent.includes('Julho, Dezembro'))
+})
+
+test('cardápio: falha conserva rascunho e estado confirmado; nenhum mês exige correção', async () => {
+  await login()
+  await esperar(() => cartaoProduto('Panetone'))
+  const cartao = cartaoProduto('Panetone')
+  await clicar(cartao.querySelector('input[type="checkbox"]'))
+  interceptar = async (url, opcoes) => { if (url === '/api/admin/produtos/panetone' && opcoes.method === 'PATCH') return Response.json({ erro: 'Falha de teste ao salvar' }, { status: 500 }) }
+  await enviar(cartao.querySelector('form'))
+  await esperar(() => cartao.querySelector('[role="alert"]'))
+  assert(cartao.querySelector('[role="alert"]').textContent.includes('Falha de teste'))
+  assert(cartao.querySelector('input[type="checkbox"]').checked)
+  assert(cartao.querySelector('.product-current').textContent.includes('Não aceita encomendas'))
+  assert.equal(repo.listarProdutos().find((p) => p.id === 'panetone').aceitaEncomendas, false)
+  await clicar([...cartao.querySelectorAll('.months-grid input')].find((i) => i.checked))
+  await enviar(cartao.querySelector('form'))
+  assert(cartao.textContent.includes('Selecione ao menos um mês'))
+  assert(!cartao.querySelector('[role="status"]'))
+})
+
+test('cardápio fica bloqueado durante edição de pedido sem perder o rascunho', async () => {
+  const id = await abrirEdicao()
+  await esperar(() => cartaoProduto('Café coado'))
+  assert(cartaoProduto('Café coado').querySelector('fieldset').disabled)
+  await preencher(`#editar-${id}-telefone`, '(73) 98888-8888')
+  assert(cartaoProduto('Café coado').querySelector('fieldset').disabled)
+  assert.equal(container.querySelector(`#editar-${id}-telefone`).value, '(73) 98888-8888')
+  await clicar(botao('Cancelar'))
+  assert(!cartaoProduto('Café coado').querySelector('fieldset').disabled)
+})
+
 test('virada na Bahia atualiza prazo sem recarregar e preserva rascunho durante edição', async (t) => {
   await act(async () => raiz.unmount())
   raiz = createRoot(container)
@@ -452,51 +562,5 @@ test('virada na Bahia atualiza prazo sem recarregar e preserva rascunho durante 
     assert.equal(container.querySelectorAll('.admin-card').length, 2)
   } finally {
     globalThis.Date = DataOriginal
-  }
-})
-
-test('prévia financeira muda imediatamente, cancelamento não grava e resposta confirmada atualiza cartão', async () => {
-  const id = await abrirEdicao()
-  const original = repo.buscar(id)
-  const definitivo = () => container.querySelector('.admin-card > .financial-summary .financial-total dd').textContent.replace(/\s/g, ' ')
-  const previa = () => container.querySelector('.admin-edit .financial-total dd').textContent.replace(/\s/g, ' ')
-  assert.equal(definitivo(), 'R$ 95,00')
-  await preencher(`#editar-${id}-itens-quantidade-0`, '3')
-  assert.equal(previa(), 'R$ 130,00')
-  assert.equal(container.querySelector('.financial-previous dd').textContent.replace(/\s/g, ' '), 'R$ 95,00')
-  assert.deepEqual(repo.buscar(id), original)
-  assert.equal(definitivo(), 'R$ 95,00')
-  await clicar(botao('Cancelar'))
-  assert.deepEqual(repo.buscar(id), original)
-  assert.equal(definitivo(), 'R$ 95,00')
-  await clicar(botao('Editar pedido'))
-  await clicar(botao('Adicionar sabor'))
-  assert.equal(previa(), 'R$ 135,00')
-  await clicar(container.querySelector(`#editar-${id}-incluirPaoDeQueijo`))
-  assert.equal(previa(), 'R$ 110,00')
-  let liberar
-  const espera = new Promise((resolve) => { liberar = resolve })
-  interceptar = async (_url, opcoes) => { if (opcoes.method === 'PATCH') { assert.deepEqual(JSON.parse(opcoes.body), { itens: [{ produto: 'bolo-cenoura', quantidade: 2 }, { produto: 'bolo-chocolate', quantidade: 1 }], incluirPaoDeQueijo: false }); await espera } }
-  await enviar(container.querySelector('.admin-edit'))
-  assert.equal(definitivo(), 'R$ 95,00')
-  assert.equal(repo.buscar(id).totalCentavos, 9500)
-  liberar()
-  await esperar(() => !container.querySelector('.admin-edit'))
-  assert.equal(repo.buscar(id).totalCentavos, 11000)
-  assert.equal(definitivo(), 'R$ 110,00')
-})
-
-test('erro de API e conflito mantêm prévia, rascunho e total definitivo anterior', async () => {
-  const id = await abrirEdicao()
-  const original = repo.buscar(id)
-  await preencher(`#editar-${id}-itens-sabor-0`, 'bolo-chocolate')
-  for (const falhar of [async () => { throw new Error('Falha de rede') }, async () => Response.json({ erro: 'Sem capacidade' }, { status: 409 })]) {
-    interceptar = async (_url, opcoes) => { if (opcoes.method === 'PATCH') return falhar() }
-    await enviar(container.querySelector('.admin-edit'))
-    await esperar(() => container.querySelector('.admin-edit [role="alert"]'))
-    assert.deepEqual(repo.buscar(id), original)
-    assert.equal(container.querySelector('.admin-edit .financial-total dd').textContent.replace(/\s/g, ' '), 'R$ 105,00')
-    assert.equal(container.querySelector('.admin-card > .financial-summary .financial-total dd').textContent.replace(/\s/g, ' '), 'R$ 95,00')
-    assert.equal(container.querySelector(`#editar-${id}-itens-sabor-0`).value, 'bolo-chocolate')
   }
 })

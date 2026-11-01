@@ -6,7 +6,9 @@ import { criarEncomenda, ErroEncomenda } from '../services/encomendas'
 import { dataMinimaEncomenda, erroDataEntrega, formatarTelefone, validarEncomenda } from '../utils/encomenda'
 import { ItensPedido } from '../components/ItensPedido'
 import { ResumoFinanceiro } from '../components/ResumoFinanceiro'
-import { totalBolos } from '../utils/itens'
+import { unidadesProducao, unidadesItens } from '../utils/itens'
+import { useProdutos } from '../hooks/useProdutos'
+import { permitidoNaData } from '../services/produtos'
 import type { PedidoConfirmado } from '../services/encomendas'
 import type { CampoEncomenda, DadosEncomenda, ErrosEncomenda } from '../utils/encomenda'
 import '../styles/encomendas.css'
@@ -14,7 +16,7 @@ import '../styles/encomendas.css'
 const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 const dadosIniciais: DadosEncomenda = { nomeCliente: '', telefone: '', itens: [{ produto: '', quantidade: 1 }], dataEntrega: '', incluirPaoDeQueijo: false }
 const rotulos: Record<CampoEncomenda, string> = {
-  dataEntrega: 'Data desejada', itens: 'Sabores e quantidades', nomeCliente: 'Nome completo', telefone: 'Telefone/WhatsApp',
+  dataEntrega: 'Data desejada', itens: 'Produtos e quantidades', nomeCliente: 'Nome completo', telefone: 'Telefone/WhatsApp',
 }
 
 export function Encomendas() {
@@ -32,10 +34,16 @@ export function Encomendas() {
   const erroData = dados.dataEntrega ? erroDataEntrega(dados.dataEntrega, dataMinima) : undefined
   const consulta = useDisponibilidade(dados.dataEntrega && !erroData ? dados.dataEntrega : null)
   const { saldo } = consulta
-  const podePreencher = Boolean(saldo && saldo.quantidadeDisponivel > 0) || pedidoConfirmado !== null
-  const total = totalBolos(dados.itens)
-  const erroItens = erros.itens || (saldo && total > saldo.quantidadeDisponivel && pedidoConfirmado === null
-    ? `Restam ${saldo.quantidadeDisponivel} bolo(s). Ajuste os itens ou escolha outra data.` : undefined)
+  const cardapio = useProdutos(dados.dataEntrega)
+  const permitidos = cardapio.produtos.filter((p) => permitidoNaData(p, dados.dataEntrega))
+  const podePreencher = Boolean(saldo && !cardapio.falhou && cardapio.produtos.length) || pedidoConfirmado !== null
+  const total = unidadesProducao(dados.itens)
+  const indisponiveis = dados.itens.filter((i) => i.produto && !permitidos.some((p) => p.id === i.produto))
+  const paoPermitido = permitidos.some((p) => p.id === 'pao-queijo')
+  const paoNosItens = dados.itens.some((i) => i.produto === 'pao-queijo')
+  const erroDisponibilidade = pedidoConfirmado ? undefined : indisponiveis.length ? 'Há produtos selecionados que não aceitam encomendas para esse mês de retirada. Altere os produtos ou a data; nenhum item foi removido.' : dados.incluirPaoDeQueijo && !paoPermitido ? 'O pão de queijo não aceita encomenda para esse mês. Remova o acompanhamento ou altere a data.' : dados.incluirPaoDeQueijo && paoNosItens ? 'Escolha o pão de queijo nos itens ou como acompanhamento, sem duplicar a dúzia.' : undefined
+  const erroItens = erros.itens || erroDisponibilidade || (saldo && total > saldo.quantidadeDisponivel && pedidoConfirmado === null
+    ? `Restam ${saldo.quantidadeDisponivel} unidade(s) de bolos/panetones. Ajuste os itens ou escolha outra data.` : undefined)
   const adicional = cafeConfig.produtos.find((produto) => produto.encomenda.tipo === 'acompanhamento' && !produto.sazonalidade)
   const acompanhamento = adicional?.encomenda.tipo === 'acompanhamento' ? adicional.encomenda : null
   const camposComErro = (Object.keys(rotulos) as CampoEncomenda[]).filter((campo) => erros[campo])
@@ -78,10 +86,11 @@ export function Encomendas() {
       requestAnimationFrame(() => errosRef.current?.focus())
       return
     }
-    if (!saldo || saldo.quantidadeDisponivel === 0) {
-      setErroApi('Consulte uma data com bolos disponíveis antes de confirmar a encomenda.')
+    if (!saldo || cardapio.carregando || cardapio.falhou || !cardapio.produtos.length) {
+      setErroApi('Consulte a disponibilidade do cardápio e da data antes de confirmar a encomenda.')
       return
     }
+    if (erroDisponibilidade) { setErros({ itens: erroDisponibilidade }); return }
     const novosErros = validarEncomenda(dados, cafeConfig.produtos, minimaAtual, saldo.quantidadeDisponivel)
     setErros(novosErros)
     if (Object.keys(novosErros).length) {
@@ -101,7 +110,7 @@ export function Encomendas() {
       consulta.atualizar()
     } catch (erro) {
       setErroApi(erro instanceof ErroEncomenda ? erro.message : 'Não foi possível obter a confirmação. Confira com o café antes de reenviar.')
-      if (erro instanceof ErroEncomenda && erro.status === 409) consulta.atualizar()
+      if (erro instanceof ErroEncomenda && erro.status === 409) { consulta.atualizar(); cardapio.atualizar() }
     } finally {
       setEnviando(false)
       if (!confirmado) bloqueioEnvio.current = false
@@ -127,7 +136,7 @@ export function Encomendas() {
         <p className="recipe-note">Do nosso forno para os seus momentos especiais. <span aria-hidden="true">♡</span></p>
         <ul className="order-rules">
           <li><span aria-hidden="true">◷</span><p>Peça com pelo menos <strong>um dia de antecedência</strong>.</p></li>
-          <li><span aria-hidden="true">♡</span><p>Preparamos até <strong>cinco bolos por dia</strong>.</p></li>
+          <li><span aria-hidden="true">♡</span><p>Até <strong>cinco unidades de bolos/panetones por dia</strong>. Cafés e dúzias não consomem esse grupo.</p></li>
           <li><span aria-hidden="true">⌂</span><p>Pagamento <strong>na retirada</strong>.</p></li>
         </ul>
         <p className="orders-demo" id="orders-demo">Protótipo com dados comerciais fictícios. A consulta não reserva bolos: a reserva acontece somente após a confirmação do pedido.</p>
@@ -139,7 +148,7 @@ export function Encomendas() {
           <div className="order-drawer-inner">
             <form className="order-form" noValidate onSubmit={confirmar} aria-labelledby="form-title" aria-describedby="orders-demo">
               <h3 id="form-title" ref={tituloRef} tabIndex={-1}>Vamos começar pela data?</h3>
-              <p className="form-intro">Escolha o dia para consultar os bolos disponíveis. Use dados fictícios para testar.</p>
+              <p className="form-intro">Escolha o dia para consultar os produtos disponíveis. Use dados fictícios para testar.</p>
               {camposComErro.length > 0 && <div className="form-errors" ref={errosRef} tabIndex={-1} role="alert">
                 <p><strong>Vamos conferir alguns campos?</strong></p>
                 <ul>{camposComErro.map((campo) => <li key={campo}><a href={`#pedido-${campo}`}>{rotulos[campo]}: {erros[campo]}</a></li>)}</ul>
@@ -163,18 +172,21 @@ export function Encomendas() {
                 </div>}
                 {saldo && <>
                   <dl className="availability-summary">
-                    <div><dt>Capacidade total</dt><dd>{saldo.limiteDiario} bolos</dd></div>
+                    <div><dt>Capacidade de produção</dt><dd>{saldo.limiteDiario} unidades</dd></div>
                     <div><dt>Já reservados</dt><dd>{saldo.quantidadeReservada}</dd></div>
                     <div><dt>Ainda disponíveis</dt><dd>{saldo.quantidadeDisponivel}</dd></div>
                   </dl>
                   <p className="field-hint">Disponibilidade consultada agora; os bolos só ficam reservados quando sua encomenda é confirmada.</p>
-                  {saldo.quantidadeDisponivel === 0 && pedidoConfirmado === null && <p className="availability-full">Nosso forno já está cheio de carinho nesse dia. Escolha outra data para prepararmos seus bolos.</p>}
+                  {saldo.quantidadeDisponivel === 0 && pedidoConfirmado === null && <p className="availability-full">Nosso forno já está cheio de carinho nesse dia. Escolha outra data para bolos e panetones; cafés e dúzias ainda podem ser encomendados se estiverem habilitados.</p>}
                 </>}
               </div>
+              {cardapio.carregando && <p role="status">Consultando os produtos habilitados…</p>}
+              {saldo && !cardapio.carregando && !cardapio.falhou && !permitidos.length && <p role="status">Nenhum produto aceita encomendas para esse mês de retirada. Escolha outra data.</p>}
+              {cardapio.falhou && <div role="alert">Não conseguimos consultar o cardápio. Seus dados foram mantidos. <button className="button" type="button" onClick={cardapio.atualizar}>Tentar consultar produtos novamente</button></div>}
               <div className="order-details" hidden={!podePreencher}>
                 <fieldset className="order-form-fields" disabled={enviando || pedidoConfirmado !== null} aria-busy={enviando}>
-                  <legend className="visually-hidden">Bolos e contato</legend>
-                  <ItensPedido prefixo="pedido-itens" itens={dados.itens} limite={pedidoConfirmado?.totalBolos ?? saldo?.quantidadeDisponivel ?? 5} erro={erroItens} alterar={(itens) => {
+                  <legend className="visually-hidden">Produtos e contato</legend>
+                  <ItensPedido prefixo="pedido-itens" itens={dados.itens} limite={pedidoConfirmado?.quantidadeProducao ?? saldo?.quantidadeDisponivel ?? 5} disponiveis={permitidos.map((p) => p.id)} erro={erroItens} alterar={(itens) => {
                     setDados((atual) => ({ ...atual, itens }))
                     setErros((atuais) => ({ ...atuais, itens: undefined }))
                     setErroApi('')
@@ -194,8 +206,8 @@ export function Encomendas() {
                       {erros.telefone && <p className="field-error" id="erro-telefone">{erros.telefone}</p>}
                     </div>
                   </div>
-                  {acompanhamento && adicional && <label className="order-extra">
-                    <input type="checkbox" name="incluirPaoDeQueijo" checked={dados.incluirPaoDeQueijo} onChange={(e) => { setDados((atual) => ({ ...atual, incluirPaoDeQueijo: e.target.checked })); setErroApi('') }} />
+                  {acompanhamento && adicional && (paoPermitido || dados.incluirPaoDeQueijo) && <label className="order-extra">
+                    <input type="checkbox" name="incluirPaoDeQueijo" checked={dados.incluirPaoDeQueijo} disabled={paoNosItens && !dados.incluirPaoDeQueijo} onChange={(e) => { setDados((atual) => ({ ...atual, incluirPaoDeQueijo: e.target.checked })); setErroApi('') }} />
                     <span>Adicionar {adicional.nome.toLowerCase()} <small>{acompanhamento.tamanho} · + {moeda.format(acompanhamento.preco)} (uma dúzia por pedido, opcional, sem ocupar a capacidade de bolos)</small></span>
                   </label>}
                 </fieldset>
@@ -203,12 +215,12 @@ export function Encomendas() {
               <div className="form-actions">
                 {pedidoConfirmado !== null
                   ? <button className="button button-primary" type="button" onClick={novaEncomenda}>Fazer outra encomenda</button>
-                  : podePreencher && <button className="button button-primary" type="submit" disabled={enviando || !Number.isFinite(total) || total < 1 || Boolean(erroItens)}>{enviando ? 'Enviando encomenda…' : 'Confirmar encomenda'}</button>}
+                  : podePreencher && <button className="button button-primary" type="submit" disabled={enviando || cardapio.carregando || !permitidos.length || !Number.isFinite(unidadesItens(dados.itens)) || unidadesItens(dados.itens) < 1 || Boolean(erroItens)}>{enviando ? 'Enviando encomenda…' : 'Confirmar encomenda'}</button>}
                 <button className="button button-secondary" type="button" onClick={fechar}>Fechar e manter os dados</button>
               </div>
               <div className="form-result" role="status" aria-live="polite">
                 {enviando && <p>Enviando sua encomenda. Aguarde a confirmação.</p>}
-                {pedidoConfirmado !== null && <div><p><strong>Encomenda nº {pedidoConfirmado.id} confirmada!</strong> Reservamos {pedidoConfirmado.totalBolos} bolo(s) para a data escolhida. O pagamento será realizado na retirada.</p><ResumoFinanceiro resumo={pedidoConfirmado} /></div>}
+                {pedidoConfirmado !== null && <div><p><strong>Encomenda nº {pedidoConfirmado.id} confirmada!</strong> Registramos {pedidoConfirmado.quantidadeItens} unidade(s) de venda, com {pedidoConfirmado.quantidadeProducao} unidade(s) do grupo de produção para a data escolhida. O pagamento será realizado na retirada.</p><ResumoFinanceiro resumo={pedidoConfirmado} /></div>}
               </div>
               {erroApi && <p className="form-api-error" role="alert">{erroApi}</p>}
               <p className="field-hint">Fechar mantém seu preenchimento. Recarregar apaga o rascunho, mas não cancela encomendas já confirmadas.</p>

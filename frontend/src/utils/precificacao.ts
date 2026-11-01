@@ -11,6 +11,7 @@ export const reais = (centavos: number) => moeda.format(centavos / 100)
 
 export function previaFinanceira(itens: ItemEncomenda[], incluirPaoDeQueijo: boolean, anterior: Financeiro & { incluirPaoDeQueijo: boolean }): Financeiro | null {
   if (validarItens(itens, 5)) return null
+  if (incluirPaoDeQueijo && itens.some((i) => i.produto === 'pao-queijo')) return null
   const adicional = incluirPaoDeQueijo ? (anterior.incluirPaoDeQueijo ? anterior.valorPaoDeQueijoCentavos : CATALOGO.paoDeQueijoCentavos) : 0
-  return resumirValores(precificarItens(itens, CATALOGO, anterior.itens), adicional, anterior.precosInicializados)
+  try { return resumirValores(precificarItens(itens, CATALOGO, anterior.itens), adicional, anterior.precosInicializados) } catch { return null }
 }

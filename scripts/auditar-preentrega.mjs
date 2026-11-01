@@ -18,16 +18,17 @@ const { chromium } = playwright
 const { AxeBuilder } = await import(pathToFileURL(ferramentas.resolve('@axe-core/playwright')).href)
 const { createServer } = await import(pathToFileURL(front.resolve('vite')).href)
 const visual = process.argv.includes('--visual')
-const saida = join(raiz, 'docs', ...(visual ? ['refinamento-visual'] : process.argv.includes('--itens') ? ['multissabores', 'publico'] : process.argv.includes('--final') ? ['auditoria-final', 'publico'] : ['auditoria']))
+const saida = join(raiz, 'docs', ...(process.argv.includes('--sazonais') ? ['produtos-sazonais', 'regressao-publico'] : visual ? ['refinamento-visual'] : process.argv.includes('--itens') ? ['multissabores', 'publico'] : process.argv.includes('--final') ? ['auditoria-final', 'publico'] : ['auditoria']))
 await mkdir(saida, { recursive: true })
 const temporaria = await mkdtemp(join(tmpdir(), 'cafe-auditoria-'))
 const arquivo = join(temporaria, 'auditoria.sqlite')
 let repo, api, vite, browser
-const resultado = { larguras: [], passos: [], acessibilidade: [], console: [], errosPagina: [], falhasRede: [], errosHttp: [] }
+const resultado = { larguras: [], passos: [], acessibilidade: [], console: [], errosPagina: [], falhasRede: [], consultasCanceladas: [], errosHttp: [] }
 const data = dataMinima(new Date())
 const dados = { nomeCliente: 'Cliente de Teste', telefone: '(73) 99999-9999', dataEntrega: data, incluirPaoDeQueijo: true, itens: [{ produto: 'bolo-cenoura', quantidade: 3 }] }
 
 async function captura(page, nome, fullPage = false) {
+  if (process.argv.includes('--sem-capturas')) return
   await page.screenshot({ path: join(saida, nome), fullPage, animations: 'disabled' })
 }
 async function geometria(page) {
@@ -60,7 +61,11 @@ try {
   const page = await contexto.newPage()
   page.on('console', (msg) => { if (msg.type() === 'error') resultado.console.push({ mensagem: msg.text(), local: msg.location() }) })
   page.on('pageerror', (erro) => resultado.errosPagina.push(erro.message))
-  page.on('requestfailed', (req) => resultado.falhasRede.push({ url: new URL(req.url()).pathname, erro: req.failure()?.errorText }))
+  page.on('requestfailed', (req) => {
+    const falha = { url: new URL(req.url()).pathname, erro: req.failure()?.errorText }
+    if (falha.erro === 'net::ERR_ABORTED' && ['/api/produtos', '/api/disponibilidade'].includes(falha.url)) resultado.consultasCanceladas.push(falha)
+    else resultado.falhasRede.push(falha)
+  })
   page.on('response', (res) => { if (res.status() >= 400) resultado.errosHttp.push({ url: new URL(res.url()).pathname, status: res.status() }) })
 
   for (const largura of [360, 390, 768, 1280]) {
@@ -102,16 +107,16 @@ try {
   repo.criar(dados, () => new Date())
   await page.getByLabel('Data desejada').fill(data)
   await page.locator('.availability-summary').waitFor()
-  assert.deepEqual(await page.locator('.availability-summary dd').allTextContents(), ['5 bolos', '3', '2'])
+  assert.deepEqual(await page.locator('.availability-summary dd').allTextContents(), ['5 unidades', '3', '2'])
   await page.getByRole('button', { name: 'Confirmar encomenda', exact: true }).click()
   await page.locator('.form-errors').waitFor()
   await captura(page, '04-validacao-390.png')
   await acessibilidade(page, 'formulario-erros-390')
-  await page.getByLabel('Sabor 1', { exact: true }).selectOption('bolo-cenoura')
+  await page.getByLabel('Produto 1', { exact: true }).selectOption('bolo-cenoura')
   await page.getByLabel('Nome completo').fill('Cliente de Teste')
   await page.getByLabel('Telefone/WhatsApp').fill('(73) 99999-9999')
-  await page.getByRole('button', { name: 'Aumentar quantidade do sabor 1' }).click()
-  assert(await page.getByRole('button', { name: 'Aumentar quantidade do sabor 1' }).isDisabled())
+  await page.getByRole('button', { name: 'Aumentar quantidade do produto 1' }).click()
+  assert(await page.getByRole('button', { name: 'Aumentar quantidade do produto 1' }).isDisabled())
   await page.getByRole('checkbox').check()
   await page.getByRole('button', { name: 'Fechar e manter os dados' }).click()
   assert.equal(await page.locator(':focus').getAttribute('aria-controls'), 'gaveta-encomenda')
@@ -156,7 +161,9 @@ try {
   await page.getByRole('button', { name: 'Fazer outra encomenda' }).click()
   await page.getByLabel('Data desejada').fill(data)
   await page.locator('.availability-full').waitFor()
-  assert(await page.locator('.order-details').isHidden())
+  await page.locator('.order-details').waitFor({ state: 'visible' })
+  assert(await page.locator('option[value="bolo-cenoura"]').isDisabled())
+  assert(!(await page.locator('option[value="pao-queijo"]').isDisabled()))
   await page.setViewportSize({ width: 390, height: 844 })
   await page.locator('.availability-full').scrollIntoViewIfNeeded()
   await captura(page, '08-data-lotada-390.png')
@@ -167,18 +174,18 @@ try {
   const diaSeguinte = outraData.toISOString().slice(0, 10)
   await page.getByLabel('Data desejada').fill(diaSeguinte)
   await page.locator('.order-details').waitFor({ state: 'visible' })
-  await page.getByLabel('Sabor 1', { exact: true }).selectOption('bolo-chocolate')
+  await page.getByLabel('Produto 1', { exact: true }).selectOption('bolo-chocolate')
   await page.getByLabel('Nome completo').fill('Cliente de Teste')
   await page.getByLabel('Telefone/WhatsApp').fill('(73) 99999-9999')
-  await page.getByRole('spinbutton', { name: 'Quantidade do sabor 1' }).fill('3')
+  await page.getByRole('spinbutton', { name: 'Quantidade do produto 1' }).fill('3')
   repo.criar({ ...dados, dataEntrega: diaSeguinte }, () => new Date())
   await page.getByRole('button', { name: 'Confirmar encomenda', exact: true }).click()
   await page.locator('#pedido-itens-erro').waitFor()
-  assert.equal(await page.getByRole('spinbutton', { name: 'Quantidade do sabor 1' }).inputValue(), '3')
+  assert.equal(await page.getByRole('spinbutton', { name: 'Quantidade do produto 1' }).inputValue(), '3')
   assert.equal(await page.getByLabel('Nome completo').inputValue(), 'Cliente de Teste')
   await page.locator('#pedido-itens-erro').scrollIntoViewIfNeeded()
   await captura(page, '08b-conflito-390.png')
-  await page.getByRole('button', { name: 'Diminuir quantidade do sabor 1' }).click()
+  await page.getByRole('button', { name: 'Diminuir quantidade do produto 1' }).click()
   await page.getByRole('button', { name: 'Confirmar encomenda', exact: true }).click()
   await page.waitForFunction(() => document.querySelector('.form-result')?.textContent.includes('confirmada!'))
   await page.waitForFunction(() => document.querySelector('.availability-summary > div:last-child dd')?.textContent === '0')

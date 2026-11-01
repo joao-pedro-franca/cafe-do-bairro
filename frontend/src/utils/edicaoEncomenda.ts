@@ -2,7 +2,7 @@ import { cafeConfig } from '../data/cafeConfig.ts'
 import { dataMinimaEncomenda, validarEncomenda } from './encomenda.ts'
 import { statusEncomenda } from '../services/admin.ts'
 import type { AlteracoesPedido, PedidoAdmin } from '../services/admin.ts'
-import { totalBolos } from './itens.ts'
+import { unidadesItens } from './itens.ts'
 
 export type CamposPedido = Required<AlteracoesPedido>
 
@@ -20,10 +20,11 @@ export function alteracoesPedido(anterior: PedidoAdmin, campos: CamposPedido): A
 }
 
 export function validarEdicao(anterior: PedidoAdmin, campos: CamposPedido, agora = new Date()) {
-  const mudaProducao = campos.dataEntrega !== anterior.dataEntrega || totalBolos(campos.itens) !== anterior.totalBolos
+  const mudaProducao = campos.dataEntrega !== anterior.dataEntrega || unidadesItens(campos.itens) !== unidadesItens(anterior.itens)
   // Contato, sabor, adicional e status de pedidos antigos não exigem mudar sua data.
   const minima = mudaProducao ? dataMinimaEncomenda(cafeConfig.fusoHorario, agora) : anterior.dataEntrega
   const erros: Partial<Record<keyof CamposPedido, string>> = validarEncomenda(campos, cafeConfig.produtos, minima, 5)
+  if (campos.incluirPaoDeQueijo && campos.itens.some((i) => i.produto === 'pao-queijo')) erros.itens = 'Escolha pão de queijo nos itens ou como acompanhamento, sem duplicar a dúzia.'
   if (!campos.nomeCliente.trim() || campos.nomeCliente.trim().length > 100) erros.nomeCliente = 'Informe nome e sobrenome, com até 100 caracteres.'
   if (!statusEncomenda.some((status) => status === campos.status)) erros.status = 'Escolha um dos status disponíveis.'
   return erros

@@ -108,6 +108,20 @@ test('logout exige CSRF, invalida sessão no servidor e limpa cookie', async (t)
   assert.equal((await a.request('/encomendas', 'GET', undefined, { Cookie: s.cookie })).status, 401)
 })
 
+test('disponibilidade do cardápio usa sessão, CSRF e origem em todas as mutações', async (t) => {
+  const a = await ambiente(t)
+  const s = await a.login()
+  const body = { aceitaEncomendas: true, mesesPermitidos: [12] }
+  assert.equal((await a.request('/admin/produtos', 'GET', undefined, { Cookie: s.cookie })).status, 200)
+  const invalidos: Record<string, string>[] = [{ Cookie: s.cookie, Origin: origem }, { Cookie: s.cookie, Origin: origem, 'X-CSRF-Token': 'errado' }, { Cookie: s.cookie, Origin: 'https://invasor.example', 'X-CSRF-Token': s.csrf }, { Cookie: s.cookie, 'X-CSRF-Token': s.csrf }]
+  for (const headers of invalidos) {
+    assert.equal((await a.request('/admin/produtos/panetone', 'PATCH', body, headers)).status, 403)
+  }
+  assert.equal(a.repo.listarProdutos().find((p) => p.id === 'panetone')!.aceitaEncomendas, false)
+  assert.equal((await a.request('/admin/produtos/panetone', 'PATCH', body, { Cookie: s.cookie, Origin: origem, 'X-CSRF-Token': s.csrf })).status, 200)
+  assert.equal(a.repo.listarProdutos().find((p) => p.id === 'panetone')!.aceitaEncomendas, true)
+})
+
 test('sessão expira após oito horas e novo login renova identificador e CSRF', async (t) => {
   const a = await ambiente(t)
   const anterior = await a.login()

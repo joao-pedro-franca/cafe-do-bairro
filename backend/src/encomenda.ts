@@ -1,26 +1,27 @@
 import { FUSO_HORARIO, PRODUTOS_ENCOMENDAVEIS, STATUS } from './config.ts'
 import { ApiError } from './errors.ts'
 import type { Financeiro } from './precificacao.ts'
+import { unidadesBolos, unidadesItens } from './produtos.ts'
 
 export interface ItemEncomenda { produto: string; quantidade: number }
-export const totalBolos = (itens: readonly ItemEncomenda[]) => itens.reduce((total, item) => total + item.quantidade, 0)
+export const totalBolos = unidadesBolos
 
 export function validarItens(valor: unknown): ItemEncomenda[] {
   if (!Array.isArray(valor) || valor.length < 1 || valor.length > PRODUTOS_ENCOMENDAVEIS.length) {
-    throw new ApiError(400, 'Inclua de um a seis sabores de bolo, sem repetições.')
+    throw new ApiError(400, 'Inclua ao menos um produto do cardápio, sem repetições.')
   }
   const sabores = new Set<string>()
   const itens = valor.map((item: unknown) => {
     if (!item || typeof item !== 'object' || Array.isArray(item)) throw new ApiError(400, 'Cada item deve conter produto e quantidade.')
     const { produto, quantidade } = item as Record<string, unknown>
     if (Object.keys(item).some((campo) => !['produto', 'quantidade'].includes(campo))
-      || typeof produto !== 'string' || !PRODUTOS_ENCOMENDAVEIS.some((id) => id === produto)) throw new ApiError(400, 'Selecione o ID de um bolo caseiro disponível para encomenda.')
-    if (sabores.has(produto)) throw new ApiError(400, 'Não repita sabores: reúna a quantidade na mesma linha.')
-    if (typeof quantidade !== 'number' || !Number.isSafeInteger(quantidade) || quantidade < 1) throw new ApiError(400, 'A quantidade de cada sabor deve ser um número inteiro positivo.')
+      || typeof produto !== 'string' || !PRODUTOS_ENCOMENDAVEIS.some((id) => id === produto)) throw new ApiError(400, 'Selecione um ID de produto do catálogo.')
+    if (sabores.has(produto)) throw new ApiError(400, 'Não repita produtos: reúna a quantidade na mesma linha.')
+    if (typeof quantidade !== 'number' || !Number.isSafeInteger(quantidade) || quantidade < 1) throw new ApiError(400, 'A quantidade de cada produto deve ser um número inteiro positivo.')
     sabores.add(produto)
     return { produto, quantidade }
   })
-  if (!Number.isSafeInteger(totalBolos(itens))) throw new ApiError(400, 'O total de bolos é inválido.')
+  if (!Number.isSafeInteger(unidadesItens(itens))) throw new ApiError(400, 'A quantidade total é inválida.')
   return itens
 }
 
@@ -34,6 +35,8 @@ export interface DadosEncomenda {
 export interface Encomenda extends DadosEncomenda, Financeiro {
   itens: Financeiro['itens']
   totalBolos: number
+  quantidadeProducao: number
+  quantidadeItens: number
   id: number
   status: typeof STATUS[number]
 }

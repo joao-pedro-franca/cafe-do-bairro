@@ -2,24 +2,20 @@ import { ProductIllustration } from '../components/ProductIllustration'
 import { cafeConfig } from '../data/cafeConfig'
 import type { Produto } from '../data/cafeConfig'
 import '../styles/cardapio.css'
+import { useProdutos } from '../hooks/useProdutos'
+import { MESES } from '../services/produtos'
+import type { ProdutoDisponivel } from '../services/produtos'
 
 const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
-function Disponibilidade({ produto }: { produto: Produto }) {
-  if (produto.sazonalidade) {
-    return <p className="product-availability">Encomendas ainda não confirmadas.</p>
-  }
-  if (produto.encomenda.tipo === 'principal') {
-    return <p className="product-availability">Aceita encomenda</p>
-  }
-  if (produto.encomenda.tipo === 'acompanhamento') {
-    return <p className="product-availability">Opcional com os bolos: {produto.encomenda.tamanho.toLowerCase()} por {moeda.format(produto.encomenda.preco)}.</p>
-  }
-  return <p className="product-availability">Consumo no café · sem encomenda</p>
+function Disponibilidade({ produto, config }: { produto: Produto; config?: ProdutoDisponivel }) {
+  if (!config) return <p className="product-availability">Consulte a disponibilidade no formulário de encomenda.</p>
+  return <p className="product-availability">{config.aceitaEncomendas ? `Aceita encomenda · retirada ${config.mesesPermitidos.length ? 'em ' + config.mesesPermitidos.map((m) => MESES[m - 1]).join(', ') : 'o ano todo'}.` : 'Não aceita encomendas no momento.'}{config.aceitaEncomendas && produto.encomenda.tipo === 'acompanhamento' && ` Para encomenda: ${config.unidade}, ${moeda.format(config.precoCentavos / 100)}.`}</p>
 }
 
 export function Cardapio() {
   const { cardapio, produtos } = cafeConfig
+  const disponibilidade = useProdutos()
 
   return (
     <section className="menu-section" id="cardapio" aria-labelledby="cardapio-title" tabIndex={-1}>
@@ -30,6 +26,7 @@ export function Cardapio() {
           <p className="menu-demo-note">{cardapio.aviso}</p>
           <p className="handwritten-note">Um pedacinho de carinho<br />em cada receita <span aria-hidden="true">♡</span></p>
         </header>
+        {disponibilidade.falhou && <p className="menu-demo-note" role="status">Não conseguimos atualizar a disponibilidade. <button type="button" className="button" onClick={disponibilidade.atualizar}>Consultar cardápio novamente</button></p>}
         {cardapio.categorias.map((categoria) => (
           <section className="menu-category" key={categoria.id} aria-labelledby={`categoria-${categoria.id}`}>
             <header className="category-heading">
@@ -44,12 +41,12 @@ export function Cardapio() {
                       {produto.imagem ? <img src={produto.imagem} alt={produto.nome} width="320" height="180" loading="lazy" /> : <ProductIllustration tipo={produto.ilustracao} />}
                     </div>
                     <div className="product-content">
-                      {produto.sazonalidade && <p className="seasonal-label">{produto.sazonalidade.descricao}</p>}
+                      {produto.sazonalidade && <p className="seasonal-label">Receita natalina</p>}
                       <h4 id={`produto-${produto.id}`}>{produto.nome}</h4>
                       <p className="product-description">{produto.descricao}</p>
                       <p className="product-size">{produto.tamanho}</p>
                       <p className="product-price">{moeda.format(produto.preco)}</p>
-                      <Disponibilidade produto={produto} />
+                      <Disponibilidade produto={produto} config={disponibilidade.produtos.find((p) => p.id === produto.id)} />
                     </div>
                   </article>
                 </li>

@@ -66,7 +66,7 @@ test('somente mudar status de pedido antigo não exige mudar a data nem ocupa no
 
 test('valida tipos, campos, calendário, telefone, produto e status, sem gravar inválidos', async (t) => {
   const api = await apiTeste(t)
-  const invalidos: unknown[] = [null, [], {}, { ...pedido, nomeCliente: ' ' }, { ...pedido, nomeCliente: 'Nome' }, { ...pedido, telefone: 123 }, { ...pedido, telefone: 'abc73999999999' }, { ...pedido, telefone: '999999999' }, { ...pedido, dataEntrega: '2026-10-31' }, { ...pedido, dataEntrega: '2026-10-30' }, { ...pedido, dataEntrega: '2027-02-29' }, { ...pedido, dataEntrega: '2026-13-01' }, { ...pedido, dataEntrega: '02/11/2026' }, { ...pedido, itens: [{ produto: 'cafe-coado', quantidade: 1 }] }, { ...pedido, itens: [{ produto: 'panetone', quantidade: 1 }] }, { ...pedido, itens: [{ produto: 'pao-queijo', quantidade: 1 }] }, { ...pedido, incluirPaoDeQueijo: 'true' }, { ...pedido, campoExtra: true }]
+  const invalidos: unknown[] = [null, [], {}, { ...pedido, nomeCliente: ' ' }, { ...pedido, nomeCliente: 'Nome' }, { ...pedido, telefone: 123 }, { ...pedido, telefone: 'abc73999999999' }, { ...pedido, telefone: '999999999' }, { ...pedido, dataEntrega: '2026-10-31' }, { ...pedido, dataEntrega: '2026-10-30' }, { ...pedido, dataEntrega: '2027-02-29' }, { ...pedido, dataEntrega: '2026-13-01' }, { ...pedido, dataEntrega: '02/11/2026' }, { ...pedido, itens: [{ produto: 'desconhecido', quantidade: 1 }] }, { ...pedido, itens: [{ produto: 'pao-queijo', quantidade: 1 }] }, { ...pedido, incluirPaoDeQueijo: 'true' }, { ...pedido, campoExtra: true }]
   for (const corpo of invalidos) assert.equal((await api.request('POST', '', corpo)).status, 400, JSON.stringify(corpo))
   assert.deepEqual((await api.request('GET')).dados, [])
   await api.request('POST', '', pedido)
@@ -132,7 +132,7 @@ test('erros de JSON, tamanho e credencial não expõem detalhes internos', async
 
 test('fuso, IDs e campos permanecem compatíveis com o contrato do front-end', () => {
   assert.equal(FUSO_HORARIO, cafeConfig.fusoHorario)
-  assert.deepEqual([...PRODUTOS_ENCOMENDAVEIS].sort(), cafeConfig.produtos.filter((produto) => produto.encomenda.tipo === 'principal' && !produto.sazonalidade).map((produto) => produto.id).sort())
+  assert.deepEqual([...PRODUTOS_ENCOMENDAVEIS].sort(), cafeConfig.produtos.map((produto) => produto.id).sort())
   assert.equal(dataMinima(new Date('2026-11-01T02:59:59Z')), '2026-11-01')
   assert.equal(dataMinima(new Date('2026-11-01T03:00:00Z')), '2026-11-02')
   assert.equal(dataMinima(new Date('2026-12-31T15:00:00Z')), '2027-01-01')

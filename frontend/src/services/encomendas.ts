@@ -1,8 +1,8 @@
 import type { DadosEncomenda } from '../utils/encomenda'
-import { itensConfirmados, totalBolos } from '../utils/itens.ts'
+import { itensConfirmados, totalBolos, contagensValidas } from '../utils/itens.ts'
 import { financeiroValido } from '../utils/precificacao.ts'
 import type { Financeiro } from '../utils/precificacao.ts'
-export interface PedidoConfirmado extends Financeiro { id: number; status: 'recebida'; totalBolos: number; incluirPaoDeQueijo: boolean }
+export interface PedidoConfirmado extends Financeiro { id: number; status: 'recebida'; totalBolos: number; quantidadeProducao: number; quantidadeItens: number; incluirPaoDeQueijo: boolean }
 
 export class ErroEncomenda extends Error {
   status: number | undefined
@@ -36,6 +36,7 @@ export async function criarEncomenda(dados: DadosEncomenda): Promise<PedidoConfi
   let corpo: unknown
   try { corpo = await resposta.json() } catch { corpo = null }
   if (resposta.status === 409) {
+    if (corpo && typeof corpo === 'object' && 'codigo' in corpo && corpo.codigo === 'PRODUTO_INDISPONIVEL') throw new ErroEncomenda('A disponibilidade do cardápio mudou. Confira os produtos habilitados para o mês de retirada; seus dados foram mantidos.', 409)
     throw new ErroEncomenda('A disponibilidade mudou e não há bolos suficientes para essa quantidade. Confira o saldo atualizado e ajuste a quantidade ou escolha outra data.', 409)
   }
   if (resposta.status === 400) {
@@ -46,10 +47,11 @@ export async function criarEncomenda(dados: DadosEncomenda): Promise<PedidoConfi
     || typeof corpo.id !== 'number' || !Number.isSafeInteger(corpo.id) || corpo.id < 1
     || !('status' in corpo) || corpo.status !== 'recebida'
     || !('itens' in corpo) || !itensConfirmados(corpo.itens) || !('totalBolos' in corpo) || corpo.totalBolos !== totalBolos(corpo.itens)
-    || !('incluirPaoDeQueijo' in corpo) || corpo.incluirPaoDeQueijo !== dados.incluirPaoDeQueijo || !financeiroValido(corpo)) {
+    || !('incluirPaoDeQueijo' in corpo) || corpo.incluirPaoDeQueijo !== dados.incluirPaoDeQueijo || !financeiroValido(corpo) || !contagensValidas(corpo)) {
     throw new ErroEncomenda(resultadoIncerto, resposta.status)
   }
   return { id: corpo.id, status: 'recebida', itens: corpo.itens, totalBolos: corpo.totalBolos as number, incluirPaoDeQueijo: corpo.incluirPaoDeQueijo as boolean,
+    quantidadeProducao: corpo.quantidadeProducao, quantidadeItens: corpo.quantidadeItens,
     subtotalBolosCentavos: corpo.subtotalBolosCentavos, valorPaoDeQueijoCentavos: corpo.valorPaoDeQueijoCentavos, totalCentavos: corpo.totalCentavos, precosInicializados: corpo.precosInicializados }
 }
 

@@ -9,10 +9,11 @@ import { CATALOGO } from '../src/catalogo.ts'
 import type { CatalogoPrecos } from '../src/catalogo.ts'
 import { precificarItens, resumirValores } from '../src/precificacao.ts'
 import type { ItemEncomenda } from '../src/encomenda.ts'
+import { unidadesItens, unidadesProducao } from '../src/produtos.ts'
 
 // Completa fixtures antigas de contrato; os testes de preço usam valores esperados literais.
 export function comPrecos<T extends { itens: ItemEncomenda[]; incluirPaoDeQueijo: boolean }>(valor: T, inicializados = false) {
-  return { ...valor, ...resumirValores(precificarItens(valor.itens, CATALOGO), valor.incluirPaoDeQueijo ? CATALOGO.paoDeQueijoCentavos : 0, inicializados) }
+  return { ...valor, quantidadeProducao: unidadesProducao(valor.itens), quantidadeItens: unidadesItens(valor.itens) + Number(valor.incluirPaoDeQueijo), ...resumirValores(precificarItens(valor.itens, CATALOGO), valor.incluirPaoDeQueijo ? CATALOGO.paoDeQueijoCentavos : 0, inicializados) }
 }
 
 // Credencial fictícia e exclusiva dos testes; o servidor não tem token padrão.
