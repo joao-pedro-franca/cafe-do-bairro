@@ -1,6 +1,7 @@
-.orders-section { padding-block: var(--space-4); background: var(--paper-grain), var(--cloth), #f2e2cc; }
-.orders-paper { position: relative; padding: var(--space-4) var(--space-3); border: 1px solid var(--paper-border); border-radius: var(--radius-paper); background: var(--paper-grain), var(--paper); box-shadow: var(--shadow-paper); }
-.orders-paper::before { content: ''; position: absolute; top: -.8rem; right: .5rem; width: 55px; height: 90px; background: url('/images/decor/batedor.svg') center / contain no-repeat; opacity: .55; pointer-events: none; }
+.orders-section { --paper: var(--warm-cream); --paper-border: var(--caramel); --card-paper: #fff6e8; padding-block: var(--space-4); background: var(--paper-grain), var(--cloth), var(--latte); }
+.orders-paper { position: relative; padding: var(--space-4) var(--space-3); border: 1px solid var(--coffee); border-radius: var(--radius-paper); background: linear-gradient(90deg, transparent 18px, #a8795640 18px 19px, transparent 19px), var(--paper-grain), var(--paper); box-shadow: inset 0 0 0 4px #a879561a, var(--shadow-paper); }
+.orders-paper::before { content: ''; position: absolute; top: 0; right: .4rem; width: 36px; height: 70px; background: url('/images/decor/batedor.svg') center / contain no-repeat; opacity: .8; pointer-events: none; }
+.orders-paper::after { content: ''; position: absolute; bottom: 7px; left: 7px; width: 16px; height: 18px; background: url('/images/decor/coracao.svg') center / contain no-repeat; pointer-events: none; }
 .recipe-note { max-width: 38ch; margin: var(--space-3) auto 0; text-align: center; color: var(--coffee); font: italic .95rem/1.7 var(--handwriting); }
 .orders-heading { text-align: center; }
 .orders-heading h2 { font: italic 400 clamp(2rem, 5vw, 3rem)/1.2 var(--serif); }
@@ -14,7 +15,7 @@
 .order-drawer { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows .32s ease, visibility .32s step-end; }
 .order-drawer.is-open { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows .32s ease, visibility 0s; }
 .order-drawer-inner { min-height: 0; overflow: hidden; }
-.order-form { position: relative; margin-top: var(--space-4); padding: var(--space-3); background: var(--paper-grain), var(--card-paper); border: 1px solid var(--paper-border); border-top: 4px double var(--paper-border); border-radius: var(--radius-paper); box-shadow: 0 3px 12px #754b360b; }
+.order-form { position: relative; margin-top: var(--space-4); padding: var(--space-3); background: var(--paper-grain), var(--card-paper); border: 1px solid var(--paper-border); border-top: 4px double var(--coffee); border-radius: var(--radius-paper); box-shadow: 0 3px 12px #754b3618; }
 .order-form h3 { padding-bottom: .65rem; border-bottom: 1px dashed var(--paper-border); }
 .order-form h3 { margin: 0 0 .75rem; font: 400 1.5rem/1.4 var(--serif); }
 .form-intro { color: var(--coffee); font-size: .85rem; margin-bottom: var(--space-3); }

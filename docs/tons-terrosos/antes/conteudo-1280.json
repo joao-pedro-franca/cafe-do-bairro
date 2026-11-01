@@ -1,0 +1,59 @@
+{
+  "titulos": [
+    "Café do Bairro♡",
+    "Nosso cardápio ♡",
+    "Bolos caseiros",
+    "Bolo de cenoura",
+    "Bolo de chocolate",
+    "Bolo de milho",
+    "Bolo de fubá",
+    "Bolo de laranja",
+    "Bolo de coco",
+    "Café e acompanhamentos",
+    "Café coado",
+    "Café com leite",
+    "Pão de queijo",
+    "Especial de Natal",
+    "Panetone",
+    "Bolo de Natal",
+    "Faça sua encomenda ♡",
+    "Vamos começar pela data?",
+    "Sabores e quantidades",
+    "Informações do café ♡",
+    "Horário de funcionamento",
+    "Onde fica nossa casa",
+    "Fale com a gente"
+  ],
+  "produtos": [
+    "Bolo de cenouraMassa fofinha com cobertura de chocolate.Bolo inteiro · 20 cmR$ 35,00Aceita encomenda",
+    "Bolo de chocolateMassa de chocolate com cobertura cremosa.Bolo inteiro · 20 cmR$ 40,00Aceita encomenda",
+    "Bolo de milhoAquele sabor de milho que lembra a cozinha da vó.Bolo inteiro · 20 cmR$ 35,00Aceita encomenda",
+    "Bolo de fubáCaseiro e delicado, perfeito para a hora do café.Bolo inteiro · 20 cmR$ 30,00Aceita encomenda",
+    "Bolo de laranjaMassa macia com calda de laranja.Bolo inteiro · 20 cmR$ 35,00Aceita encomenda",
+    "Bolo de cocoMassa fofinha com cobertura de coco ralado.Bolo inteiro · 20 cmR$ 38,00Aceita encomenda",
+    "Café coadoPassado na hora, para uma pausa sem pressa.Xícara · 150 mlR$ 5,00Consumo no café · sem encomenda",
+    "Café com leiteCafé coado e leite quentinho, do jeito de casa.Xícara · 200 mlR$ 7,00Consumo no café · sem encomenda",
+    "Pão de queijoDouradinho por fora e macio por dentro.UnidadeR$ 3,00Opcional com os bolos: dúzia · 12 unidades por R$ 25,00.",
+    "Sazonal · dezembroPanetoneReceita natalina com frutas para compartilhar.Unidade · 500 gR$ 45,00Encomendas ainda não confirmadas.",
+    "Sazonal · dezembroBolo de NatalBolo com frutas e especiarias para a mesa de Natal.Bolo inteiro · 20 cmR$ 55,00Encomendas ainda não confirmadas."
+  ],
+  "hero": "/images/mesa-caseira.webp",
+  "grades": [
+    {
+      "seletor": ".hero-layout",
+      "colunas": 2
+    },
+    {
+      "seletor": ".product-grid",
+      "colunas": 3
+    },
+    {
+      "seletor": ".info-grid",
+      "colunas": 3
+    },
+    {
+      "seletor": ".footer-main",
+      "colunas": 3
+    }
+  ]
+}

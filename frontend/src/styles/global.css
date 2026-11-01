@@ -10,6 +10,9 @@
   --terracotta: #b66b4b;
   --coffee: #754b36;
   --chocolate: #39261e;
+  --caramel: #a87956;
+  --latte: #d2b08b;
+  --warm-cream: #f3e4ce;
   --serif: Georgia, 'Times New Roman', serif;
   --space-1: .5rem;
   --space-2: 1rem;
@@ -39,19 +42,20 @@ figure, h1, h2, p, dl, dd { margin: 0; }
 .skip-link:focus { top: 1rem; }
 html { scroll-behavior: smooth; }
 [id] { scroll-margin-top: 1.5rem; }
-.site-header { background: var(--paper-grain), var(--paper); border-bottom: 1px dashed var(--paper-border); }
+.site-header { background: var(--paper-grain), #ead8bf; border-bottom: 1px dashed var(--coffee); box-shadow: inset 0 3px var(--coffee); }
 .header-content { display: flex; align-items: center; flex-direction: column; gap: var(--space-1); padding-block: var(--space-2); }
 .brand { display: inline-flex; gap: .6rem; align-items: center; text-decoration: none; font: italic 700 1.5rem var(--serif); }
 .brand svg { width: 43px; height: 40px; flex: none; }
 nav { display: flex; flex-wrap: wrap; justify-content: center; column-gap: 1rem; }
 nav a { display: inline-flex; align-items: center; min-height: 44px; font-size: .875rem; text-decoration: none; }
 nav a:hover { text-decoration: underline; }
-.hero { position: relative; isolation: isolate; background: var(--paper-grain), var(--paper); }
+.hero { --paper: var(--warm-cream); position: relative; isolation: isolate; background: var(--paper-grain), var(--paper); }
+.hero::before { content: ''; position: absolute; z-index: 1; bottom: 29px; left: max(1.25rem, calc((100% - var(--content-width)) / 2)); width: 70px; height: 20px; background: url('/images/decor/ramo-florido.svg') center / contain no-repeat; pointer-events: none; }
 .hero-layout { display: grid; gap: 0; padding-bottom: var(--space-5); }
 .hero-copy { position: relative; z-index: 1; padding-top: var(--space-2); }
 .eyebrow { color: var(--coffee); text-transform: uppercase; letter-spacing: .13em; font-size: .7rem; font-weight: 700; margin-bottom: var(--space-2); }
 h1 { max-width: 10ch; font: italic 500 clamp(3.3rem, 7vw, 5.7rem)/1.05 var(--serif); letter-spacing: -.05em; }
-.hero-copy h1 { max-width: none; color: #512f1e; text-shadow: 0 1px #fffaf2; }
+.hero-copy h1 { max-width: none; color: var(--chocolate); text-shadow: 0 1px #fffaf2; }
 .handmade-heart { display: none; color: var(--coffee); font-size: .45em; vertical-align: top; margin-left: .15em; transform: rotate(12deg); }
 .hero-description { font: 400 clamp(1.25rem, 2.1vw, 1.6rem)/1.5 var(--serif); margin-top: var(--space-3); max-width: 32ch; }
 .hero-invitation { margin-top: var(--space-1); color: var(--coffee); font-size: .9rem; }
@@ -70,12 +74,14 @@ h1 { max-width: 10ch; font: italic 500 clamp(3.3rem, 7vw, 5.7rem)/1.05 var(--ser
 .button-secondary:hover { background: var(--sand); }
 .demo-note { font-size: .73rem; color: var(--coffee); margin-top: var(--space-2); }
 .hero-figure { position: relative; order: -1; min-width: 0; height: 245px; margin-inline: -1.25rem; }
-.hero-figure::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, var(--paper), #f7f0e600 28%); pointer-events: none; }
+.hero-figure::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, var(--paper), #f3e4ce00 28%); pointer-events: none; }
 .hero-figure img { width: 100%; height: 100%; object-fit: cover; object-position: 85% 60%; }
 .hero-figure figcaption { position: absolute; z-index: 1; right: 1.25rem; top: .6rem; max-width: calc(100% - 2.5rem); padding: .2rem .5rem; background: #fff9edec; border-radius: .2rem; font: italic .7rem/1.5 var(--serif); color: var(--chocolate); }
 .hero .button-secondary, .hero .contact-demo summary, .hero .contact-link { background: #fff9edf2; }
 .hero .button { box-shadow: 0 3px 0 #754b3617; }
-.gingham { position: relative; z-index: 1; height: 26px; background-color: #f4e4cf; background-image: var(--paper-grain), var(--cloth); border-block: 1px dashed #a76e4850; }
+.hero .button-primary, .menu-section .button-primary, .orders-section .button-primary { background: linear-gradient(110deg, var(--coffee), #5c3928); color: #fff8ed; box-shadow: 0 3px 0 #39261e30; }
+.hero .button-primary:hover, .menu-section .button-primary:hover, .orders-section .button-primary:hover { background: var(--chocolate); }
+.gingham { position: relative; z-index: 1; height: 26px; background-color: var(--latte); background-image: var(--paper-grain), var(--cloth); border-block: 1px dashed var(--caramel); }
 .handwritten-note { position: relative; width: fit-content; margin: var(--space-3) auto 0; padding: 1rem 1.5rem; border: 1px solid var(--paper-border); border-radius: var(--radius-paper); background: var(--paper-grain), #efdcba; box-shadow: var(--shadow-paper); color: #573b29; font: italic 1rem/1.6 var(--handwriting); transform: rotate(-3deg); }
 .handwritten-note::before { content: ''; position: absolute; width: 65px; height: 18px; left: calc(50% - 32px); top: -9px; background: #d2b88d75; border-inline: 1px dashed #b7957266; transform: rotate(4deg); }
 .placeholders { padding-block: var(--space-5); }
@@ -103,7 +109,7 @@ h1 { max-width: 10ch; font: italic 500 clamp(3.3rem, 7vw, 5.7rem)/1.05 var(--ser
   .hero-layout { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: center; padding-block: var(--space-5); gap: var(--space-4); }
   .hero-copy { padding-top: 0; }
   .hero-figure { position: absolute; z-index: 0; inset: 0 0 26px; width: 100%; height: auto; margin: 0; }
-  .hero-figure::after { background: linear-gradient(90deg, var(--paper) 0%, #f7f0e6fc 29%, #f7f0e6ed 43%, #f7f0e68c 61%, #f7f0e608 82%), linear-gradient(0deg, #f7f0e633, transparent 20%); }
+  .hero-figure::after { background: linear-gradient(90deg, var(--paper) 0%, #f3e4cefc 29%, #f3e4ceed 43%, #f3e4ce8c 61%, #f3e4ce08 82%), linear-gradient(0deg, #f3e4ce33, transparent 20%); }
   .hero-figure img { object-position: 70% center; }
   .hero-figure figcaption { top: auto; right: 1.5rem; bottom: 1rem; }
   .hero-actions { align-items: stretch; }

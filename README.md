@@ -4,6 +4,10 @@ Projeto para o desafio técnico da TecnoJr. Os requisitos estão em [BRIEF.md](B
 
 ## Etapa atual
 
+### Tons terrosos e detalhes botânicos
+
+A landing preserva o layout aprovado, a fotografia do hero e a madeira do cardápio, com maior presença de café, caramelo e café com leite em molduras, fundos e botões. O vaso de flores foi aprimorado e adaptado ao celular; ramos e utensílios locais enriquecem as margens sem ocupar os controles. Veja os [comparativos de todas as seções, arquivos e validações](docs/tons-terrosos/README.md).
+
 ### Refinamento visual da landing page
 
 O visual público segue a referência aprovada em `docs/referencia-visual.png`: hero com mesa caseira, papel creme com textura leve, divisões em tecido xadrez, cartões artesanais, bilhetes, folhagens e utensílios desenhados. A imagem ilustrativa foi criada com IA e otimizada em WebP responsivo; os ornamentos são SVG locais. Fluxos, múltiplos sabores, capacidade, autenticação e filtros administrativos foram preservados. Veja o [relatório visual, arquivos e validações](docs/refinamento-visual/README.md).

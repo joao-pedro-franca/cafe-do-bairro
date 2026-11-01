@@ -97,8 +97,9 @@ try {
     resultados.push({ movimentoReduzidoDuranteAnimacao: true, final, historicoVoltarAvancar: true })
   }
   const visual = process.argv.includes('--visual')
-  await mkdir(new URL(visual ? '../docs/refinamento-visual/' : '../docs/v1.1/', import.meta.url), { recursive: true })
+  const terrosos = process.argv.includes('--terrosos')
+  await mkdir(new URL(terrosos ? '../docs/tons-terrosos/' : visual ? '../docs/refinamento-visual/' : '../docs/v1.1/', import.meta.url), { recursive: true })
   if (process.argv.includes('--itens')) await mkdir(new URL('../docs/multissabores/', import.meta.url), { recursive: true })
-  await writeFile(new URL(visual ? '../docs/refinamento-visual/rolagem.json' : diagnostico ? '../docs/v1.1/rolagem-450ms.json' : process.argv.includes('--itens') ? '../docs/multissabores/rolagem.json' : '../docs/v1.1/rolagem-1200ms.json', import.meta.url), JSON.stringify(resultados, null, 2))
+  await writeFile(new URL(terrosos ? '../docs/tons-terrosos/rolagem.json' : visual ? '../docs/refinamento-visual/rolagem.json' : diagnostico ? '../docs/v1.1/rolagem-450ms.json' : process.argv.includes('--itens') ? '../docs/multissabores/rolagem.json' : '../docs/v1.1/rolagem-1200ms.json', import.meta.url), JSON.stringify(resultados, null, 2))
   console.log(JSON.stringify(resultados.map(({ amostras, ...resumo }) => ({ ...resumo, quadros: amostras?.length })), null, 2))
 } finally { await browser?.close(); await vite?.close() }

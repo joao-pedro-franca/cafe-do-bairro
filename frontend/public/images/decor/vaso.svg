@@ -1,2 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 200" fill="none" stroke="#895b3f" stroke-width="1.5" stroke-linecap="round"><path d="M50 123Q41 76 24 28m35 96Q72 75 88 38m-34 85Q65 59 54 15m8 109q30-31 39-61"/><path d="M48 116h20l-2 24c18 18 22 34 18 53-12 7-40 7-52 0-4-19 0-35 18-53Z" fill="#d5ad87"/><path d="M40 187q20 6 36 0M47 152q-7 17-6 27M43 82q-19-3-18-18 14 3 18 18Zm31-7q19-2 20-16-16 2-20 16Z"/>
-<g fill="#e5cdb4"><path d="M24 24c-14-17-20 6-6 9-9 14 14 21 14 5 17 1 9-21-3-11 3-16-17-15-12-2Z"/><path d="M54 12c-11-14-16 4-5 7-7 11 11 16 11 4 13 0 7-16-3-9 3-13-13-12-9-1Z"/><path d="M88 34c-12-15-17 5-5 8-8 12 12 18 12 4 15 1 8-18-3-10 3-14-15-13-10-1Z"/><path d="M101 61c-9-11-13 4-4 6-6 9 9 14 9 3 11 1 6-13-2-7 2-11-11-10-8-1Z"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 200" fill="none" stroke="#754b36" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+<defs><g id="margarida" fill="#f9edda" stroke-width=".8"><ellipse cy="-6" rx="2.5" ry="4.5"/><ellipse cy="-6" rx="2.5" ry="4.5" transform="rotate(45)"/><ellipse cy="-6" rx="2.5" ry="4.5" transform="rotate(90)"/><ellipse cy="-6" rx="2.5" ry="4.5" transform="rotate(135)"/><ellipse cy="-6" rx="2.5" ry="4.5" transform="rotate(180)"/><ellipse cy="-6" rx="2.5" ry="4.5" transform="rotate(225)"/><ellipse cy="-6" rx="2.5" ry="4.5" transform="rotate(270)"/><ellipse cy="-6" rx="2.5" ry="4.5" transform="rotate(315)"/><circle r="3.2" fill="#a87956"/></g></defs>
+<path d="M50 123Q42 79 23 36m36 88Q72 80 89 44m-35 79Q65 64 56 18m6 106q29-29 38-48"/>
+<path d="M42 84q-22-1-21-18 16 2 21 18Zm31-7q20 0 23-15-17 0-23 15ZM57 66Q40 56 44 43q15 9 13 23Z" fill="#d2b08b"/>
+<use href="#margarida" x="23" y="36"/><use href="#margarida" x="56" y="18"/><use href="#margarida" x="89" y="44"/><use href="#margarida" x="100" y="76" transform="rotate(15 100 76)"/>
+<path d="M48 116h20l-2 24c18 18 22 34 18 53-12 7-40 7-52 0-4-19 0-35 18-53Z" fill="#b98a63"/>
+<path d="M48 122h20M40 187q20 6 36 0M46 153q-7 16-6 27" stroke="#f3e4ce"/>
+<path d="M57 163c-10-10-19 5 1 15 20-12 11-24-1-15Z" fill="#f3e4ce" stroke-width="1"/>
+</svg>

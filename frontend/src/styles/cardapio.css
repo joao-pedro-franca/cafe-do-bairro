@@ -3,18 +3,21 @@
   --menu-cloth: repeating-linear-gradient(0deg, #b66b4b40 0 10px, transparent 10px 20px), repeating-linear-gradient(90deg, #b66b4b50 0 10px, transparent 10px 20px);
   --menu-card-shadow: 0 3px 4px #51351e26, 0 10px 20px #51351e24;
   padding-top: var(--space-4);
-  background: var(--paper-grain), radial-gradient(ellipse at top, #f5e5cc, var(--paper));
+  --paper-border: var(--caramel);
+  --card-paper: #fbefdb;
+  background: var(--paper-grain), radial-gradient(ellipse at top, #e5c9a4, #dbc0a0 55%, var(--warm-cream));
 }
 .menu-order-action { max-width: 380px; margin: 0 auto var(--space-5); text-align: center; }
-.menu-heading { position: relative; padding: var(--space-4) var(--space-2); text-align: center; border: 1px solid var(--paper-border); border-radius: .7rem 1rem .6rem .9rem; background: var(--paper-grain), #fff4e0; box-shadow: var(--shadow-paper); }
+.menu-heading { position: relative; padding: var(--space-4) var(--space-2); text-align: center; border: 1px solid var(--coffee); border-radius: .7rem 1rem .6rem .9rem; background: var(--paper-grain), var(--warm-cream); box-shadow: inset 0 0 0 4px #a879561c, var(--shadow-paper); }
 .menu-heading::before { content: ''; position: absolute; left: 1rem; top: 1.5rem; width: 54px; height: 100px; background: url('/images/decor/raminho.svg') center / contain no-repeat; opacity: .5; pointer-events: none; }
+.menu-heading::after { content: ''; position: absolute; right: 1.5rem; bottom: 1.5rem; width: 100px; height: 40px; background: url('/images/decor/ramo-florido.svg') center / contain no-repeat; pointer-events: none; }
 .menu-heading h2 { font: italic 400 clamp(2rem, 5vw, 3rem)/1.2 var(--serif); }
 .menu-heading h2 span { color: var(--coffee); }
 .menu-heading > p { margin-top: var(--space-1); }
 .menu-heading .menu-demo-note { max-width: 65ch; margin: var(--space-2) auto 0; font-size: .8rem; color: var(--coffee); }
 .menu-category { position: relative; margin-block: var(--space-4); }
 .menu-category::after { content: ''; position: absolute; right: 0; bottom: 0; width: 65px; height: 38px; border-radius: 0 0 .5rem 0; background: var(--paper-grain), var(--menu-cloth), #f7e7cc; clip-path: polygon(100% 0, 100% 100%, 0 100%); pointer-events: none; }
-.category-heading { margin-bottom: 0; padding: var(--space-3); border: 1px solid var(--paper-border); border-left: 3px solid var(--terracotta); border-radius: .5rem .7rem 0 0; background: var(--paper-grain), #fbefd9; }
+.category-heading { margin-bottom: 0; padding: var(--space-3); border: 1px solid var(--paper-border); border-left: 3px solid var(--coffee); border-radius: .5rem .7rem 0 0; background: var(--paper-grain), #e4caaa; }
 .category-heading h3 { margin: 0 0 .35rem; font: 400 1.6rem/1.3 var(--serif); }
 .category-heading p { max-width: 65ch; color: var(--coffee); font-size: .9rem; }
 .product-grid { position: relative; list-style: none; padding: 2rem .75rem 2.5rem; margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.75rem; border: 1px solid #b58b61; border-top: 0; border-radius: 0 0 .6rem .8rem; background-color: #d3aa7c; background-image: linear-gradient(#fff4df26, #fff4df26), var(--menu-wood); background-position: center; background-size: cover; background-repeat: no-repeat; box-shadow: inset 0 0 35px #79502e12, 0 8px 18px #754b3612; }
@@ -24,7 +27,7 @@
 .product-grid > li { position: relative; min-width: 0; }
 .product-grid > li::before { content: ''; position: absolute; z-index: 1; left: calc(50% - 29px); top: -9px; width: 58px; height: 19px; border-inline: 1px dashed #a76e4866; background: var(--paper-grain), var(--menu-cloth), #f7e7cc; box-shadow: 0 1px 2px #51351e18; transform: rotate(-3deg); pointer-events: none; }
 .product-grid > li:nth-child(even)::before { transform: rotate(3deg); }
-.product-card { position: relative; height: 100%; overflow: hidden; border: 1px solid #cfaf89; outline: 1px dashed #cfaf8966; outline-offset: -5px; border-radius: .65rem .85rem .6rem .75rem; background: var(--paper-grain), var(--card-paper); box-shadow: var(--menu-card-shadow); }
+.product-card { position: relative; height: 100%; overflow: hidden; border: 1px solid #916341; outline: 1px dashed #a8795677; outline-offset: -5px; border-radius: .65rem .85rem .6rem .75rem; background: var(--paper-grain), var(--card-paper); box-shadow: var(--menu-card-shadow); }
 .product-image { margin: .5rem .5rem 0; overflow: hidden; border-radius: .3rem .55rem .35rem .5rem; background: radial-gradient(ellipse at 50% 35%, #fff3db, #e8cfab); aspect-ratio: 16 / 9; border-bottom: 1px solid var(--paper-border); }
 .product-image svg, .product-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .product-content { padding: var(--space-3); }
@@ -38,5 +41,6 @@
 .menu-section > .gingham { background-image: var(--paper-grain), var(--menu-cloth); background-color: #f7e7cc; }
 @media (min-width: 600px) { .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-inline: var(--space-3); } }
 @media (min-width: 768px) { .menu-section { --menu-wood: url('/images/madeira-cardapio.webp'); } .menu-heading { padding-inline: var(--space-5); } }
-@media (max-width: 599px) { .menu-heading::before { top: 5rem; left: .25rem; width: 28px; opacity: .25; } .menu-heading .handwritten-note { padding-inline: 1rem; font-size: .9rem; } .product-content { padding: 1.25rem; } }
+@media (max-width: 767px) { .menu-heading::after { right: .6rem; bottom: .4rem; width: 55px; height: 18px; } }
+@media (max-width: 599px) { .menu-heading::before { top: .5rem; left: .4rem; width: 22px; height: 32px; opacity: .65; } .menu-heading .handwritten-note { padding-inline: 1rem; font-size: .9rem; } .product-content { padding: 1.25rem; } }
 @media (min-width: 1000px) { .product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
