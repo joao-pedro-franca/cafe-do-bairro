@@ -32,9 +32,10 @@ export const cafeConfig = {
     instagram: { exibicao: 'Perfil ilustrativo', url: null as string | null, confirmado: false },
   },
   hero: {
-    imagem: '/images/cafe-caseiro.svg',
-    descricaoImagem: 'Ilustração de um bolo com cobertura de chocolate e uma xícara de café sobre a mesa.',
-    legenda: 'Ilustração provisória · uma foto da nossa mesa vem depois',
+    imagem: '/images/mesa-caseira.webp',
+    imagemPequena: '/images/mesa-caseira-768.webp',
+    descricaoImagem: 'Cena ilustrativa de bolo de chocolate, café em xícara com coração e flores sobre uma mesa com renda e tecido xadrez.',
+    legenda: 'Uma mesa cheia de afeto · imagem criada com IA',
   },
   cardapio: {
     titulo: 'Nosso cardápio',

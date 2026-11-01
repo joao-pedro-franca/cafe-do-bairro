@@ -96,8 +96,9 @@ try {
     assert.equal(await page.evaluate(() => scrollY), final)
     resultados.push({ movimentoReduzidoDuranteAnimacao: true, final, historicoVoltarAvancar: true })
   }
-  await mkdir(new URL('../docs/v1.1/', import.meta.url), { recursive: true })
+  const visual = process.argv.includes('--visual')
+  await mkdir(new URL(visual ? '../docs/refinamento-visual/' : '../docs/v1.1/', import.meta.url), { recursive: true })
   if (process.argv.includes('--itens')) await mkdir(new URL('../docs/multissabores/', import.meta.url), { recursive: true })
-  await writeFile(new URL(diagnostico ? '../docs/v1.1/rolagem-450ms.json' : process.argv.includes('--itens') ? '../docs/multissabores/rolagem.json' : '../docs/v1.1/rolagem-1200ms.json', import.meta.url), JSON.stringify(resultados, null, 2))
+  await writeFile(new URL(visual ? '../docs/refinamento-visual/rolagem.json' : diagnostico ? '../docs/v1.1/rolagem-450ms.json' : process.argv.includes('--itens') ? '../docs/multissabores/rolagem.json' : '../docs/v1.1/rolagem-1200ms.json', import.meta.url), JSON.stringify(resultados, null, 2))
   console.log(JSON.stringify(resultados.map(({ amostras, ...resumo }) => ({ ...resumo, quadros: amostras?.length })), null, 2))
 } finally { await browser?.close(); await vite?.close() }

@@ -22,7 +22,7 @@ export function Hero() {
           <p className="demo-note">Uma prévia da nossa casa · informações fictícias para demonstração.</p>
         </div>
         <figure className="hero-figure">
-          <img src={cafeConfig.hero.imagem} alt={cafeConfig.hero.descricaoImagem} width="640" height="620" fetchPriority="high" />
+          <img src={cafeConfig.hero.imagem} srcSet={`${cafeConfig.hero.imagemPequena} 768w, ${cafeConfig.hero.imagem} 1536w`} sizes="100vw" alt={cafeConfig.hero.descricaoImagem} width="1536" height="1024" fetchPriority="high" />
           <figcaption>{cafeConfig.hero.legenda}</figcaption>
         </figure>
       </div>

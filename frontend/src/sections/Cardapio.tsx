@@ -28,6 +28,7 @@ export function Cardapio() {
           <h2 id="cardapio-title">{cardapio.titulo} <span aria-hidden="true">♡</span></h2>
           <p>{cardapio.subtitulo}</p>
           <p className="menu-demo-note">{cardapio.aviso}</p>
+          <p className="handwritten-note">Um pedacinho de carinho<br />em cada receita <span aria-hidden="true">♡</span></p>
         </header>
         {cardapio.categorias.map((categoria) => (
           <section className="menu-category" key={categoria.id} aria-labelledby={`categoria-${categoria.id}`}>

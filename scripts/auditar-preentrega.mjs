@@ -17,7 +17,8 @@ const { default: playwright } = await import(pathToFileURL(ferramentas.resolve('
 const { chromium } = playwright
 const { AxeBuilder } = await import(pathToFileURL(ferramentas.resolve('@axe-core/playwright')).href)
 const { createServer } = await import(pathToFileURL(front.resolve('vite')).href)
-const saida = join(raiz, 'docs', ...(process.argv.includes('--itens') ? ['multissabores', 'publico'] : process.argv.includes('--final') ? ['auditoria-final', 'publico'] : ['auditoria']))
+const visual = process.argv.includes('--visual')
+const saida = join(raiz, 'docs', ...(visual ? ['refinamento-visual'] : process.argv.includes('--itens') ? ['multissabores', 'publico'] : process.argv.includes('--final') ? ['auditoria-final', 'publico'] : ['auditoria']))
 await mkdir(saida, { recursive: true })
 const temporaria = await mkdtemp(join(tmpdir(), 'cafe-auditoria-'))
 const arquivo = join(temporaria, 'auditoria.sqlite')
@@ -43,6 +44,7 @@ async function geometria(page) {
 async function acessibilidade(page, passo) {
   const analise = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
   resultado.acessibilidade.push({ passo, violacoes: analise.violations.map((v) => ({ id: v.id, impacto: v.impact, descricao: v.description, elementos: v.nodes.map((n) => ({ alvo: n.target, resumo: n.failureSummary })) })) })
+  if (visual) assert.equal(analise.violations.length, 0, `Violação de acessibilidade em ${passo}`)
 }
 
 try {
@@ -69,9 +71,17 @@ try {
     resultado.larguras.push(await geometria(page))
     const ancoras = await page.locator('a[href^="#"]').evaluateAll((links) => links.map((a) => ({ href: a.getAttribute('href'), destino: Boolean(document.getElementById(a.hash.slice(1))) })))
     assert(ancoras.every((a) => a.destino), 'Existe âncora sem destino')
-    if (largura === 390 || largura === 1280) await acessibilidade(page, `landing-${largura}`)
+    if (visual || largura === 390 || largura === 1280) await acessibilidade(page, `landing-${largura}`)
     await page.locator('#cardapio').evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }))
     await captura(page, `02b-cardapio-${largura}.png`)
+    if (visual) {
+      await page.locator('#encomendas').evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }))
+      await captura(page, `02c-encomendas-${largura}.png`)
+      await page.locator('#contato').evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }))
+      await captura(page, `09-contato-${largura}.png`)
+      await page.locator('.site-footer').evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }))
+      await captura(page, `10-rodape-${largura}.png`)
+    }
   }
   resultado.passos.push('Landing e âncoras nas quatro larguras')
 
@@ -113,6 +123,7 @@ try {
     await page.setViewportSize({ width: largura, height: largura < 768 ? 844 : 900 })
     await page.locator('form').scrollIntoViewIfNeeded()
     await captura(page, `05-formulario-${largura}.png`)
+    if (visual) await acessibilidade(page, `formulario-preenchido-${largura}`)
     resultado.larguras.push({ estado: 'formulario', ...await geometria(page) })
   }
   await acessibilidade(page, 'formulario-preenchido-1280')

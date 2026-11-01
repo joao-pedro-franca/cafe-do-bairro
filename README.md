@@ -4,6 +4,10 @@ Projeto para o desafio técnico da TecnoJr. Os requisitos estão em [BRIEF.md](B
 
 ## Etapa atual
 
+### Refinamento visual da landing page
+
+O visual público segue a referência aprovada em `docs/referencia-visual.png`: hero com mesa caseira, papel creme com textura leve, divisões em tecido xadrez, cartões artesanais, bilhetes, folhagens e utensílios desenhados. A imagem ilustrativa foi criada com IA e otimizada em WebP responsivo; os ornamentos são SVG locais. Fluxos, múltiplos sabores, capacidade, autenticação e filtros administrativos foram preservados. Veja o [relatório visual, arquivos e validações](docs/refinamento-visual/README.md).
+
 ### Encomendas com múltiplos sabores
 
 Uma encomenda agora contém `itens: [{ produto, quantidade }]`. Cliente e administradora podem adicionar e remover sabores, ajustar cada quantidade e visualizar o total. Somente os seis bolos caseiros são aceitos, sem linhas duplicadas. O total é calculado dos itens; o adicional continua sendo uma única dúzia opcional por pedido.
@@ -40,7 +44,7 @@ Base React + TypeScript + Vite, com CSS tradicional, cabeçalho, hero, cardápio
 
 Veja [como iniciar e testar a API](backend/README.md), incluindo contrato, exemplos PowerShell, persistência e proteção administrativa. O back-end usa TypeScript por solicitação desta etapa, atualizando a recomendação inicial de JavaScript do brief; o brief original foi preservado.
 
-**Todos os dados comerciais são fictícios**, incluindo endereço, horários, produtos, preços e tamanhos. Edite `frontend/src/data/cafeConfig.ts` para substituí-los. WhatsApp e Instagram aparecem em modo de demonstração, sem links para terceiros. A ilustração SVG do hero é um placeholder local; substituir por fotografia autorizada e otimizada numa etapa futura.
+**Todos os dados comerciais são fictícios**, incluindo endereço, horários, produtos, preços e tamanhos. Edite `frontend/src/data/cafeConfig.ts` para substituí-los. WhatsApp e Instagram aparecem em modo de demonstração, sem links para terceiros. O hero usa uma imagem ilustrativa criada com IA, identificada na legenda, e não uma fotografia do estabelecimento real.
 
 ## Executar
 
@@ -160,7 +164,7 @@ npm.cmd install
 - `src/data/cafeConfig.ts`: fonte única dos dados comerciais ilustrativos.
 - `src/components/ItensPedido.tsx`, `src/utils/itens.ts` e `src/styles/itens.css`: seleção compartilhada de sabores, total e resumo confirmado.
 - `src/styles/`: tokens visuais e CSS mobile-first, sem bibliotecas de UI.
-- `public/images/`: ilustração provisória, sem dependência de imagem externa.
+- `public/images/`: hero WebP responsivo e ornamentos SVG em `decor/`, sem dependência de imagens externas; a ilustração SVG anterior permanece disponível.
 
 A navegação fica visível no celular, sem menu expansível nesta etapa. HTML semântico, foco visível, link para pular ao conteúdo e respeito a movimento reduzido dão uma base acessível. Os contatos usam detalhes expansíveis nativos enquanto os dados não forem confirmados; não simulam envio ou reserva.
 

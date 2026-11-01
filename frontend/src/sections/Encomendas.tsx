@@ -123,6 +123,7 @@ export function Encomendas() {
           <h2 id="encomendas-title">Faça sua encomenda <span aria-hidden="true">♡</span></h2>
           <p>Escolha o dia. A gente cuida do carinho em forma de bolo.</p>
         </header>
+        <p className="recipe-note">Do nosso forno para os seus momentos especiais. <span aria-hidden="true">♡</span></p>
         <ul className="order-rules">
           <li><span aria-hidden="true">◷</span><p>Peça com pelo menos <strong>um dia de antecedência</strong>.</p></li>
           <li><span aria-hidden="true">♡</span><p>Preparamos até <strong>cinco bolos por dia</strong>.</p></li>

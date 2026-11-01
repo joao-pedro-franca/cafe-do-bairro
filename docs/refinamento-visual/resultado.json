@@ -1,0 +1,164 @@
+{
+  "larguras": [
+    {
+      "largura": 360,
+      "documento": 360,
+      "corLinkCabecalho": "rgb(57, 38, 30)",
+      "transbordamentos": []
+    },
+    {
+      "largura": 390,
+      "documento": 390,
+      "corLinkCabecalho": "rgb(57, 38, 30)",
+      "transbordamentos": []
+    },
+    {
+      "largura": 768,
+      "documento": 768,
+      "corLinkCabecalho": "rgb(57, 38, 30)",
+      "transbordamentos": []
+    },
+    {
+      "largura": 1280,
+      "documento": 1280,
+      "corLinkCabecalho": "rgb(57, 38, 30)",
+      "transbordamentos": []
+    },
+    {
+      "estado": "formulario",
+      "largura": 360,
+      "documento": 360,
+      "corLinkCabecalho": "rgb(57, 38, 30)",
+      "transbordamentos": []
+    },
+    {
+      "estado": "formulario",
+      "largura": 390,
+      "documento": 390,
+      "corLinkCabecalho": "rgb(57, 38, 30)",
+      "transbordamentos": []
+    },
+    {
+      "estado": "formulario",
+      "largura": 768,
+      "documento": 768,
+      "corLinkCabecalho": "rgb(57, 38, 30)",
+      "transbordamentos": []
+    },
+    {
+      "estado": "formulario",
+      "largura": 1280,
+      "documento": 1280,
+      "corLinkCabecalho": "rgb(57, 38, 30)",
+      "transbordamentos": []
+    }
+  ],
+  "passos": [
+    "Landing e âncoras nas quatro larguras",
+    "Data real, saldo 3/2, validação, quantidade e preservação da gaveta",
+    "POST único 201, gravação em SQLite e saldo final zero",
+    "Dia lotado bloqueia seleção de bolos",
+    "409 real atualiza saldo e permite corrigir quantidade sem perder dados",
+    "Contato em demonstração, rodapé e login /admin sem expor pedidos",
+    "Preferência de movimento reduzido respeitada",
+    "Persistência após reabrir SQLite e listagem administrativa negada"
+  ],
+  "acessibilidade": [
+    {
+      "passo": "landing-360",
+      "violacoes": []
+    },
+    {
+      "passo": "landing-390",
+      "violacoes": []
+    },
+    {
+      "passo": "landing-768",
+      "violacoes": []
+    },
+    {
+      "passo": "landing-1280",
+      "violacoes": []
+    },
+    {
+      "passo": "formulario-erros-390",
+      "violacoes": []
+    },
+    {
+      "passo": "formulario-preenchido-360",
+      "violacoes": []
+    },
+    {
+      "passo": "formulario-preenchido-390",
+      "violacoes": []
+    },
+    {
+      "passo": "formulario-preenchido-768",
+      "violacoes": []
+    },
+    {
+      "passo": "formulario-preenchido-1280",
+      "violacoes": []
+    },
+    {
+      "passo": "formulario-preenchido-1280",
+      "violacoes": []
+    },
+    {
+      "passo": "confirmacao-1280",
+      "violacoes": []
+    },
+    {
+      "passo": "login-admin-390",
+      "violacoes": []
+    }
+  ],
+  "console": [
+    {
+      "mensagem": "Failed to load resource: the server responded with a status of 409 (Conflict)",
+      "local": {
+        "url": "http://127.0.0.1:58793/api/encomendas",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "mensagem": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "local": {
+        "url": "http://127.0.0.1:58793/api/admin/sessao",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    },
+    {
+      "mensagem": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "local": {
+        "url": "http://127.0.0.1:58793/api/admin/sessao",
+        "line": 0,
+        "column": 0,
+        "lineNumber": 0,
+        "columnNumber": 0
+      }
+    }
+  ],
+  "errosPagina": [],
+  "falhasRede": [],
+  "errosHttp": [
+    {
+      "url": "/api/encomendas",
+      "status": 409
+    },
+    {
+      "url": "/api/admin/sessao",
+      "status": 401
+    },
+    {
+      "url": "/api/admin/sessao",
+      "status": 401
+    }
+  ]
+}
