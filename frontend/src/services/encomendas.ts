@@ -1,4 +1,7 @@
 import type { DadosEncomenda } from '../utils/encomenda'
+import { itensConfirmados, totalBolos } from '../utils/itens.ts'
+import type { ItemEncomenda } from '../utils/itens'
+export interface PedidoConfirmado { id: number; status: 'recebida'; itens: ItemEncomenda[]; totalBolos: number }
 
 export class ErroEncomenda extends Error {
   status: number | undefined
@@ -10,7 +13,7 @@ export class ErroEncomenda extends Error {
 
 const resultadoIncerto = 'Não foi possível obter a confirmação. O pedido pode ter sido recebido; confira com o café antes de enviar novamente.'
 
-export async function criarEncomenda(dados: DadosEncomenda): Promise<{ id: number; status: 'recebida' }> {
+export async function criarEncomenda(dados: DadosEncomenda): Promise<PedidoConfirmado> {
   let resposta: Response
   try {
     resposta = await fetch('/api/encomendas', {
@@ -21,9 +24,8 @@ export async function criarEncomenda(dados: DadosEncomenda): Promise<{ id: numbe
       signal: AbortSignal.timeout(20_000),
       body: JSON.stringify({
         nomeCliente: dados.nomeCliente.trim(), telefone: dados.telefone,
-        produto: dados.produto, dataEntrega: dados.dataEntrega,
+        itens: dados.itens, dataEntrega: dados.dataEntrega,
         incluirPaoDeQueijo: dados.incluirPaoDeQueijo,
-        quantidadeBolos: dados.quantidadeBolos,
       }),
     })
   } catch {
@@ -41,10 +43,11 @@ export async function criarEncomenda(dados: DadosEncomenda): Promise<{ id: numbe
   }
   if (resposta.status !== 201 || !corpo || typeof corpo !== 'object' || !('id' in corpo)
     || typeof corpo.id !== 'number' || !Number.isSafeInteger(corpo.id) || corpo.id < 1
-    || !('status' in corpo) || corpo.status !== 'recebida') {
+    || !('status' in corpo) || corpo.status !== 'recebida'
+    || !('itens' in corpo) || !itensConfirmados(corpo.itens) || !('totalBolos' in corpo) || corpo.totalBolos !== totalBolos(corpo.itens)) {
     throw new ErroEncomenda(resultadoIncerto, resposta.status)
   }
-  return { id: corpo.id, status: 'recebida' }
+  return { id: corpo.id, status: 'recebida', itens: corpo.itens, totalBolos: corpo.totalBolos as number }
 }
 
 export interface Disponibilidade {

@@ -2,11 +2,11 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { criarEncomenda, consultarDisponibilidade, ErroEncomenda } from '../src/services/encomendas.ts'
 
-const dados = { nomeCliente: 'Cliente de Teste', telefone: '(73) 99999-9999', produto: 'bolo-cenoura', dataEntrega: '2099-12-25', incluirPaoDeQueijo: true, quantidadeBolos: 1 }
+const dados = { nomeCliente: 'Cliente de Teste', telefone: '(73) 99999-9999', dataEntrega: '2099-12-25', incluirPaoDeQueijo: true, itens: [{ produto: 'bolo-cenoura', quantidade: 1 }] }
 
 test('POST público envia quantidade e demais campos sem credenciais e aceita somente 201 com ID/status válidos', async (t) => {
-  const chamada = t.mock.method(globalThis, 'fetch', async () => Response.json({ id: 42, status: 'recebida' }, { status: 201 }))
-  assert.deepEqual(await criarEncomenda(dados), { id: 42, status: 'recebida' })
+  const chamada = t.mock.method(globalThis, 'fetch', async () => Response.json({ id: 42, status: 'recebida', itens: dados.itens, totalBolos: 1 }, { status: 201 }))
+  assert.deepEqual(await criarEncomenda(dados), { id: 42, status: 'recebida', itens: dados.itens, totalBolos: 1 })
   const [url, opcoes] = chamada.mock.calls[0].arguments
   assert.equal(url, '/api/encomendas')
   assert.equal(opcoes.method, 'POST')

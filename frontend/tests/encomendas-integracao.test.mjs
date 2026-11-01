@@ -18,7 +18,7 @@ const { createRoot } = await import('react-dom/client')
 
 let vite, servidorApi, repo, componente, raiz, container, base
 let interceptor
-const dados = { nomeCliente: 'Cliente de Teste', telefone: '(73) 99999-9999', produto: 'bolo-cenoura', dataEntrega: '2099-12-25', incluirPaoDeQueijo: true, quantidadeBolos: 1 }
+const dados = { nomeCliente: 'Cliente de Teste', telefone: '(73) 99999-9999', dataEntrega: '2099-12-25', incluirPaoDeQueijo: true, itens: [{ produto: 'bolo-cenoura', quantidade: 1 }] }
 
 before(async () => {
   repo = abrirEncomendas(':memory:')
@@ -79,7 +79,9 @@ async function preencher(campo, valor) {
 async function preencherTudo() {
   await preencher('dataEntrega', dados.dataEntrega)
   await esperar(() => container.querySelector('.availability-summary'))
-  for (const [campo, valor] of Object.entries(dados)) if (campo !== 'dataEntrega') await preencher(campo, valor)
+  for (const [campo, valor] of Object.entries(dados)) if (!['dataEntrega', 'itens'].includes(campo)) await preencher(campo, valor)
+  await preencher('itens[0].produto', dados.itens[0].produto)
+  await preencher('itens[0].quantidade', dados.itens[0].quantidade)
 }
 function dispararEnvio() { container.querySelector('form').dispatchEvent(new janela.Event('submit', { bubbles: true, cancelable: true })) }
 async function enviar() { await act(async () => dispararEnvio()) }
@@ -107,7 +109,7 @@ test('validação local impede POST e a gaveta preserva preenchimento ao fechar/
   await enviar()
   assert.equal(chamadas, 0)
   assert(container.querySelector('#erro-telefone'))
-  assert(container.querySelector('#erro-produto'))
+  assert(container.querySelector('#pedido-itens-erro'))
   assert.equal(container.querySelector('#erro-dataEntrega'), null)
 })
 
@@ -154,22 +156,22 @@ test('formulário → proxy Vite → API → SQLite: só confirma depois do 201 
 
 test('409 real atualiza o saldo e permite reduzir quantidade sem perder contato e adicional', async () => {
   await preencherTudo()
-  await preencher('quantidadeBolos', 3)
-  repo.criar({ ...dados, quantidadeBolos: 3 }, () => new Date())
+  await preencher('itens[0].quantidade', 3)
+  repo.criar({ ...dados, itens: [{ produto: 'bolo-cenoura', quantidade: 3 }] }, () => new Date())
   await enviar()
   await esperar(() => container.querySelector('.form-api-error'))
-  await esperar(() => container.querySelector('#erro-quantidadeBolos'))
+  await esperar(() => container.querySelector('#pedido-itens-erro'))
   assert(container.querySelector('.form-api-error').textContent.includes('disponibilidade mudou'))
   assert.equal(container.querySelector('.availability-summary > div:last-child dd').textContent, '2')
   assert(!container.textContent.includes('confirmada!'))
   assert.equal(container.querySelector('[name="nomeCliente"]').value, dados.nomeCliente)
   assert.equal(container.querySelector('[name="incluirPaoDeQueijo"]').checked, true)
-  await clicar(container.querySelector('[aria-label="Diminuir quantidade de bolos"]'))
-  assert.equal(container.querySelector('[name="quantidadeBolos"]').value, '2')
+  await clicar(container.querySelector('[aria-label="Diminuir quantidade do sabor 1"]'))
+  assert.equal(container.querySelector('[name="itens[0].quantidade"]').value, '2')
   await enviar()
   await esperar(() => container.textContent.includes('confirmada!'))
   assert.equal(repo.listar().length, 2)
-  assert.equal(repo.listar().reduce((total, item) => total + item.quantidadeBolos, 0), 5)
+  assert.equal(repo.listar().reduce((total, item) => total + item.totalBolos, 0), 5)
   assert.equal(container.querySelector('.form-api-error'), null)
 })
 
@@ -207,25 +209,25 @@ test('o proxy não libera leituras administrativas da API', async () => {
 })
 
 test('três bolos reservados deixam dois disponíveis e os botões respeitam esse limite', async () => {
-  repo.criar({ ...dados, quantidadeBolos: 3 }, () => new Date())
+  repo.criar({ ...dados, itens: [{ produto: 'bolo-cenoura', quantidade: 3 }] }, () => new Date())
   await preencher('dataEntrega', dados.dataEntrega)
   await esperar(() => container.querySelector('.availability-summary'))
   assert.deepEqual([...container.querySelectorAll('.availability-summary dd')].map((item) => item.textContent), ['5 bolos', '3', '2'])
   assert(!container.querySelector('.order-details').hidden)
-  const aumentar = container.querySelector('[aria-label="Aumentar quantidade de bolos"]')
+  const aumentar = container.querySelector('[aria-label="Aumentar quantidade do sabor 1"]')
   await clicar(aumentar)
-  assert.equal(container.querySelector('[name="quantidadeBolos"]').value, '2')
+  assert.equal(container.querySelector('[name="itens[0].quantidade"]').value, '2')
   assert(aumentar.disabled)
   await clicar(aumentar)
-  assert.equal(container.querySelector('[name="quantidadeBolos"]').value, '2')
-  await clicar(container.querySelector('[aria-label="Diminuir quantidade de bolos"]'))
-  assert.equal(container.querySelector('[name="quantidadeBolos"]').value, '1')
-  assert(container.querySelector('[aria-label="Diminuir quantidade de bolos"]').disabled)
+  assert.equal(container.querySelector('[name="itens[0].quantidade"]').value, '2')
+  await clicar(container.querySelector('[aria-label="Diminuir quantidade do sabor 1"]'))
+  assert.equal(container.querySelector('[name="itens[0].quantidade"]').value, '1')
+  assert(container.querySelector('[aria-label="Diminuir quantidade do sabor 1"]').disabled)
   assert.equal(repo.listar().length, 1) // Consultar não reserva nada.
 })
 
 test('dia lotado mantém somente a escolha da data; outro dia libera o formulário', async () => {
-  repo.criar({ ...dados, quantidadeBolos: 5 }, () => new Date())
+  repo.criar({ ...dados, itens: [{ produto: 'bolo-cenoura', quantidade: 5 }] }, () => new Date())
   await preencher('dataEntrega', dados.dataEntrega)
   await esperar(() => container.querySelector('.availability-full'))
   assert(container.querySelector('.order-details').hidden)
@@ -254,7 +256,7 @@ test('consulta exibe carregamento e erro com nova tentativa, sem liberar confirm
 })
 
 test('resposta atrasada da data anterior não substitui o saldo da data escolhida', async () => {
-  repo.criar({ ...dados, dataEntrega: '2099-12-26', quantidadeBolos: 4 }, () => new Date())
+  repo.criar({ ...dados, dataEntrega: '2099-12-26', itens: [{ produto: 'bolo-cenoura', quantidade: 4 }] }, () => new Date())
   let liberar
   const espera = new Promise((resolver) => { liberar = resolver })
   let sinalAntigo
@@ -283,4 +285,33 @@ test('data inválida não consulta disponibilidade e não permite enviar', async
   assert.equal(chamadas, 0)
   assert(container.querySelector('#erro-dataEntrega'))
   assert(container.querySelector('.order-details').hidden)
+})
+
+test('vários sabores, soma, remoção e resumo confirmado usam os itens retornados pelo servidor', async () => {
+  await preencherTudo()
+  await clicar(container.querySelector('[aria-label="Aumentar quantidade do sabor 1"]'))
+  await clicar([...container.querySelectorAll('button')].find((b) => b.textContent === 'Adicionar sabor'))
+  assert.equal(document.activeElement?.id, 'pedido-itens-sabor-1')
+  const segundo = container.querySelector('[name="itens[1].produto"]')
+  assert.equal(segundo.value, 'bolo-chocolate')
+  assert([...segundo.options].find((o) => o.value === 'bolo-cenoura').disabled)
+  assert(container.querySelector('.items-total').textContent.includes('3 bolo(s)'))
+  await clicar(container.querySelector('[aria-label="Remover sabor 2"]'))
+  assert(container.querySelector('.items-total').textContent.includes('2 bolo(s)'))
+  await clicar([...container.querySelectorAll('button')].find((b) => b.textContent === 'Adicionar sabor'))
+  await enviar()
+  await esperar(() => container.textContent.includes('confirmada!'))
+  assert.deepEqual(repo.listar()[0].itens, [{ produto: 'bolo-cenoura', quantidade: 2 }, { produto: 'bolo-chocolate', quantidade: 1 }])
+  assert.equal(repo.listar()[0].totalBolos, 3)
+  assert(container.querySelector('.form-result').textContent.includes('2 × Bolo de cenoura'))
+  assert(container.querySelector('.form-result').textContent.includes('1 × Bolo de chocolate'))
+})
+
+test('remover todos os sabores impede confirmar com total zero', async () => {
+  await preencherTudo()
+  await clicar(container.querySelector('[aria-label="Remover sabor 1"]'))
+  assert(container.querySelector('[type="submit"]').disabled)
+  await enviar()
+  assert.equal(repo.listar().length, 0)
+  assert(container.textContent.includes('Adicione pelo menos um sabor'))
 })

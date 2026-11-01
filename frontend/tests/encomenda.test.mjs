@@ -3,10 +3,7 @@ import test from 'node:test'
 import { cafeConfig } from '../src/data/cafeConfig.ts'
 import { dataMinimaEncomenda, formatarTelefone, produtoEncomendavel, telefoneValido, validarEncomenda } from '../src/utils/encomenda.ts'
 
-const dadosValidos = {
-  nomeCliente: 'Cliente de Teste', telefone: '(73) 99999-9999', produto: 'bolo-cenoura',
-  dataEntrega: '2026-11-01', incluirPaoDeQueijo: false, quantidadeBolos: 1,
-}
+const dadosValidos = { nomeCliente: 'Cliente de Teste', telefone: '(73) 99999-9999', dataEntrega: '2026-11-01', incluirPaoDeQueijo: false, itens: [{ produto: 'bolo-cenoura', quantidade: 1 }] }
 const validar = (alteracoes = {}, minima = '2026-11-01') => validarEncomenda({ ...dadosValidos, ...alteracoes }, cafeConfig.produtos, minima)
 
 test('a data mínima segue o calendário do café, inclusive perto da meia-noite UTC', () => {
@@ -21,7 +18,7 @@ test('amanhã funciona na virada do ano e em ano bissexto', () => {
 })
 
 test('campos obrigatórios vazios apresentam quatro erros', () => {
-  assert.deepEqual(Object.keys(validar({ nomeCliente: ' ', telefone: '', produto: '', dataEntrega: '' })), ['nomeCliente', 'telefone', 'produto', 'dataEntrega'])
+  assert.deepEqual(Object.keys(validar({ nomeCliente: ' ', telefone: '', dataEntrega: '', itens: [{ produto: '', quantidade: 1 }] })), ['nomeCliente', 'telefone', 'itens', 'dataEntrega'])
   assert(validar({ nomeCliente: 'Cliente' }).nomeCliente)
 })
 
@@ -50,8 +47,8 @@ test('aceita amanhã e datas futuras, rejeita hoje, passado e calendário invál
 
 test('somente os seis bolos são produtos principais; café, dúzia e Natal não entram no seletor', () => {
   assert.equal(cafeConfig.produtos.filter(produtoEncomendavel).length, 6)
-  for (const produto of ['cafe-coado', 'cafe-leite', 'pao-queijo', 'panetone', 'bolo-natal', 'inexistente']) assert(validar({ produto }).produto)
-  for (const produto of cafeConfig.produtos.filter(produtoEncomendavel)) assert.deepEqual(validar({ produto: produto.id }), {})
+  for (const produto of ['cafe-coado', 'cafe-leite', 'pao-queijo', 'panetone', 'bolo-natal', 'inexistente']) assert(validar({ itens: [{ produto: produto, quantidade: 1 }] }).itens)
+  for (const produto of cafeConfig.produtos.filter(produtoEncomendavel)) assert.deepEqual(validar({ itens: [{ produto: produto.id, quantidade: 1 }] }), {})
 })
 
 test('adicional opcional não impede a validação de um bolo', () => {
@@ -59,7 +56,7 @@ test('adicional opcional não impede a validação de um bolo', () => {
 })
 
 test('quantidade deve ser inteira positiva e caber na disponibilidade consultada', () => {
-  for (const quantidadeBolos of [0, -1, 1.5, NaN]) assert(validar({ quantidadeBolos }).quantidadeBolos)
-  assert(validarEncomenda({ ...dadosValidos, quantidadeBolos: 3 }, cafeConfig.produtos, '2026-11-01', 2).quantidadeBolos)
-  assert.deepEqual(validarEncomenda({ ...dadosValidos, quantidadeBolos: 2 }, cafeConfig.produtos, '2026-11-01', 2), {})
+  for (const quantidadeBolos of [0, -1, 1.5, NaN]) assert(validar({ itens: [{ produto: 'bolo-cenoura', quantidade: quantidadeBolos }] }).itens)
+  assert(validarEncomenda({ ...dadosValidos, itens: [{ produto: 'bolo-cenoura', quantidade: 3 }] }, cafeConfig.produtos, '2026-11-01', 2).itens)
+  assert.deepEqual(validarEncomenda({ ...dadosValidos, itens: [{ produto: 'bolo-cenoura', quantidade: 2 }] }, cafeConfig.produtos, '2026-11-01', 2), {})
 })

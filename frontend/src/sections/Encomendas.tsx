@@ -3,15 +3,17 @@ import type { FormEvent } from 'react'
 import { cafeConfig } from '../data/cafeConfig'
 import { useDisponibilidade } from '../hooks/useDisponibilidade'
 import { criarEncomenda, ErroEncomenda } from '../services/encomendas'
-import { dataMinimaEncomenda, erroDataEntrega, formatarTelefone, produtoEncomendavel, validarEncomenda } from '../utils/encomenda'
+import { dataMinimaEncomenda, erroDataEntrega, formatarTelefone, validarEncomenda } from '../utils/encomenda'
+import { ItensPedido, ResumoItens } from '../components/ItensPedido'
+import { totalBolos } from '../utils/itens'
+import type { PedidoConfirmado } from '../services/encomendas'
 import type { CampoEncomenda, DadosEncomenda, ErrosEncomenda } from '../utils/encomenda'
 import '../styles/encomendas.css'
 
-const produtosPrincipais = cafeConfig.produtos.filter(produtoEncomendavel)
 const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
-const dadosIniciais: DadosEncomenda = { nomeCliente: '', telefone: '', produto: '', dataEntrega: '', incluirPaoDeQueijo: false, quantidadeBolos: 1 }
+const dadosIniciais: DadosEncomenda = { nomeCliente: '', telefone: '', itens: [{ produto: '', quantidade: 1 }], dataEntrega: '', incluirPaoDeQueijo: false }
 const rotulos: Record<CampoEncomenda, string> = {
-  dataEntrega: 'Data desejada', produto: 'Produto', quantidadeBolos: 'Quantidade de bolos', nomeCliente: 'Nome completo', telefone: 'Telefone/WhatsApp',
+  dataEntrega: 'Data desejada', itens: 'Sabores e quantidades', nomeCliente: 'Nome completo', telefone: 'Telefone/WhatsApp',
 }
 
 export function Encomendas() {
@@ -20,7 +22,7 @@ export function Encomendas() {
   const [erros, setErros] = useState<ErrosEncomenda>({})
   const [erroApi, setErroApi] = useState('')
   const [enviando, setEnviando] = useState(false)
-  const [pedidoConfirmado, setPedidoConfirmado] = useState<number | null>(null)
+  const [pedidoConfirmado, setPedidoConfirmado] = useState<PedidoConfirmado | null>(null)
   const bloqueioEnvio = useRef(false)
   const [dataMinima, setDataMinima] = useState(() => dataMinimaEncomenda(cafeConfig.fusoHorario))
   const botaoRef = useRef<HTMLButtonElement>(null)
@@ -30,11 +32,10 @@ export function Encomendas() {
   const consulta = useDisponibilidade(dados.dataEntrega && !erroData ? dados.dataEntrega : null)
   const { saldo } = consulta
   const podePreencher = Boolean(saldo && saldo.quantidadeDisponivel > 0) || pedidoConfirmado !== null
-  const erroQuantidade = erros.quantidadeBolos || (saldo && dados.quantidadeBolos > saldo.quantidadeDisponivel && pedidoConfirmado === null
-    ? `Restam ${saldo.quantidadeDisponivel} bolo(s). Ajuste a quantidade ou escolha outra data.` : undefined)
-  const selecionado = produtosPrincipais.find((produto) => produto.id === dados.produto)
-  const adicional = cafeConfig.produtos.find((produto) => produto.encomenda.tipo === 'acompanhamento'
-    && !produto.sazonalidade && produto.encomenda.categoriaPrincipal === selecionado?.categoria)
+  const total = totalBolos(dados.itens)
+  const erroItens = erros.itens || (saldo && total > saldo.quantidadeDisponivel && pedidoConfirmado === null
+    ? `Restam ${saldo.quantidadeDisponivel} bolo(s). Ajuste os itens ou escolha outra data.` : undefined)
+  const adicional = cafeConfig.produtos.find((produto) => produto.encomenda.tipo === 'acompanhamento' && !produto.sazonalidade)
   const acompanhamento = adicional?.encomenda.tipo === 'acompanhamento' ? adicional.encomenda : null
   const camposComErro = (Object.keys(rotulos) as CampoEncomenda[]).filter((campo) => erros[campo])
 
@@ -60,13 +61,10 @@ export function Encomendas() {
     setDataMinima(dataMinimaEncomenda(cafeConfig.fusoHorario))
     setAberto(true)
   }
-  function atualizar(campo: CampoEncomenda, valor: string | number) {
+  function atualizar(campo: Exclude<CampoEncomenda, 'itens'>, valor: string) {
     setDados((atual) => ({ ...atual, [campo]: valor }))
     setErros((atuais) => campo === 'dataEntrega' ? {} : { ...atuais, [campo]: undefined })
     setErroApi('')
-  }
-  function mudarQuantidade(valor: number) {
-    if (saldo && saldo.quantidadeDisponivel > 0) atualizar('quantidadeBolos', Math.max(1, Math.min(saldo.quantidadeDisponivel, valor)))
   }
   async function confirmar(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault()
@@ -98,7 +96,7 @@ export function Encomendas() {
     try {
       const pedido = await criarEncomenda(dados)
       confirmado = true
-      setPedidoConfirmado(pedido.id)
+      setPedidoConfirmado(pedido)
       consulta.atualizar()
     } catch (erro) {
       setErroApi(erro instanceof ErroEncomenda ? erro.message : 'Não foi possível obter a confirmação. Confira com o café antes de reenviar.')
@@ -174,27 +172,12 @@ export function Encomendas() {
               <div className="order-details" hidden={!podePreencher}>
                 <fieldset className="order-form-fields" disabled={enviando || pedidoConfirmado !== null} aria-busy={enviando}>
                   <legend className="visually-hidden">Bolos e contato</legend>
+                  <ItensPedido prefixo="pedido-itens" itens={dados.itens} limite={pedidoConfirmado?.totalBolos ?? saldo?.quantidadeDisponivel ?? 5} erro={erroItens} alterar={(itens) => {
+                    setDados((atual) => ({ ...atual, itens }))
+                    setErros((atuais) => ({ ...atuais, itens: undefined }))
+                    setErroApi('')
+                  }} />
                   <div className="order-fields">
-                    <div className="order-field">
-                      <label htmlFor="pedido-produto">Bolo escolhido <span aria-hidden="true">*</span></label>
-                      <select id="pedido-produto" name="produto" required value={dados.produto} onChange={(e) => atualizar('produto', e.target.value)} aria-invalid={Boolean(erros.produto)} aria-describedby={`produto-ajuda${erros.produto ? ' erro-produto' : ''}`}>
-                        <option value="">Selecione um bolo</option>
-                        {produtosPrincipais.map((produto) => <option key={produto.id} value={produto.id}>{produto.nome}</option>)}
-                      </select>
-                      <p className="field-hint" id="produto-ajuda">{selecionado ? `${moeda.format(selecionado.preco)} por bolo · ${selecionado.tamanho}` : 'Selecione um sabor para ver o preço por bolo.'}</p>
-                      {erros.produto && <p className="field-error" id="erro-produto">{erros.produto}</p>}
-                    </div>
-                    <div className="order-field">
-                      <label htmlFor="pedido-quantidadeBolos">Quantidade de bolos <span aria-hidden="true">*</span></label>
-                      <div className="quantity-stepper">
-                        <button type="button" aria-label="Diminuir quantidade de bolos" disabled={dados.quantidadeBolos <= 1} onClick={() => mudarQuantidade(dados.quantidadeBolos - 1)}>−</button>
-                        <input id="pedido-quantidadeBolos" name="quantidadeBolos" type="number" inputMode="numeric" required min={1} max={pedidoConfirmado !== null ? dados.quantidadeBolos : saldo?.quantidadeDisponivel ?? 1} step={1} value={dados.quantidadeBolos}
-                          onChange={(e) => atualizar('quantidadeBolos', Number(e.target.value))} aria-invalid={Boolean(erroQuantidade)} aria-describedby={`quantidade-ajuda${erroQuantidade ? ' erro-quantidadeBolos' : ''}`} />
-                        <button type="button" aria-label="Aumentar quantidade de bolos" disabled={!saldo || dados.quantidadeBolos >= saldo.quantidadeDisponivel} onClick={() => mudarQuantidade(dados.quantidadeBolos + 1)}>+</button>
-                      </div>
-                      <p className="field-hint" id="quantidade-ajuda">Bolos do mesmo sabor. {pedidoConfirmado !== null ? 'Quantidade registrada no pedido.' : saldo ? `Até ${saldo.quantidadeDisponivel} disponíveis nesta consulta.` : ''}</p>
-                      {erroQuantidade && <p className="field-error" id="erro-quantidadeBolos">{erroQuantidade}</p>}
-                    </div>
                     <div className="order-field">
                       <label htmlFor="pedido-nomeCliente">Nome completo <span aria-hidden="true">*</span></label>
                       <input id="pedido-nomeCliente" name="nomeCliente" autoComplete="name" required maxLength={100} value={dados.nomeCliente} onChange={(e) => atualizar('nomeCliente', e.target.value)} aria-invalid={Boolean(erros.nomeCliente)} aria-describedby={erros.nomeCliente ? 'erro-nomeCliente' : undefined} />
@@ -218,12 +201,12 @@ export function Encomendas() {
               <div className="form-actions">
                 {pedidoConfirmado !== null
                   ? <button className="button button-primary" type="button" onClick={novaEncomenda}>Fazer outra encomenda</button>
-                  : podePreencher && <button className="button button-primary" type="submit" disabled={enviando || Boolean(erroQuantidade)}>{enviando ? 'Enviando encomenda…' : 'Confirmar encomenda'}</button>}
+                  : podePreencher && <button className="button button-primary" type="submit" disabled={enviando || !Number.isFinite(total) || total < 1 || Boolean(erroItens)}>{enviando ? 'Enviando encomenda…' : 'Confirmar encomenda'}</button>}
                 <button className="button button-secondary" type="button" onClick={fechar}>Fechar e manter os dados</button>
               </div>
               <div className="form-result" role="status" aria-live="polite">
                 {enviando && <p>Enviando sua encomenda. Aguarde a confirmação.</p>}
-                {pedidoConfirmado !== null && <p><strong>Encomenda nº {pedidoConfirmado} confirmada!</strong> Reservamos {dados.quantidadeBolos} bolo(s) para a data escolhida. O pagamento será realizado na retirada.</p>}
+                {pedidoConfirmado !== null && <div><p><strong>Encomenda nº {pedidoConfirmado.id} confirmada!</strong> Reservamos {pedidoConfirmado.totalBolos} bolo(s) para a data escolhida. O pagamento será realizado na retirada.</p><ResumoItens itens={pedidoConfirmado.itens} /></div>}
               </div>
               {erroApi && <p className="form-api-error" role="alert">{erroApi}</p>}
               <p className="field-hint">Fechar mantém seu preenchimento. Recarregar apaga o rascunho, mas não cancela encomendas já confirmadas.</p>

@@ -1,0 +1,14 @@
+.order-items { min-width: 0; margin-block: 1rem; }
+.order-items h4 { margin: 0 0 1rem; font: 700 1.2rem/1.4 var(--serif); }
+.order-item { display: grid; gap: 1rem; padding: 1rem; margin-bottom: 1rem; border: 1px dashed var(--coffee); border-radius: var(--radius); min-width: 0; }
+.order-item > div { min-width: 0; }
+.order-item label { display: block; font-weight: 700; margin-bottom: .4rem; }
+.order-item :is(select, input) { width: 100%; min-width: 0; min-height: 48px; padding: .65rem; font: inherit; border: 1px solid var(--coffee); border-radius: .4rem; background: #fffaf2; color: var(--chocolate); }
+.order-items .quantity-stepper { display: flex; gap: .5rem; min-width: 0; }
+.order-items .quantity-stepper input { text-align: center; flex: 1; width: 0; }
+.order-items .quantity-stepper button { flex: 0 0 44px; min-height: 48px; border: 1px solid var(--coffee); border-radius: .4rem; background: var(--paper); color: var(--chocolate); font: inherit; cursor: pointer; }
+.order-items .button { width: 100%; cursor: pointer; }
+.items-total { padding-block: 1rem; color: var(--coffee); }
+.items-summary { margin-block: .5rem; padding-left: 1.3rem; }
+.order-items :is(button, input, select):focus-visible { outline: 3px solid var(--coffee); outline-offset: 3px; }
+.order-items button:disabled { opacity: .6; cursor: default; }
