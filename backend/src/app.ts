@@ -1,4 +1,5 @@
 import express from 'express'
+import { randomUUID } from 'node:crypto'
 import type { ErrorRequestHandler } from 'express'
 import type { RepositorioEncomendas } from './database/encomendas.ts'
 import { ApiError } from './errors.ts'
@@ -8,11 +9,30 @@ import { rotasProdutos } from './routes/produtos.ts'
 import { criarAutenticacao } from './auth/admin.ts'
 import type { ConfigAdmin } from './auth/admin.ts'
 
+function rotaDoRegistro(caminho: string) {
+  // Só modelos conhecidos entram no log; nunca copiar URL, query ou IDs recebidos.
+  const fixas = ['/api/encomendas', '/api/produtos', '/api/admin/produtos', '/api/disponibilidade', '/api/admin/login', '/api/admin/logout', '/api/admin/sessao']
+  const normalizado = caminho.replace(/\/$/, '')
+  if (fixas.includes(normalizado)) return normalizado
+  if (/^\/api\/encomendas\/[^/]+\/?$/.test(caminho)) return '/api/encomendas/:id'
+  if (/^\/api\/admin\/produtos\/[^/]+\/?$/.test(caminho)) return '/api/admin/produtos/:id'
+  return 'rota-desconhecida'
+}
+
+function categoriaDoErro(erro: unknown) {
+  if (typeof (erro as { errcode?: unknown })?.errcode === 'number') return 'SQLiteError'
+  if (erro instanceof TypeError) return 'TypeError'
+  if (erro instanceof RangeError) return 'RangeError'
+  if (erro instanceof SyntaxError) return 'SyntaxError'
+  return erro instanceof Error ? 'Error' : 'ErroDesconhecido'
+}
+
 export function criarApp(repo: RepositorioEncomendas, opcoes: { agora?: () => Date; adminToken?: string; admin?: ConfigAdmin } = {}) {
   const app = express()
   const auth = criarAutenticacao(opcoes.admin, opcoes.adminToken, opcoes.agora)
   app.disable('x-powered-by')
   app.use((_req, res, next) => {
+    res.locals.idRequisicao = randomUUID()
     res.set('Cache-Control', 'no-store')
     res.set('X-Content-Type-Options', 'nosniff')
     next()
@@ -30,7 +50,7 @@ export function criarApp(repo: RepositorioEncomendas, opcoes: { agora?: () => Da
   app.use('/api/disponibilidade', rotasDisponibilidade(repo, opcoes.agora ?? (() => new Date())))
   app.use('/api/encomendas', rotasEncomendas(repo, opcoes.agora ?? (() => new Date()), auth.proteger))
   app.use((_req, _res) => { throw new ApiError(404, 'Rota não encontrada.') })
-  const tratarErro: ErrorRequestHandler = (erro: unknown, _req, res, _next) => {
+  const tratarErro: ErrorRequestHandler = (erro: unknown, req, res, _next) => {
     if (erro instanceof ApiError) {
       res.status(erro.status).json({ erro: erro.message, ...(erro.codigo ? { codigo: erro.codigo } : {}) })
       return
@@ -45,7 +65,12 @@ export function criarApp(repo: RepositorioEncomendas, opcoes: { agora?: () => Da
       res.status(503).set('Retry-After', '1').json({ erro: 'O banco está ocupado. Tente novamente em instantes.' })
       return
     }
-    // Não enviar SQL, stack trace, token ou dados do pedido na resposta/log.
+    // Não incluir mensagem/stack do erro: podem conter SQL, segredos ou dados pessoais.
+    console.error(JSON.stringify({
+      evento: 'erro_inesperado', idRequisicao: res.locals.idRequisicao,
+      metodo: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS', 'PUT'].includes(req.method) ? req.method : 'OUTRO',
+      rota: rotaDoRegistro(req.path), categoria: categoriaDoErro(erro),
+    }))
     res.status(500).json({ erro: 'Não foi possível concluir a operação.' })
   }
   app.use(tratarErro)

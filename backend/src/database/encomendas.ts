@@ -154,8 +154,8 @@ export function abrirEncomendas(caminho: string, catalogo: CatalogoPrecos = CATA
     return (db.prepare('SELECT * FROM produto_disponibilidade').all() as { id: string; aceitaEncomendas: number; mesesPermitidos: string }[])
       .filter((linha) => produtoPorId(linha.id)).map((linha) => ({ id: linha.id, aceitaEncomendas: linha.aceitaEncomendas === 1, mesesPermitidos: JSON.parse(linha.mesesPermitidos) as number[] }))
   }
-  function exigirProduto(id: string, data: string) {
-    const config = configuracoes().find((c) => c.id === id)
+  function exigirProduto(id: string, data: string, configs: readonly ConfiguracaoProduto[]) {
+    const config = configs.find((c) => c.id === id)
     if (!config || !permitidoNaData(config, data)) throw new ApiError(409, `${produtoPorId(id)?.nome ?? id} não aceita encomendas para esse mês de retirada. Confira os produtos e a data.`, 'PRODUTO_INDISPONIVEL')
   }
   function conferirPao(itens: { produto: string }[], incluir: boolean) {
@@ -171,7 +171,10 @@ export function abrirEncomendas(caminho: string, catalogo: CatalogoPrecos = CATA
   return {
     fechar: () => db.close(),
     buscar,
-    listarProdutos: () => PRODUTOS.map((p) => produtoDisponivel(configuracoes().find((c) => c.id === p.id)!, catalogo)),
+    listarProdutos: () => {
+      const configs = configuracoes()
+      return PRODUTOS.map((p) => produtoDisponivel(configs.find((c) => c.id === p.id)!, catalogo))
+    },
     configurarProduto(id: string, valor: unknown) {
       if (!produtoPorId(id)) throw new ApiError(404, 'Produto não encontrado.')
       const config = validarConfiguracao(valor)
@@ -190,8 +193,9 @@ export function abrirEncomendas(caminho: string, catalogo: CatalogoPrecos = CATA
         const itens = validarItens(dados.itens)
         validarData(dados.dataEntrega, agora())
         conferirPao(itens, dados.incluirPaoDeQueijo)
-        for (const item of itens) exigirProduto(item.produto, dados.dataEntrega)
-        if (dados.incluirPaoDeQueijo) exigirProduto('pao-queijo', dados.dataEntrega)
+        const configs = configuracoes()
+        for (const item of itens) exigirProduto(item.produto, dados.dataEntrega, configs)
+        if (dados.incluirPaoDeQueijo) exigirProduto('pao-queijo', dados.dataEntrega, configs)
         exigirVaga(dados.dataEntrega, unidadesProducao(itens))
         const registro = db.prepare('INSERT INTO encomendas(nomeCliente, telefone, dataEntrega, incluirPaoDeQueijo, valorPaoDeQueijoCentavos) VALUES (?, ?, ?, ?, ?)')
           .run(dados.nomeCliente, dados.telefone, dados.dataEntrega, Number(dados.incluirPaoDeQueijo), dados.incluirPaoDeQueijo ? catalogo.paoDeQueijoCentavos : 0)
@@ -208,11 +212,13 @@ export function abrirEncomendas(caminho: string, catalogo: CatalogoPrecos = CATA
         const valorPaoDeQueijoCentavos = atual.incluirPaoDeQueijo ? (anterior.incluirPaoDeQueijo ? anterior.valorPaoDeQueijoCentavos : catalogo.paoDeQueijoCentavos) : 0
         conferirPao(itens, atual.incluirPaoDeQueijo)
         const mudaData = atual.dataEntrega !== anterior.dataEntrega
+        // Leitura local à transação, somente quando há elegibilidade a revalidar.
+        let configs: ConfiguracaoProduto[] | undefined
         for (const item of itens) {
           const antigo = anterior.itens.find((i) => i.produto === item.produto)
-          if (mudaData || !antigo || item.quantidade > antigo.quantidade) exigirProduto(item.produto, atual.dataEntrega)
+          if (mudaData || !antigo || item.quantidade > antigo.quantidade) exigirProduto(item.produto, atual.dataEntrega, configs ??= configuracoes())
         }
-        if (atual.incluirPaoDeQueijo && (mudaData || !anterior.incluirPaoDeQueijo)) exigirProduto('pao-queijo', atual.dataEntrega)
+        if (atual.incluirPaoDeQueijo && (mudaData || !anterior.incluirPaoDeQueijo)) exigirProduto('pao-queijo', atual.dataEntrega, configs ??= configuracoes())
         // Trocar composição sem mudar o total continua permitido em datas antigas.
         if (mudaData || unidadesItens(itens) !== unidadesItens(anterior.itens)) {
           validarData(atual.dataEntrega, agora())

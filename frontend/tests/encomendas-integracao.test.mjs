@@ -46,6 +46,7 @@ beforeEach(async () => {
   raiz = createRoot(container)
   await act(async () => raiz.render(createElement(componente)))
   await clicar(container.querySelector('.orders-toggle'))
+  await esperar(() => !catalogoCarregando())
 })
 
 afterEach(async () => {
@@ -81,14 +82,21 @@ async function preencher(campo, valor) {
 }
 async function preencherTudo() {
   await preencher('dataEntrega', dados.dataEntrega)
-  // O formulário depende das duas consultas independentes: saldo e catálogo.
-  await esperar(() => container.querySelector('.availability-summary') && !container.querySelector('.order-details').hidden && container.querySelector('[name="incluirPaoDeQueijo"]'))
+  await esperarConsultas()
   for (const [campo, valor] of Object.entries(dados)) if (!['dataEntrega', 'itens'].includes(campo)) await preencher(campo, valor)
   await preencher('itens[0].produto', dados.itens[0].produto)
   await preencher('itens[0].quantidade', dados.itens[0].quantidade)
 }
 function dispararEnvio() { container.querySelector('form').dispatchEvent(new janela.Event('submit', { bubbles: true, cancelable: true })) }
 async function enviar() { await act(async () => dispararEnvio()) }
+function catalogoCarregando() {
+  return [...container.querySelectorAll('[role="status"]')].some((elemento) => elemento.textContent === 'Consultando os produtos habilitados…')
+}
+async function esperarConsultas() {
+  // Saldo e catálogo terminam independentemente, inclusive após um conflito.
+  await esperar(() => container.querySelector('.availability[aria-busy="false"] .availability-summary')
+    && !catalogoCarregando() && !container.querySelector('.order-details').hidden)
+}
 async function esperar(condicao) {
   for (let i = 0; i < 200; i++) {
     await act(async () => { await new Promise((resolver) => setTimeout(resolver, 10)) })
@@ -103,7 +111,7 @@ test('validação local impede POST e a gaveta preserva preenchimento ao fechar/
   await enviar()
   assert(container.querySelector('#erro-dataEntrega'))
   await preencher('dataEntrega', dados.dataEntrega)
-  await esperar(() => container.querySelector('.availability-summary'))
+  await esperarConsultas()
   let chamadas = 0
   interceptor = async () => { chamadas++; throw new Error('Não deveria enviar') }
   await preencher('nomeCliente', dados.nomeCliente)
@@ -162,11 +170,22 @@ test('formulário → proxy Vite → API → SQLite: só confirma depois do 201 
 
 test('409 real atualiza o saldo e permite reduzir quantidade sem perder contato e adicional', async () => {
   await preencherTudo()
+  let conflito = false
+  let liberarCatalogo
+  const catalogoPendente = new Promise((resolver) => { liberarCatalogo = resolver })
+  interceptor = async (url, opcoes) => {
+    // Garante a ordem que expunha a corrida: saldo pronto, catálogo pendente.
+    if (conflito && url === '/api/produtos') await catalogoPendente
+    const resposta = await fetchOriginal(new URL(url, base), opcoes)
+    if (opcoes.method === 'POST' && resposta.status === 409) conflito = true
+    return resposta
+  }
   await preencher('itens[0].quantidade', 3)
   repo.criar({ ...dados, itens: [{ produto: 'bolo-cenoura', quantidade: 3 }] }, () => new Date())
   await enviar()
   await esperar(() => container.querySelector('.form-api-error'))
-  await esperar(() => container.querySelector('#pedido-itens-erro'))
+  await esperar(() => container.querySelector('.availability-summary > div:last-child dd')?.textContent === '2')
+  assert(container.querySelector('#pedido-itens-erro'))
   assert(container.querySelector('.form-api-error').textContent.includes('disponibilidade mudou'))
   assert.equal(container.querySelector('.availability-summary > div:last-child dd').textContent, '2')
   assert(!container.textContent.includes('confirmada!'))
@@ -174,6 +193,11 @@ test('409 real atualiza o saldo e permite reduzir quantidade sem perder contato 
   assert.equal(container.querySelector('[name="incluirPaoDeQueijo"]').checked, true)
   await clicar(container.querySelector('[aria-label="Diminuir quantidade do produto 1"]'))
   assert.equal(container.querySelector('[name="itens[0].quantidade"]').value, '2')
+  assert(catalogoCarregando())
+  assert(container.querySelector('[type="submit"]').disabled)
+  await act(async () => { liberarCatalogo() })
+  await esperarConsultas()
+  assert(!container.querySelector('[type="submit"]').disabled)
   await enviar()
   await esperar(() => container.textContent.includes('confirmada!'))
   assert.equal(repo.listar().length, 2)
@@ -209,9 +233,12 @@ test('400 real mostra a validação do servidor sem apagar campos nem confirmar'
 })
 
 test('o proxy não libera leituras administrativas da API', async () => {
-  const resposta = await fetchOriginal(`${base}/api/encomendas`)
-  assert.equal(resposta.status, 503)
-  assert.deepEqual(Object.keys(await resposta.json()), ['erro'])
+  // A consulta inicial do componente também pode terminar durante esta leitura.
+  await act(async () => {
+    const resposta = await fetchOriginal(`${base}/api/encomendas`)
+    assert.equal(resposta.status, 503)
+    assert.deepEqual(Object.keys(await resposta.json()), ['erro'])
+  })
 })
 
 test('três bolos reservados deixam dois disponíveis e os botões respeitam esse limite', async () => {
@@ -339,6 +366,7 @@ test('409 mantém todos os sabores e permite corrigir o total sem perder contato
   assert.equal(container.querySelector('[name="itens[1].produto"]').value, 'bolo-chocolate')
   assert.equal(container.querySelector('[name="nomeCliente"]').value, dados.nomeCliente)
   await clicar(container.querySelector('[aria-label="Diminuir quantidade do produto 1"]'))
+  await esperarConsultas()
   await enviar()
   await esperar(() => container.textContent.includes('confirmada!'))
   assert.equal(repo.listar().reduce((soma, pedido) => soma + pedido.totalBolos, 0), 5)
@@ -373,6 +401,7 @@ test('produto desabilitado durante preenchimento recebe 409, atualiza cardápio 
   assert.equal(container.querySelector('[name="nomeCliente"]').value, dados.nomeCliente)
   assert(container.querySelector('[type="submit"]').disabled)
   await preencher('itens[0].produto', 'bolo-chocolate')
+  await esperarConsultas()
   await enviar()
   await esperar(() => container.textContent.includes('confirmada!'))
   assert.equal(repo.listar()[0].totalCentavos, 6500)
@@ -392,7 +421,7 @@ test('café sozinho e dúzias sozinhas confirmam com preço/unidade corretos e p
   assert(container.querySelector('.form-result').textContent.includes('Xícara · 150 ml'))
   await clicar([...container.querySelectorAll('button')].find((b) => b.textContent === 'Fazer outra encomenda'))
   await preencher('dataEntrega', dados.dataEntrega)
-  await esperar(() => !container.querySelector('.order-details').hidden)
+  await esperarConsultas()
   await preencher('nomeCliente', dados.nomeCliente)
   await preencher('telefone', dados.telefone)
   await preencher('itens[0].produto', 'pao-queijo')
