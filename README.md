@@ -4,7 +4,7 @@ Projeto para o desafio técnico da TecnoJr. Os requisitos estão em [BRIEF.md](B
 
 ## Etapa atual
 
-Base React + TypeScript + Vite, com CSS tradicional, cabeçalho, hero, cardápio, formulário expansível, informações/contato e rodapé. O formulário é integrado à API REST em `backend/`: a confirmação com número do pedido aparece somente após `201 Created`, com a data reservada e pagamento na retirada. A API implementa CRUD e regras de capacidade com SQLite. O endereço `/admin` apresenta somente um aviso de área futura, sem painel, login ou acesso a pedidos.
+Base React + TypeScript + Vite, com CSS tradicional, cabeçalho, hero, cardápio, formulário expansível, informações/contato e rodapé. O formulário é integrado à API REST em `backend/`: a confirmação com número do pedido aparece somente após `201 Created`, com a data reservada e pagamento na retirada. A API implementa CRUD e regras de capacidade com SQLite. `/admin` agora tem login e painel de encomendas com sessão validada no servidor, filtros, alteração de status e exclusão confirmada.
 
 **Regra atual de capacidade:** por orientação desta etapa, são **cinco bolos por dia**, calculados pela soma de `quantidadeBolos`, em vez de cinco registros de encomenda. Essa decisão substitui a contagem descrita no brief original, que foi preservado como histórico. Pedidos antigos passam a representar um bolo cada, sem apagar ou recriar a base.
 
@@ -34,7 +34,43 @@ npm.cmd run dev
 
 Abra o endereço informado pelo Vite, normalmente **http://127.0.0.1:5173**. A API escuta em `127.0.0.1:3001`; o proxy de desenvolvimento encaminha `/api` para essa porta. Mantenha os dois terminais abertos e use Ctrl+C em cada um para parar.
 
-O POST é público e **não exige `ADMIN_TOKEN`**. A mensagem do back-end sobre rotas administrativas bloqueadas é esperada quando não há token configurado e não impede encomendas. Não coloque token em variáveis `VITE_*`, no código do site nem em seus cabeçalhos HTTP. Para testar o CRUD administrativo separadamente, siga o [README da API](backend/README.md).
+O POST é público e **não exige credenciais administrativas**. Sem configurar acesso no servidor, o fluxo público continua funcionando e o login informa que o painel está indisponível. Para habilitar o painel, siga a configuração abaixo. O Bearer token continua opcional para testar o CRUD pelo PowerShell; nunca coloque segredos em variáveis `VITE_*` ou no código React.
+
+### Habilitar o painel administrativo
+
+Na pasta `backend/`, antes de iniciar a API, escolha seu próprio usuário e senha. Não há conta nem senha padrão. Este exemplo solicita a senha sem mostrá-la e guarda no ambiente **somente seu hash**:
+
+```powershell
+$env:ADMIN_USER = Read-Host 'Escolha o usuário administrativo'
+$senhaSegura = Read-Host 'Escolha uma senha de 12 a 128 caracteres' -AsSecureString
+$senhaTexto = [System.Net.NetworkCredential]::new('', $senhaSegura).Password
+$env:ADMIN_PASSWORD_HASH = $senhaTexto | node --experimental-strip-types src/gerar-senha.ts
+Remove-Variable senhaTexto, senhaSegura
+if ($LASTEXITCODE -ne 0) { throw 'Não foi possível gerar o hash da senha.' }
+$env:ADMIN_ORIGIN = 'http://127.0.0.1:5173'
+npm.cmd run dev
+```
+
+No outro terminal, inicie o Vite como descrito acima e abra **http://127.0.0.1:5173/admin**, ou use o link no rodapé. Use o usuário e a senha que você escolheu. Mantenha a origem exatamente igual a `ADMIN_ORIGIN` (protocolo, host e porta); se o Vite informar outra porta, ajuste a variável e reinicie a API. `localhost` e `127.0.0.1` são origens diferentes. Não é necessário configurar `ADMIN_TOKEN` para o painel.
+
+O servidor verifica a senha com `scrypt` e cria uma sessão de até oito horas. O cookie é `HttpOnly` e `SameSite=Strict`; o React não lê o cookie e não armazena credenciais no localStorage ou sessionStorage. O token CSRF fica só na memória da página e protege alterações junto à verificação da origem. Em produção, HTTPS é obrigatório e o cookie usa `Secure` e o prefixo `__Host-`. As sessões e o limite de tentativas ficam na memória de uma única instância: reiniciar a API exige entrar novamente, mas mantém as encomendas no SQLite. Esta versão não oferece infraestrutura de múltiplas instâncias.
+
+O login permite até cinco tentativas por IP a cada 15 minutos, com teto global de 30 e limite de verificações simultâneas. O servidor não confia em `X-Forwarded-For`; atrás de um proxy, os acessos compartilham o IP do proxy. Não habilite `trust proxy` indiscriminadamente. Os limites também contam logins bem-sucedidos, e reiniciar o servidor os reinicia.
+
+As variáveis duram enquanto o terminal estiver aberto. Para manter configuração entre execuções, configure o ambiente do serviço ou um `.env` local ignorado e carregue explicitamente com `node --env-file=.env --watch --experimental-strip-types src/server.ts` dentro de `backend/`. Nunca versione o arquivo nem cole credenciais no README. O hash também é informação sensível. Trocar credenciais requer reiniciar a API, encerrando as sessões anteriores.
+
+### Demonstrar o painel
+
+1. Faça uma encomenda com dados fictícios pelo formulário público. Entre em `/admin` e confira nome, telefone, sabor, quantidade, data, dúzia opcional e status `recebida`.
+2. Use os filtros por data e status, isolados ou juntos. **Limpar filtros** restaura a listagem; **Atualizar lista** busca encomendas novas e alterações feitas em outra aba.
+3. Escolha **em preparo** e clique em **Salvar status**; depois teste **entregue**. A alteração deve persistir após atualizar a página e não liberar capacidade.
+4. Clique em **Excluir pedido**. **Manter pedido** cancela; somente **Sim, excluir pedido nº …** apaga o registro e libera sua quantidade de bolos na data. A exclusão é irreversível.
+5. Use **Sair**, atualize a página e confira que o login é exigido. Acessar `/api/encomendas` sem sessão ou Bearer válido não retorna dados pessoais.
+6. Confira em 360, 390, 768 e 1280 px, com teclado e no celular. O painel usa cartões, sem tabela horizontal. Não compartilhe uma sessão autenticada em um dispositivo público.
+
+Mais detalhes do contrato e da configuração estão no [README da API](backend/README.md). Não há edição dos demais campos pelo painel nesta versão; o PATCH completo continua disponível por Bearer. Também não há cadastro público, pagamentos, notificações ou contas adicionais.
+
+Verificação desta etapa: **37 testes do frontend e 30 do backend**, lint, typecheck e builds aprovados. O painel foi conferido no Edge em 360, 390, 768 e 1280 px, com cookie real e sem rolagem horizontal. Veja as [capturas, resultados e comando para repetir o teste visual](docs/painel/README.md).
 
 `npm.cmd` evita o bloqueio de `npm.ps1` pela política de scripts do Windows; em outros terminais pode usar `npm`.
 
@@ -73,8 +109,11 @@ npm.cmd install
 - `src/sections/Cardapio.tsx`: categorias e cartões do cardápio; `components/ProductIllustration.tsx` fornece desenhos provisórios enquanto não há fotos autorizadas.
 - `src/sections/Encomendas.tsx`: abertura/fechamento, campos controlados, foco e mensagens de validação.
 - `src/sections/InformacoesContato.tsx`: endereço semântico, horário e canais lidos da configuração central.
-- `src/components/Footer.tsx`: marca, navegação, contatos e link discreto para a futura área administrativa.
-- `src/components/AdminNotice.tsx`: aviso público em `/admin`, sem formulário nem acesso à API.
+- `src/components/Footer.tsx`: marca, navegação, contatos e link discreto para a área administrativa.
+- `src/pages/Admin.tsx`: login, cartões, filtros, mensagens, status, confirmação de exclusão e saída.
+- `src/services/admin.ts`: requisições administrativas com cookie de sessão e token CSRF em memória.
+- `src/styles/admin.css`: painel mobile-first com a identidade visual do café.
+- `tests/admin-integracao.test.mjs`: login e operações reais através do proxy até o SQLite, incluindo acesso negado e saída.
 - `src/utils/contato.ts`: formação dos links externos somente quando confirmados e válidos.
 - `src/styles/contato.css`: seção em papel creme e rodapé chocolate, com disposição adaptada ao celular.
 - `src/services/encomendas.ts`: consulta pública de disponibilidade e POST, verificação das respostas e mensagens de erro; sem token e sem repetição automática de POST.
@@ -103,7 +142,7 @@ A seção `#contato` substitui o placeholder e apresenta horário, endereço e c
 
 Links oficiais abrem em nova aba, com indicação no texto e `rel="noopener noreferrer"`, preservando a página do café. Abrir uma conversa não registra nem sincroniza encomendas: a seção orienta reservar pelo formulário. Nenhum dado de formulário é incluído na mensagem de WhatsApp.
 
-O link **Área administrativa · em breve** leva a `/admin`, cujo único conteúdo é um aviso e um link para voltar ao café. Isso é apenas um destino informativo para o link futuro, sem painel, credencial, listagem ou chamadas à API. A proteção administrativa do back-end permanece inalterada.
+O link **Área administrativa** leva ao login em `/admin`. A API só retorna nomes e telefones depois da autenticação. O painel permite acompanhar e gerenciar status e exclusões; o link **Voltar para o café** mantém o retorno à landing page.
 
 ### Revisão do cardápio
 
@@ -138,13 +177,13 @@ O servidor soma novamente os bolos dentro da transação ao confirmar. Se o sald
 
 Um `400` mostra a validação do servidor. Falhas de rede, timeout de 20 segundos, respostas inesperadas e erros do servidor não viram confirmação. Como a conexão pode falhar depois da gravação, a interface avisa que o pedido pode ter sido recebido e pede conferir com o café antes de reenviar. Não há retry automático de POST nem idempotência entre recarregamentos/dispositivos nesta etapa. Consultas GET são canceladas ao trocar de data, e respostas antigas não substituem o saldo atual.
 
-O rascunho fica apenas na memória da página; recarregar apaga o preenchimento. Pedidos confirmados persistem no SQLite e não são cancelados ao recarregar. Dados do cliente são enviados somente ao endpoint público de criação; não há consulta administrativa pelo site nem integração com WhatsApp.
+O rascunho fica apenas na memória da página; recarregar apaga o preenchimento. Pedidos confirmados persistem no SQLite e não são cancelados ao recarregar. A landing page usa somente os endpoints públicos; consultas administrativas ocorrem exclusivamente no painel autenticado. Não há integração com WhatsApp.
 
 ## Revisão pré-entrega
 
 A [revisão técnica e visual completa](docs/REVISAO-PRE-ENTREGA.md) contém requisitos verificados, correções, pendências, capturas e roteiro de demonstração.
 
-- **32 testes do front-end e 21 do back-end passaram**, além de lint, typecheck e builds disponíveis.
+- A revisão anterior contou **32 testes do front-end e 21 do back-end**. A etapa administrativa acrescenta testes de sessão e operações do painel; execute os mesmos comandos acima para conferir a suíte atual.
 - Layout conferido em navegador Edge/Chromium real nas larguras **360, 390, 768 e 1280 px**, sem rolagem horizontal na página e no formulário.
 - Fluxo real pelo proxy: disponibilidade, POST único com `201`, SQLite persistente, dia lotado e recuperação de `409`.
 - Axe-core não detectou violações nos seis estados examinados. Não houve exceção JavaScript; o único erro HTTP final foi o `409` intencional do teste de capacidade.
@@ -168,9 +207,9 @@ O proxy segue a opção oficial [`server.proxy` do Vite](https://vite.dev/config
 
 1. Siga o link **Contato** do cabeçalho ou rodapé e confira o destino `#contato`, o endereço e o horário da configuração.
 2. Com a configuração fictícia atual, abra os controles **WhatsApp · demo** e **Instagram · demo**: devem explicar a demonstração, sem abrir site externo. Confira usando Tab e Enter/Espaço.
-3. No rodapé, confira os links de navegação e o link **Área administrativa · em breve**. Em `/admin`, deve haver somente o aviso e **Voltar para o café**.
+3. No rodapé, confira os links de navegação e **Área administrativa**. Em `/admin`, sem sessão, deve aparecer o login e **Voltar para o café**; nenhum pedido deve ser exibido.
 4. Revise em 360, 390, 768 e 1280 px, sem rolagem horizontal e com leitura confortável. Os testes de contato não enviam requisições a WhatsApp ou Instagram.
 
 ## Próxima etapa
 
-Consultar as pendências da revisão pré-entrega: outros motores/dispositivos e leitor de tela, materiais visuais autorizados quando fornecidos e conferência do repositório. Painel e implantação continuam para etapas futuras.
+Consultar as pendências da revisão pré-entrega: outros motores/dispositivos e leitor de tela, materiais visuais autorizados quando fornecidos e conferência do repositório. Antes de implantar, configurar HTTPS, origem exata do site, ambiente protegido, proxy `/api` na mesma origem e backup/acesso restrito ao SQLite. O relatório anterior é histórico e antecede a implementação do painel.

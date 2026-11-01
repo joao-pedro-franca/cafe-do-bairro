@@ -4,9 +4,12 @@ import type { RepositorioEncomendas } from './database/encomendas.ts'
 import { ApiError } from './errors.ts'
 import { rotasEncomendas } from './routes/encomendas.ts'
 import { rotasDisponibilidade } from './routes/disponibilidade.ts'
+import { criarAutenticacao } from './auth/admin.ts'
+import type { ConfigAdmin } from './auth/admin.ts'
 
-export function criarApp(repo: RepositorioEncomendas, opcoes: { agora?: () => Date; adminToken?: string } = {}) {
+export function criarApp(repo: RepositorioEncomendas, opcoes: { agora?: () => Date; adminToken?: string; admin?: ConfigAdmin } = {}) {
   const app = express()
+  const auth = criarAutenticacao(opcoes.admin, opcoes.adminToken, opcoes.agora)
   app.disable('x-powered-by')
   app.use((_req, res, next) => {
     res.set('Cache-Control', 'no-store')
@@ -20,8 +23,9 @@ export function criarApp(repo: RepositorioEncomendas, opcoes: { agora?: () => Da
     next()
   })
   app.use(express.json({ limit: '16kb' }))
+  app.use('/api/admin', auth.rotas)
   app.use('/api/disponibilidade', rotasDisponibilidade(repo, opcoes.agora ?? (() => new Date())))
-  app.use('/api/encomendas', rotasEncomendas(repo, opcoes.agora ?? (() => new Date()), opcoes.adminToken))
+  app.use('/api/encomendas', rotasEncomendas(repo, opcoes.agora ?? (() => new Date()), auth.proteger))
   app.use((_req, _res) => { throw new ApiError(404, 'Rota não encontrada.') })
   const tratarErro: ErrorRequestHandler = (erro: unknown, _req, res, _next) => {
     if (erro instanceof ApiError) {

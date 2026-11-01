@@ -1,0 +1,91 @@
+{
+  "larguras": [
+    {
+      "estado": "login",
+      "largura": 360,
+      "scrollWidth": 360
+    },
+    {
+      "estado": "login",
+      "largura": 390,
+      "scrollWidth": 390
+    },
+    {
+      "estado": "login",
+      "largura": 768,
+      "scrollWidth": 768
+    },
+    {
+      "estado": "login",
+      "largura": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "estado": "pedidos",
+      "largura": 360,
+      "scrollWidth": 360
+    },
+    {
+      "estado": "pedidos",
+      "largura": 390,
+      "scrollWidth": 390
+    },
+    {
+      "estado": "pedidos",
+      "largura": 768,
+      "scrollWidth": 768
+    },
+    {
+      "estado": "pedidos",
+      "largura": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "estado": "confirmacao-exclusao",
+      "largura": 390,
+      "scrollWidth": 390
+    }
+  ],
+  "acessibilidade": [
+    {
+      "estado": "login-360",
+      "violacoes": []
+    },
+    {
+      "estado": "login-390",
+      "violacoes": []
+    },
+    {
+      "estado": "login-768",
+      "violacoes": []
+    },
+    {
+      "estado": "login-1280",
+      "violacoes": []
+    },
+    {
+      "estado": "pedidos-360",
+      "violacoes": []
+    },
+    {
+      "estado": "pedidos-390",
+      "violacoes": []
+    },
+    {
+      "estado": "pedidos-768",
+      "violacoes": []
+    },
+    {
+      "estado": "pedidos-1280",
+      "violacoes": []
+    },
+    {
+      "estado": "confirmacao-exclusao-390",
+      "violacoes": []
+    }
+  ],
+  "errosPagina": [],
+  "passos": [
+    "Login por cookie real, sessão após reload, filtros, status no SQLite, cancelar/confirmar exclusão e logout com acesso negado"
+  ]
+}

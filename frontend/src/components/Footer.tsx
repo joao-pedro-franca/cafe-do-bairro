@@ -26,7 +26,7 @@ export function Footer() {
         </div>
         <div className="footer-bottom">
           <p>{cafeConfig.nome} · Protótipo com dados fictícios.</p>
-          <a className="admin-link" href="/admin">Área administrativa <span>· em breve</span></a>
+          <a className="admin-link" href="/admin">Área administrativa</a>
         </div>
       </div>
     </footer>

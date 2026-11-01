@@ -1,11 +1,11 @@
 import { Router } from 'express'
+import type { RequestHandler } from 'express'
 import { validarEntrada } from '../encomenda.ts'
 import type { DadosEncomenda } from '../encomenda.ts'
 import type { RepositorioEncomendas } from '../database/encomendas.ts'
 import { ApiError } from '../errors.ts'
-import { protegerAdmin } from '../middleware/admin.ts'
 
-export function rotasEncomendas(repo: RepositorioEncomendas, agora: () => Date, token?: string) {
+export function rotasEncomendas(repo: RepositorioEncomendas, agora: () => Date, proteger: RequestHandler) {
   const rotas = Router()
   function idValido(valor: string | string[] | undefined) {
     if (typeof valor !== 'string' || !/^[1-9]\d*$/.test(valor) || !Number.isSafeInteger(Number(valor))) {
@@ -18,7 +18,7 @@ export function rotasEncomendas(repo: RepositorioEncomendas, agora: () => Date, 
     const encomenda = repo.criar(dados, agora)
     res.status(201).location(`/api/encomendas/${encomenda.id}`).json(encomenda)
   })
-  rotas.use(protegerAdmin(token))
+  rotas.use(proteger)
   rotas.get('/', (_req, res) => res.json(repo.listar()))
   rotas.get('/:id', (req, res) => res.json(repo.buscar(idValido(req.params.id))))
   rotas.patch('/:id', (req, res) => {
