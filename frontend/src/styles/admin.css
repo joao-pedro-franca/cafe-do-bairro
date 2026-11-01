@@ -24,7 +24,7 @@
 .admin-filters { display: grid; gap: 1rem; align-items: end; padding-block: 1.5rem; }
 .admin-filters > div { min-width: 0; }
 .admin-count { margin-bottom: 1rem; }
-.admin-orders { display: grid; grid-template-columns: minmax(0, 1fr); padding: 0; margin: 0; list-style: none; gap: 1.25rem; }
+.admin-orders { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; padding: 0; margin: 0; list-style: none; gap: 1.25rem; }
 .admin-card { min-width: 0; overflow-wrap: anywhere; }
 .admin-card-heading { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; justify-content: space-between; }
 .admin-card h3 { margin: 0; }
@@ -35,6 +35,16 @@
 .admin-card dt { color: var(--coffee); font-size: .85rem; }
 .admin-card form .button { margin-block: .75rem; }
 .admin-main .admin-danger { color: #792e22; border-color: #903c2d; }
+.admin-edit-button { margin-bottom: .75rem; }
+.admin-edit { margin-top: 1.25rem; padding-top: 1rem; border-top: 2px dashed var(--sand); }
+.admin-edit h4 { margin: 0 0 .75rem; font: 700 1.3rem/1.4 var(--serif); }
+.admin-edit fieldset { display: grid; gap: 1rem; min-width: 0; border: 0; margin: 1rem 0 0; padding: 0; }
+.admin-edit-hint { font-size: .85rem; color: var(--coffee); }
+.admin-field-error { color: #792e22; margin-top: .4rem; font-size: .9rem; }
+.admin-main .admin-edit-check { display: flex; align-items: center; gap: .75rem; font-weight: 400; }
+.admin-main .admin-edit-check input { width: 24px; height: 24px; min-height: 24px; flex: 0 0 24px; accent-color: var(--coffee); }
+.admin-edit .admin-edit-check { min-height: 48px; }
+.admin-main .admin-edit fieldset > .button { margin: 0; }
 .admin-confirm { margin-top: 1.5rem; border: 2px solid #903c2d; scroll-margin-top: 1rem; }
 .admin-confirm .button { margin-top: 1rem; }
 @media (min-width: 768px) {

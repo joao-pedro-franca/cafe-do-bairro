@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import type { FormEvent } from 'react'
+import type { FormEvent, ReactNode } from 'react'
+import { EditarPedido } from '../components/EditarPedido'
 import { CupIcon } from '../components/CupIcon'
 import { cafeConfig } from '../data/cafeConfig'
 import { formatarTelefone } from '../utils/encomenda'
-import { alterarStatus, consultarSessao, entrarAdmin, ErroAdmin, excluirPedido, listarPedidos, sairAdmin, statusEncomenda } from '../services/admin'
+import { alterarStatus, atualizarPedido, consultarSessao, entrarAdmin, ErroAdmin, excluirPedido, listarPedidos, sairAdmin, statusEncomenda } from '../services/admin'
 import type { PedidoAdmin, SessaoAdmin, StatusEncomenda } from '../services/admin'
 import '../styles/admin.css'
 
 function dataLegivel(data: string) { return data.split('-').reverse().join('/') }
 
-function CartaoPedido({ pedido, ocupado, salvar, excluir }: {
+function CartaoPedido({ pedido, ocupado, salvar, excluir, editar, editor }: {
   pedido: PedidoAdmin; ocupado: boolean
   salvar: (id: number, status: StatusEncomenda) => void
   excluir: (pedido: PedidoAdmin) => void
+  editar: () => void; editor?: ReactNode
 }) {
   const [status, setStatus] = useState(pedido.status)
   const produto = cafeConfig.produtos.find((item) => item.id === pedido.produto)?.nome ?? pedido.produto
@@ -26,14 +28,15 @@ function CartaoPedido({ pedido, ocupado, salvar, excluir }: {
       <div><dt>Quantidade</dt><dd>{pedido.quantidadeBolos} {pedido.quantidadeBolos === 1 ? 'bolo' : 'bolos'}</dd></div>
       <div><dt>Pão de queijo</dt><dd>{pedido.incluirPaoDeQueijo ? 'Sim, uma dúzia' : 'Sem acompanhamento'}</dd></div>
     </dl>
-    <form onSubmit={(event) => { event.preventDefault(); salvar(pedido.id, status) }}>
+    {editor || <><form onSubmit={(event) => { event.preventDefault(); salvar(pedido.id, status) }}>
       <label htmlFor={`status-${pedido.id}`}>Status do pedido nº {pedido.id}</label>
       <select id={`status-${pedido.id}`} value={status} disabled={ocupado} onChange={(event) => setStatus(event.target.value as StatusEncomenda)}>
         {statusEncomenda.map((valor) => <option key={valor} value={valor}>{valor}</option>)}
       </select>
       <button className="button button-primary" disabled={ocupado || status === pedido.status}>Salvar status</button>
     </form>
-    <button className="button admin-danger" disabled={ocupado} onClick={() => excluir(pedido)} aria-label={`Excluir pedido nº ${pedido.id}`}>Excluir pedido</button>
+    <button id={`editar-botao-${pedido.id}`} className="button admin-edit-button" disabled={ocupado} onClick={editar} aria-label={`Editar pedido nº ${pedido.id}`}>Editar pedido</button>
+    <button className="button admin-danger" disabled={ocupado} onClick={() => excluir(pedido)} aria-label={`Excluir pedido nº ${pedido.id}`}>Excluir pedido</button></>}
   </li>
 }
 
@@ -50,13 +53,15 @@ export function Admin() {
   const [erro, setErro] = useState('')
   const [mensagem, setMensagem] = useState('')
   const [exclusao, setExclusao] = useState<PedidoAdmin | null>(null)
+  const [edicao, setEdicao] = useState<PedidoAdmin | null>(null)
+  const origemEdicao = useRef<number | null>(null)
   const trava = useRef(false)
   const cancelar = useRef<HTMLButtonElement>(null)
   const origemExclusao = useRef<HTMLButtonElement | null>(null)
   const focoStatus = useRef<number | null>(null)
 
   function encerrarSessao() {
-    setSessao(null); setPedidos([]); setExclusao(null); setSenha(''); setMensagem('')
+    setSessao(null); setPedidos([]); setExclusao(null); setEdicao(null); setSenha(''); setMensagem('')
   }
   function tratarErro(falha: unknown) {
     if (falha instanceof ErroAdmin && falha.status === 401) encerrarSessao()
@@ -95,6 +100,13 @@ export function Admin() {
       focoStatus.current = null
     }
   }, [pedidos, ocupado])
+  useEffect(() => {
+    if (!edicao && origemEdicao.current !== null) {
+      const botao = document.getElementById(`editar-botao-${origemEdicao.current}`)
+      ;(botao ?? document.getElementById('pedidos-titulo'))?.focus()
+      origemEdicao.current = null
+    }
+  }, [edicao])
 
   async function executar(acao: () => Promise<void>) {
     if (trava.current) return
@@ -123,7 +135,7 @@ export function Admin() {
       <p className="eyebrow">O caderno da Dona Marta</p>
       <h1>Encomendas do café</h1>
       <p>Acompanhe cada pedido com carinho. O pagamento é na retirada.</p>
-      {erro && <p className="admin-feedback admin-error" role="alert">{erro}</p>}
+      {erro && !edicao && <p className="admin-feedback admin-error" role="alert">{erro}</p>}
       {mensagem && <p className="admin-feedback" role="status">{mensagem}</p>}
       {verificando ? <p role="status">Verificando seu acesso…</p> : !sessao ? <section className="admin-login" aria-labelledby="login-titulo">
         <h2 id="login-titulo">Entre no seu caderno</h2>
@@ -137,18 +149,22 @@ export function Admin() {
         </form>
       </section> : <section aria-labelledby="pedidos-titulo" aria-busy={ocupado || carregando}>
         <div className="admin-toolbar"><h2 id="pedidos-titulo" tabIndex={-1}>Seu caderno de pedidos</h2>
-          <button className="button" disabled={ocupado || carregando} onClick={() => void executar(atualizarLista)}>Atualizar lista</button>
+          <button className="button" disabled={ocupado || carregando || Boolean(edicao)} onClick={() => void executar(atualizarLista)}>Atualizar lista</button>
           <button className="button" disabled={ocupado} onClick={() => void executar(async () => { await sairAdmin(sessao.csrfToken); encerrarSessao(); setMensagem('Você saiu com segurança.') })}>Sair</button>
         </div>
         <div className="admin-filters">
-          <div><label htmlFor="filtro-data">Filtrar por data</label><input id="filtro-data" type="date" value={data} onChange={(event) => setData(event.target.value)} /></div>
-          <div><label htmlFor="filtro-status">Filtrar por status</label><select id="filtro-status" value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Todos os status</option>{statusEncomenda.map((valor) => <option key={valor} value={valor}>{valor}</option>)}</select></div>
-          <button className="button" onClick={() => { setData(''); setStatus('') }}>Limpar filtros</button>
+          <div><label htmlFor="filtro-data">Filtrar por data</label><input id="filtro-data" type="date" value={data} disabled={Boolean(edicao)} onChange={(event) => setData(event.target.value)} /></div>
+          <div><label htmlFor="filtro-status">Filtrar por status</label><select id="filtro-status" value={status} disabled={Boolean(edicao)} onChange={(event) => setStatus(event.target.value)}><option value="">Todos os status</option>{statusEncomenda.map((valor) => <option key={valor} value={valor}>{valor}</option>)}</select></div>
+          <button className="button" disabled={Boolean(edicao)} onClick={() => { setData(''); setStatus('') }}>Limpar filtros</button>
         </div>
         {carregando ? <p role="status">Buscando as encomendas…</p> : <>
           <p className="admin-count" role="status">{visiveis.length} {visiveis.length === 1 ? 'pedido encontrado' : 'pedidos encontrados'}.</p>
           {!visiveis.length && <p className="admin-empty">Nenhuma encomenda por aqui com esses filtros.</p>}
-          <ul className="admin-orders">{visiveis.map((pedido) => <CartaoPedido key={`${pedido.id}-${pedido.status}`} pedido={pedido} ocupado={ocupado || Boolean(exclusao)} salvar={(id, novoStatus) => void executar(async () => {
+          <ul className="admin-orders">{visiveis.map((pedido) => <CartaoPedido key={`${pedido.id}-${pedido.status}`} pedido={pedido} ocupado={ocupado || Boolean(exclusao) || Boolean(edicao)} editar={() => { setErro(''); setMensagem(''); origemEdicao.current = pedido.id; setEdicao(pedido) }} editor={edicao?.id === pedido.id && <EditarPedido pedido={edicao} ocupado={ocupado} erroApi={erro} cancelar={() => { setEdicao(null); setErro('') }} salvar={(alteracoes) => executar(async () => {
+            const atualizado = await atualizarPedido(pedido.id, alteracoes, sessao.csrfToken)
+            setPedidos((lista) => lista.map((item) => item.id === pedido.id ? atualizado : item))
+            setEdicao(null); setMensagem(`Pedido nº ${pedido.id} atualizado com sucesso.`)
+          })} />} salvar={(id, novoStatus) => void executar(async () => {
             const atualizado = await alterarStatus(id, novoStatus, sessao.csrfToken)
             focoStatus.current = id
             setPedidos((lista) => lista.map((item) => item.id === id ? atualizado : item)); setMensagem(`Status do pedido nº ${id} atualizado para ${novoStatus}.`)

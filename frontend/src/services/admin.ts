@@ -11,6 +11,7 @@ export interface PedidoAdmin {
   status: StatusEncomenda
 }
 export interface SessaoAdmin { csrfToken: string; expiraEm: string }
+export type AlteracoesPedido = Partial<Omit<PedidoAdmin, 'id'>>
 export class ErroAdmin extends Error {
   status: number | undefined
   constructor(mensagem: string, status?: number) { super(mensagem); this.status = status }
@@ -24,9 +25,12 @@ async function solicitar<T>(caminho: string, metodo = 'GET', corpo?: unknown, cs
       headers: { ...(metodo !== 'GET' ? { 'Content-Type': 'application/json' } : {}), ...(csrf ? { 'X-CSRF-Token': csrf } : {}) },
       ...(corpo !== undefined ? { body: JSON.stringify(corpo) } : {}),
     })
-  } catch { throw new ErroAdmin('Não foi possível falar com o café. Confira a conexão e atualize a lista antes de repetir uma alteração.') }
+  } catch { throw new ErroAdmin(metodo === 'PATCH'
+    ? 'Não foi possível confirmar a alteração. Ela pode ter sido salva. Confira o pedido em outra aba antes de tentar novamente; o envio não será repetido automaticamente.'
+    : 'Não foi possível falar com o café. Confira a conexão e atualize a lista antes de repetir uma alteração.') }
   const dados = resposta.status === 204 ? null : await resposta.json().catch(() => null)
   if (!resposta.ok) {
+    if (metodo === 'PATCH' && resposta.status === 409) throw new ErroAdmin('A quantidade de bolos ultrapassa a disponibilidade dessa data. Diminua a quantidade ou escolha outra data. Nenhuma alteração foi salva.', 409)
     throw new ErroAdmin(typeof dados?.erro === 'string' ? dados.erro : 'Não foi possível concluir a operação.', resposta.status)
   }
   return dados as T
@@ -57,9 +61,10 @@ export const listarPedidos = async () => {
   if (!Array.isArray(lista) || !lista.every(pedidoValido)) throw respostaInvalida()
   return lista
 }
-export const alterarStatus = async (id: number, status: StatusEncomenda, csrf: string) => {
-  const pedido = await solicitar<unknown>(`/encomendas/${id}`, 'PATCH', { status }, csrf)
-  if (!pedidoValido(pedido) || pedido.id !== id || pedido.status !== status) throw respostaInvalida()
+export const atualizarPedido = async (id: number, alteracoes: AlteracoesPedido, csrf: string) => {
+  const pedido = await solicitar<unknown>(`/encomendas/${id}`, 'PATCH', alteracoes, csrf)
+  if (!pedidoValido(pedido) || pedido.id !== id || (alteracoes.status !== undefined && pedido.status !== alteracoes.status)) throw respostaInvalida()
   return pedido
 }
+export const alterarStatus = (id: number, status: StatusEncomenda, csrf: string) => atualizarPedido(id, { status }, csrf)
 export const excluirPedido = (id: number, csrf: string) => solicitar<void>(`/encomendas/${id}`, 'DELETE', undefined, csrf)

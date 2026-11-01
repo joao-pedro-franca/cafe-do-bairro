@@ -96,6 +96,14 @@ async function login(senhaEscolhida = senha) {
   await preencher('#admin-senha', senhaEscolhida)
   await enviar(container.querySelector('form'))
 }
+async function abrirEdicao() {
+  await login()
+  await esperar(() => container.querySelector('.admin-card'))
+  await clicar(botao('Editar pedido'))
+  const id = repo.listar()[0].id
+  assert.equal(document.activeElement?.id, `editar-titulo-${id}`)
+  return id
+}
 
 test('login → proxy → sessão → SQLite: dados só aparecem após autenticação; filtros e status funcionam', async () => {
   assert(!container.textContent.includes(dados.nomeCliente))
@@ -186,4 +194,128 @@ test('resposta inválida ao atualizar mostra erro sem apagar pedidos nem quebrar
   assert(container.textContent.includes('resposta do servidor está incompleta ou inválida'))
   assert.equal(container.querySelectorAll('.admin-card').length, 1)
   assert(container.textContent.includes(dados.nomeCliente))
+})
+
+test('edição completa envia só os sete campos modificados, espera o servidor e bloqueia duplicidade', async () => {
+  const id = await abrirEdicao()
+  assert.equal(container.querySelector(`#editar-${id}-nomeCliente`).value, dados.nomeCliente)
+  assert.equal(container.querySelector(`#editar-${id}-dataEntrega`).value, dados.dataEntrega)
+  assert.equal(container.querySelector(`#editar-${id}-incluirPaoDeQueijo`).checked, true)
+  const mudancas = { nomeCliente: 'Cliente Revisado', telefone: '(73) 98888-8888', produto: 'bolo-coco', quantidadeBolos: '3', dataEntrega: '2099-12-26', status: 'em preparo' }
+  for (const [campo, valor] of Object.entries(mudancas)) await preencher(`#editar-${id}-${campo}`, valor)
+  await clicar(container.querySelector(`#editar-${id}-incluirPaoDeQueijo`))
+  let liberar, chamadas = 0
+  const espera = new Promise((resolve) => { liberar = resolve })
+  interceptar = async (_url, opcoes) => {
+    if (opcoes.method !== 'PATCH') return
+    chamadas++
+    assert.deepEqual(JSON.parse(opcoes.body), { ...mudancas, telefone: '73988888888', quantidadeBolos: 3, incluirPaoDeQueijo: false })
+    assert(opcoes.headers['X-CSRF-Token'])
+    await espera
+  }
+  await enviar(container.querySelector('.admin-edit'))
+  await enviar(container.querySelector('.admin-edit'))
+  assert.equal(chamadas, 1)
+  assert.equal(repo.buscar(id).nomeCliente, dados.nomeCliente)
+  assert.equal(container.querySelector('.admin-customer').textContent, dados.nomeCliente)
+  liberar()
+  await esperar(() => !container.querySelector('.admin-edit'))
+  assert.equal(repo.buscar(id).nomeCliente, 'Cliente Revisado')
+  assert.equal(repo.buscar(id).incluirPaoDeQueijo, false)
+  assert.equal(repo.disponibilidade(dados.dataEntrega).quantidadeReservada, 0)
+  assert.equal(repo.disponibilidade('2099-12-26').quantidadeReservada, 3)
+  assert.equal(document.activeElement?.id, `editar-botao-${id}`)
+})
+
+test('cancelar edição descarta rascunho sem PATCH e devolve foco ao cartão', async () => {
+  const id = await abrirEdicao()
+  let chamadas = 0
+  interceptar = async (_url, opcoes) => { if (opcoes.method === 'PATCH') chamadas++ }
+  await preencher(`#editar-${id}-nomeCliente`, 'Rascunho Cancelado')
+  await clicar(botao('Cancelar'))
+  assert.equal(chamadas, 0)
+  assert.equal(repo.buscar(id).nomeCliente, dados.nomeCliente)
+  assert.equal(document.activeElement?.id, `editar-botao-${id}`)
+  await clicar(botao('Editar pedido'))
+  assert.equal(container.querySelector(`#editar-${id}-nomeCliente`).value, dados.nomeCliente)
+})
+
+test('validação de edição impede campos inválidos e nenhuma alteração não faz PATCH', async () => {
+  const id = await abrirEdicao()
+  let chamadas = 0
+  interceptar = async (_url, opcoes) => { if (opcoes.method === 'PATCH') chamadas++ }
+  await enviar(container.querySelector('.admin-edit'))
+  assert(container.textContent.includes('Nenhuma informação foi alterada'))
+  for (const [campo, valor] of Object.entries({ nomeCliente: 'Ana', telefone: '123', quantidadeBolos: '1.5', dataEntrega: '2000-01-01' })) await preencher(`#editar-${id}-${campo}`, valor)
+  await enviar(container.querySelector('.admin-edit'))
+  assert.equal(chamadas, 0)
+  for (const campo of ['nomeCliente', 'telefone', 'quantidadeBolos', 'dataEntrega']) assert.equal(container.querySelector(`#editar-${id}-${campo}`).getAttribute('aria-invalid'), 'true')
+  assert.equal(document.activeElement?.getAttribute('role'), 'alert')
+  assert.equal(repo.buscar(id).quantidadeBolos, 2)
+})
+
+test('contato de pedido antigo é editado sem reenviar data ou quantidade', async () => {
+  const id = repo.listar()[0].id
+  repo.atualizar(id, { dataEntrega: '2000-01-01' }, () => new Date('1999-12-01T12:00:00Z'))
+  await abrirEdicao()
+  let enviado
+  interceptar = async (_url, opcoes) => { if (opcoes.method === 'PATCH') enviado = JSON.parse(opcoes.body) }
+  await preencher(`#editar-${id}-nomeCliente`, 'Contato Revisado')
+  await enviar(container.querySelector('.admin-edit'))
+  await esperar(() => !container.querySelector('.admin-edit'))
+  assert.deepEqual(enviado, { nomeCliente: 'Contato Revisado' })
+  assert.equal(repo.buscar(id).dataEntrega, '2000-01-01')
+})
+
+test('409 preserva rascunho sem salvar parcialmente; corrigir quantidade exclui a própria reserva', async () => {
+  const id = repo.listar()[0].id
+  repo.criar({ ...dados, nomeCliente: 'Outro Cliente', quantidadeBolos: 3 }, () => new Date())
+  await abrirEdicao()
+  const antes = repo.buscar(id)
+  await preencher(`#editar-${id}-nomeCliente`, 'Nome Aguardando Vaga')
+  await preencher(`#editar-${id}-quantidadeBolos`, '3')
+  await enviar(container.querySelector('.admin-edit'))
+  await esperar(() => container.querySelector('.admin-edit [role="alert"]'))
+  assert(container.textContent.includes('ultrapassa a disponibilidade'))
+  assert.equal(container.querySelector(`#editar-${id}-nomeCliente`).value, 'Nome Aguardando Vaga')
+  assert.equal(container.querySelector(`#editar-${id}-quantidadeBolos`).value, '3')
+  assert.deepEqual(repo.buscar(id), antes)
+  await preencher(`#editar-${id}-quantidadeBolos`, '1')
+  await enviar(container.querySelector('.admin-edit'))
+  await esperar(() => !container.querySelector('.admin-edit'))
+  assert.equal(repo.buscar(id).nomeCliente, 'Nome Aguardando Vaga')
+  assert.equal(repo.disponibilidade(dados.dataEntrega).quantidadeReservada, 4)
+})
+
+test('resposta perdida após PATCH não confirma nem repete; rascunho fica disponível para conferência', async () => {
+  const id = await abrirEdicao()
+  let chamadas = 0
+  interceptar = async (url, opcoes) => {
+    if (opcoes.method !== 'PATCH') return
+    chamadas++
+    await originalFetch(new URL(url, base), { ...opcoes, headers: { ...opcoes.headers, Origin: base, Cookie: cookie } })
+    throw new Error('Conexão perdida após gravar')
+  }
+  await preencher(`#editar-${id}-nomeCliente`, 'Alteração Incerta')
+  await enviar(container.querySelector('.admin-edit'))
+  await esperar(() => container.querySelector('.admin-edit [role="alert"]'))
+  assert.equal(chamadas, 1)
+  assert.equal(repo.buscar(id).nomeCliente, 'Alteração Incerta')
+  assert.equal(container.querySelector('.admin-customer').textContent, dados.nomeCliente)
+  assert.equal(container.querySelector(`#editar-${id}-nomeCliente`).value, 'Alteração Incerta')
+  assert(container.textContent.includes('Ela pode ter sido salva'))
+})
+
+test('edição que deixa de corresponder ao filtro devolve foco ao título da lista', async () => {
+  await login()
+  await esperar(() => container.querySelector('.admin-card'))
+  await preencher('#filtro-status', 'recebida')
+  await clicar(botao('Editar pedido'))
+  const id = repo.listar()[0].id
+  await preencher(`#editar-${id}-status`, 'entregue')
+  await enviar(container.querySelector('.admin-edit'))
+  await esperar(() => !container.querySelector('.admin-edit'))
+  assert.equal(container.querySelectorAll('.admin-card').length, 0)
+  assert.equal(document.activeElement?.id, 'pedidos-titulo')
+  assert.equal(repo.buscar(id).status, 'entregue')
 })

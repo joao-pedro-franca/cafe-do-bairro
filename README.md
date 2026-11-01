@@ -12,7 +12,19 @@ Os links continuam sendo âncoras nativas, preservando hash, histórico e navega
 
 O diagnóstico e o teste de navegador ficam em `scripts/testar-rolagem.mjs` e `docs/v1.1/rolagem*.json`. Para repetir, com as ferramentas Playwright já instaladas em `.audit-tools`, execute `node scripts/testar-rolagem.mjs` na raiz.
 
-Base React + TypeScript + Vite, com CSS tradicional, cabeçalho, hero, cardápio, formulário expansível, informações/contato e rodapé. O formulário é integrado à API REST em `backend/`: a confirmação com número do pedido aparece somente após `201 Created`, com a data reservada e pagamento na retirada. A API implementa CRUD e regras de capacidade com SQLite. `/admin` agora tem login e painel de encomendas com sessão validada no servidor, filtros, alteração de status e exclusão confirmada.
+### V1.1 — edição de encomendas
+
+No painel, **Editar pedido** abre um formulário dentro do cartão, preenchido com nome, telefone, sabor, quantidade, data, dúzia opcional e status. O ID não é editável. **Salvar alterações** usa o PATCH existente, enviando somente diferenças; **Cancelar** descarta o rascunho sem enviar nada. A edição rápida de status e a exclusão confirmada continuam disponíveis.
+
+O cartão só muda após a resposta válida do servidor. Durante o envio, os controles ficam bloqueados. Um `409` mantém o formulário preenchido e informa que nada foi salvo; ajuste quantidade/data e salve novamente. Se a conexão falhar, o resultado pode ser incerto: confira o pedido em outra aba antes de repetir. Não há repetição automática de PATCH. O rascunho fica só na memória e é descartado ao cancelar, sair ou recarregar.
+
+Contato, sabor, adicional e status de pedidos antigos podem mudar sem reenviar a data. Alterar data ou quantidade exige amanhã ou depois no fuso da Bahia; a capacidade de cinco bolos continua validada atomicamente no servidor, descontando a reserva do próprio pedido. A dúzia não consome bolos. Os filtros e a atualização da lista ficam pausados enquanto há edição para evitar perder o rascunho. Ao fechar, o foco volta ao botão de editar ou ao título da lista caso o pedido saia do filtro.
+
+Veja o [relatório da V1.1, testes e capturas](docs/v1.1/README.md). Para testar a versão atual, **50 testes do frontend e 31 do backend** passaram, além de lint, typecheck e builds disponíveis. O navegador verificou a edição em 360, 390, 768 e 1280 px. O relatório da auditoria V1.0 permanece como histórico.
+
+### Base preservada
+
+Base React + TypeScript + Vite, com CSS tradicional, cabeçalho, hero, cardápio, formulário expansível, informações/contato e rodapé. O formulário é integrado à API REST em `backend/`: a confirmação com número do pedido aparece somente após `201 Created`, com a data reservada e pagamento na retirada. A API implementa CRUD e regras de capacidade com SQLite. `/admin` tem login e painel de encomendas com sessão validada no servidor, filtros, edição completa, alteração rápida de status e exclusão confirmada.
 
 **Regra atual de capacidade:** por orientação desta etapa, são **cinco bolos por dia**, calculados pela soma de `quantidadeBolos`, em vez de cinco registros de encomenda. Essa decisão substitui a contagem descrita no brief original, que foi preservado como histórico. Pedidos antigos passam a representar um bolo cada, sem apagar ou recriar a base.
 
@@ -76,9 +88,9 @@ As variáveis duram enquanto o terminal estiver aberto. Para manter configuraç�
 5. Use **Sair**, atualize a página e confira que o login é exigido. Acessar `/api/encomendas` sem sessão ou Bearer válido não retorna dados pessoais.
 6. Confira em 360, 390, 768 e 1280 px, com teclado e no celular. O painel usa cartões, sem tabela horizontal. Não compartilhe uma sessão autenticada em um dispositivo público.
 
-Mais detalhes do contrato e da configuração estão no [README da API](backend/README.md). Não há edição dos demais campos pelo painel nesta versão; o PATCH completo continua disponível por Bearer. Também não há cadastro público, pagamentos, notificações ou contas adicionais.
+Para editar todos os campos, clique em **Editar pedido**, altere os dados e use **Salvar alterações** ou **Cancelar**. Teste uma troca de data e quantidade, um conflito de capacidade e uma alteração apenas de contato em pedido antigo. O PATCH completo também continua disponível por Bearer. Mais detalhes estão no [README da API](backend/README.md). Não há cadastro público, pagamentos, notificações ou contas adicionais.
 
-Auditoria atual: **40 testes do frontend e 30 do backend**, lint, typecheck e builds aprovados. O painel foi conferido no Edge em 360, 390, 768 e 1280 px, com cookie real e sem rolagem horizontal. Veja o [relatório final integrado, capturas e roteiro de execução](docs/auditoria-final/README.md).
+Auditoria da V1.0: **40 testes do frontend e 30 do backend** aprovados. Veja o [relatório integrado anterior](docs/auditoria-final/README.md) e os [resultados atuais da V1.1](docs/v1.1/README.md).
 
 `npm.cmd` evita o bloqueio de `npm.ps1` pela política de scripts do Windows; em outros terminais pode usar `npm`.
 
@@ -123,6 +135,8 @@ npm.cmd install
 - `src/styles/admin.css`: painel mobile-first com a identidade visual do café.
 - `tests/admin-integracao.test.mjs`: login e operações reais através do proxy até o SQLite, incluindo acesso negado e saída.
 - `tests/admin-service.test.mjs`: rejeição de respostas administrativas inválidas antes de atualizar a tela.
+- `src/components/EditarPedido.tsx`: formulário controlado de edição, validação, cancelamento e preservação do rascunho em erros.
+- `src/utils/edicaoEncomenda.ts` e `tests/edicao-encomenda.test.mjs`: cálculo das diferenças normalizadas e validação de pedidos antigos/futuros.
 - `src/utils/contato.ts`: formação dos links externos somente quando confirmados e válidos.
 - `src/styles/contato.css`: seção em papel creme e rodapé chocolate, com disposição adaptada ao celular.
 - `src/services/encomendas.ts`: consulta pública de disponibilidade e POST, verificação das respostas e mensagens de erro; sem token e sem repetição automática de POST.
@@ -151,7 +165,7 @@ A seção `#contato` substitui o placeholder e apresenta horário, endereço e c
 
 Links oficiais abrem em nova aba, com indicação no texto e `rel="noopener noreferrer"`, preservando a página do café. Abrir uma conversa não registra nem sincroniza encomendas: a seção orienta reservar pelo formulário. Nenhum dado de formulário é incluído na mensagem de WhatsApp.
 
-O link **Área administrativa** leva ao login em `/admin`. A API só retorna nomes e telefones depois da autenticação. O painel permite acompanhar e gerenciar status e exclusões; o link **Voltar para o café** mantém o retorno à landing page.
+O link **Área administrativa** leva ao login em `/admin`. A API só retorna nomes e telefones depois da autenticação. O painel permite acompanhar, editar e excluir pedidos; o link **Voltar para o café** mantém o retorno à landing page.
 
 ### Revisão do cardápio
 

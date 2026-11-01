@@ -213,7 +213,9 @@ Os testes cobrem CRUD, adicional, status inicial, soma das quantidades em todos 
 
 ## Limites desta etapa
 
-O servidor escuta só em loopback (`127.0.0.1`), não libera CORS e protege operações administrativas com sessão ou Bearer. A criação é pública por projeto; sua resposta pertence a quem acabou de enviar o pedido. Segredos nunca vão no cliente público. Não há cadastro público, recuperação automática de senha, múltiplos perfis ou notificações. O painel permite listagem, filtros, status e exclusão; os demais campos continuam editáveis pela API.
+O servidor escuta só em loopback (`127.0.0.1`), não libera CORS e protege operações administrativas com sessão ou Bearer. A criação é pública por projeto; sua resposta pertence a quem acabou de enviar o pedido. Segredos nunca vão no cliente público. Não há cadastro público, recuperação automática de senha, múltiplos perfis ou notificações. Na V1.1, o painel também edita todos os campos modificáveis por meio do PATCH existente, além de listagem, filtros, status e exclusão. O ID permanece somente de leitura.
+
+A edição do painel envia apenas as diferenças: uma alteração de telefone/status não reenvia data antiga. Alterar quantidade em pedido antigo exige uma data futura. O servidor continua responsável pela validação definitiva e pela transação: o próprio ID é excluído da soma antes de testar a nova quantidade, e `409` preserva o registro inteiro. Não houve alteração no esquema SQLite nem nas rotas de autenticação. Um teste adicional por sessão verifica edição completa, transferência de capacidade, exclusão da própria reserva na soma e rollback de todos os campos no conflito. Consulte o [relatório V1.1](../docs/v1.1/README.md).
 
 Antes de publicar, configure usuário/hash fortes no ambiente, origem HTTPS exata e proxy `/api` na mesma origem; mantenha acesso administrativo restrito e backup do banco. CORS não substitui autenticação. Não publique o arquivo SQLite como arquivo estático. Nesta etapa não foi feita implantação, e nomes e telefones não têm endpoint público de listagem/consulta.
 
