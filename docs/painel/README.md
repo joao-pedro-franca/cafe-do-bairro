@@ -1,5 +1,7 @@
 # Verificação do painel administrativo
 
+> Histórico da primeira versão. Consulte a [auditoria final integrada](../auditoria-final/README.md) para os resultados atuais. O script de repetição foi ampliado e agora também exercita o formulário público e usa um arquivo SQLite temporário.
+
 Etapa de 01/11/2026. O brief original foi preservado. A implementação substitui o aviso de `/admin` por login e painel, mantendo a regra atual de cinco **bolos** por dia e a API pública.
 
 - **37 testes front-end**: inclui cinco testes novos do painel, com React, proxy Vite, API e SQLite reais, além dos testes públicos existentes.

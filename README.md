@@ -70,7 +70,7 @@ As variáveis duram enquanto o terminal estiver aberto. Para manter configuraç�
 
 Mais detalhes do contrato e da configuração estão no [README da API](backend/README.md). Não há edição dos demais campos pelo painel nesta versão; o PATCH completo continua disponível por Bearer. Também não há cadastro público, pagamentos, notificações ou contas adicionais.
 
-Verificação desta etapa: **37 testes do frontend e 30 do backend**, lint, typecheck e builds aprovados. O painel foi conferido no Edge em 360, 390, 768 e 1280 px, com cookie real e sem rolagem horizontal. Veja as [capturas, resultados e comando para repetir o teste visual](docs/painel/README.md).
+Auditoria atual: **40 testes do frontend e 30 do backend**, lint, typecheck e builds aprovados. O painel foi conferido no Edge em 360, 390, 768 e 1280 px, com cookie real e sem rolagem horizontal. Veja o [relatório final integrado, capturas e roteiro de execução](docs/auditoria-final/README.md).
 
 `npm.cmd` evita o bloqueio de `npm.ps1` pela política de scripts do Windows; em outros terminais pode usar `npm`.
 
@@ -114,6 +114,7 @@ npm.cmd install
 - `src/services/admin.ts`: requisições administrativas com cookie de sessão e token CSRF em memória.
 - `src/styles/admin.css`: painel mobile-first com a identidade visual do café.
 - `tests/admin-integracao.test.mjs`: login e operações reais através do proxy até o SQLite, incluindo acesso negado e saída.
+- `tests/admin-service.test.mjs`: rejeição de respostas administrativas inválidas antes de atualizar a tela.
 - `src/utils/contato.ts`: formação dos links externos somente quando confirmados e válidos.
 - `src/styles/contato.css`: seção em papel creme e rodapé chocolate, com disposição adaptada ao celular.
 - `src/services/encomendas.ts`: consulta pública de disponibilidade e POST, verificação das respostas e mensagens de erro; sem token e sem repetição automática de POST.
@@ -179,7 +180,15 @@ Um `400` mostra a validação do servidor. Falhas de rede, timeout de 20 segundo
 
 O rascunho fica apenas na memória da página; recarregar apaga o preenchimento. Pedidos confirmados persistem no SQLite e não são cancelados ao recarregar. A landing page usa somente os endpoints públicos; consultas administrativas ocorrem exclusivamente no painel autenticado. Não há integração com WhatsApp.
 
-## Revisão pré-entrega
+## Auditoria final integrada
+
+A [auditoria final de 01/11/2026](docs/auditoria-final/README.md) acompanhou o mesmo pedido do formulário público até o painel. Criação com `201`, redução de disponibilidade, login, persistência dos status após reiniciar a API e reabrir o SQLite, exclusão liberando a quantidade correta, logout e bloqueio de acessos anônimos foram aprovados. O fluxo público continua funcionando sem autenticação.
+
+Foram corrigidos somente dois problemas: perda de foco ao salvar status e aceitação de respostas administrativas inválidas. O painel agora devolve o foco ao pedido alterado e mostra erro sem quebrar a tela ou apagar a lista quando o servidor/proxy responde com conteúdo inválido. Não houve mudança de esquema do banco, regra de capacidade, credenciais ou funcionalidades extras.
+
+Os dois roteiros de navegador verificaram a landing, o formulário e o painel nas quatro larguras. Axe-core não encontrou violações nas 21 combinações examinadas; os erros HTTP esperados foram `401` sem sessão e `409` no conflito intencional. Veja no relatório os limites de acessibilidade, a configuração segura do login, os comandos para repetir tudo e o roteiro de demonstração.
+
+## Revisão pré-entrega anterior
 
 A [revisão técnica e visual completa](docs/REVISAO-PRE-ENTREGA.md) contém requisitos verificados, correções, pendências, capturas e roteiro de demonstração.
 
@@ -212,4 +221,4 @@ O proxy segue a opção oficial [`server.proxy` do Vite](https://vite.dev/config
 
 ## Próxima etapa
 
-Consultar as pendências da revisão pré-entrega: outros motores/dispositivos e leitor de tela, materiais visuais autorizados quando fornecidos e conferência do repositório. Antes de implantar, configurar HTTPS, origem exata do site, ambiente protegido, proxy `/api` na mesma origem e backup/acesso restrito ao SQLite. O relatório anterior é histórico e antecede a implementação do painel.
+Consultar as pendências da auditoria final: outros motores/dispositivos e leitor de tela, materiais visuais autorizados quando fornecidos e conferência do repositório. Antes de implantar, configurar HTTPS, origem exata do site, ambiente protegido, proxy `/api` na mesma origem e backup/acesso restrito ao SQLite. A revisão pré-entrega anterior permanece como histórico.

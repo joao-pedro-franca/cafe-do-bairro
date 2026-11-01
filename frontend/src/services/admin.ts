@@ -31,10 +31,35 @@ async function solicitar<T>(caminho: string, metodo = 'GET', corpo?: unknown, cs
   }
   return dados as T
 }
+function respostaInvalida() {
+  return new ErroAdmin('A resposta do servidor está incompleta ou inválida. Atualize a página ou a lista antes de repetir uma alteração.')
+}
+function validarSessao(valor: unknown): SessaoAdmin {
+  const sessao = valor as SessaoAdmin | null
+  if (!sessao || typeof sessao.csrfToken !== 'string' || !/^[a-f0-9]{64}$/.test(sessao.csrfToken)
+    || typeof sessao.expiraEm !== 'string' || !Number.isFinite(Date.parse(sessao.expiraEm))) throw respostaInvalida()
+  return sessao
+}
+function pedidoValido(valor: unknown): valor is PedidoAdmin {
+  const pedido = valor as PedidoAdmin | null
+  return Boolean(pedido && Number.isSafeInteger(pedido.id) && pedido.id > 0
+    && typeof pedido.nomeCliente === 'string' && typeof pedido.telefone === 'string' && typeof pedido.produto === 'string'
+    && typeof pedido.dataEntrega === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(pedido.dataEntrega)
+    && Number.isSafeInteger(pedido.quantidadeBolos) && pedido.quantidadeBolos > 0
+    && typeof pedido.incluirPaoDeQueijo === 'boolean' && statusEncomenda.some((status) => status === pedido.status))
+}
 // O navegador envia o cookie HttpOnly; apenas o token CSRF fica na memória da página.
-export const consultarSessao = () => solicitar<SessaoAdmin>('/admin/sessao')
-export const entrarAdmin = (usuario: string, senha: string) => solicitar<SessaoAdmin>('/admin/login', 'POST', { usuario, senha })
+export const consultarSessao = () => solicitar<unknown>('/admin/sessao').then(validarSessao)
+export const entrarAdmin = (usuario: string, senha: string) => solicitar<unknown>('/admin/login', 'POST', { usuario, senha }).then(validarSessao)
 export const sairAdmin = (csrf: string) => solicitar<void>('/admin/logout', 'POST', {}, csrf)
-export const listarPedidos = () => solicitar<PedidoAdmin[]>('/encomendas')
-export const alterarStatus = (id: number, status: StatusEncomenda, csrf: string) => solicitar<PedidoAdmin>(`/encomendas/${id}`, 'PATCH', { status }, csrf)
+export const listarPedidos = async () => {
+  const lista = await solicitar<unknown>('/encomendas')
+  if (!Array.isArray(lista) || !lista.every(pedidoValido)) throw respostaInvalida()
+  return lista
+}
+export const alterarStatus = async (id: number, status: StatusEncomenda, csrf: string) => {
+  const pedido = await solicitar<unknown>(`/encomendas/${id}`, 'PATCH', { status }, csrf)
+  if (!pedidoValido(pedido) || pedido.id !== id || pedido.status !== status) throw respostaInvalida()
+  return pedido
+}
 export const excluirPedido = (id: number, csrf: string) => solicitar<void>(`/encomendas/${id}`, 'DELETE', undefined, csrf)

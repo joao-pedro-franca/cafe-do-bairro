@@ -17,7 +17,7 @@ const { default: playwright } = await import(pathToFileURL(ferramentas.resolve('
 const { chromium } = playwright
 const { AxeBuilder } = await import(pathToFileURL(ferramentas.resolve('@axe-core/playwright')).href)
 const { createServer } = await import(pathToFileURL(front.resolve('vite')).href)
-const saida = join(raiz, 'docs', 'auditoria')
+const saida = join(raiz, 'docs', ...(process.argv.includes('--final') ? ['auditoria-final', 'publico'] : ['auditoria']))
 await mkdir(saida, { recursive: true })
 const temporaria = await mkdtemp(join(tmpdir(), 'cafe-auditoria-'))
 const arquivo = join(temporaria, 'auditoria.sqlite')

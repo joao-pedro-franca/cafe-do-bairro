@@ -53,6 +53,7 @@ export function Admin() {
   const trava = useRef(false)
   const cancelar = useRef<HTMLButtonElement>(null)
   const origemExclusao = useRef<HTMLButtonElement | null>(null)
+  const focoStatus = useRef<number | null>(null)
 
   function encerrarSessao() {
     setSessao(null); setPedidos([]); setExclusao(null); setSenha(''); setMensagem('')
@@ -87,6 +88,13 @@ export function Admin() {
       origemExclusao.current = null
     }
   }, [exclusao])
+  useEffect(() => {
+    // O cartão é remontado após salvar; devolve o foco ao pedido que foi alterado.
+    if (!ocupado && focoStatus.current !== null) {
+      document.getElementById(`status-${focoStatus.current}`)?.focus()
+      focoStatus.current = null
+    }
+  }, [pedidos, ocupado])
 
   async function executar(acao: () => Promise<void>) {
     if (trava.current) return
@@ -142,6 +150,7 @@ export function Admin() {
           {!visiveis.length && <p className="admin-empty">Nenhuma encomenda por aqui com esses filtros.</p>}
           <ul className="admin-orders">{visiveis.map((pedido) => <CartaoPedido key={`${pedido.id}-${pedido.status}`} pedido={pedido} ocupado={ocupado || Boolean(exclusao)} salvar={(id, novoStatus) => void executar(async () => {
             const atualizado = await alterarStatus(id, novoStatus, sessao.csrfToken)
+            focoStatus.current = id
             setPedidos((lista) => lista.map((item) => item.id === id ? atualizado : item)); setMensagem(`Status do pedido nº ${id} atualizado para ${novoStatus}.`)
           })} excluir={(item) => { origemExclusao.current = document.activeElement as HTMLButtonElement; setExclusao(item) }} />)}</ul>
         </>}

@@ -1,12 +1,15 @@
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { once } from 'node:events'
 import { randomBytes } from 'node:crypto'
 import { criarApp } from '../backend/src/app.ts'
 import { abrirEncomendas } from '../backend/src/database/encomendas.ts'
 import { gerarHash } from '../backend/src/auth/senha.ts'
+import { dataMinima } from '../backend/src/encomenda.ts'
 
 const raiz = fileURLToPath(new URL('..', import.meta.url))
 const audit = createRequire(new URL('../.audit-tools/package.json', import.meta.url))
@@ -14,13 +17,22 @@ const front = createRequire(new URL('../frontend/package.json', import.meta.url)
 const { default: playwright } = await import(pathToFileURL(audit.resolve('playwright')).href)
 const { AxeBuilder } = await import(pathToFileURL(audit.resolve('@axe-core/playwright')).href)
 const { createServer } = await import(pathToFileURL(front.resolve('vite')).href)
-const saida = new URL('../docs/painel/', import.meta.url)
+const integrado = process.argv.includes('--integrado')
+const saida = new URL(integrado ? '../docs/auditoria-final/' : '../docs/painel/', import.meta.url)
 await mkdir(saida, { recursive: true })
-const repo = abrirEncomendas(':memory:')
+const temporaria = await mkdtemp(join(tmpdir(), 'cafe-painel-auditoria-'))
+const arquivo = join(temporaria, 'auditoria.sqlite')
+let repo = abrirEncomendas(arquivo)
 const senha = randomBytes(24).toString('hex')
 const admin = { usuario: 'administradora-teste', senhaHash: await gerarHash(senha), origem: 'http://127.0.0.1:5173' }
 let api, vite, browser
-const resultado = { larguras: [], acessibilidade: [], errosPagina: [], passos: [] }
+const resultado = { larguras: [], acessibilidade: [], errosPagina: [], errosHttp: [], console: [], falhasRede: [], focoStatus: [], passos: [] }
+function observar(page) {
+  page.on('pageerror', (erro) => resultado.errosPagina.push(erro.message))
+  page.on('console', (mensagem) => { if (mensagem.type() === 'error') resultado.console.push(mensagem.text()) })
+  page.on('requestfailed', (req) => resultado.falhasRede.push({ caminho: new URL(req.url()).pathname, erro: req.failure()?.errorText }))
+  page.on('response', (res) => { if (res.status() >= 400) resultado.errosHttp.push({ caminho: new URL(res.url()).pathname, status: res.status() }) })
+}
 async function verificar(page, nome, largura) {
   await page.setViewportSize({ width: largura, height: 900 })
   await page.screenshot({ path: fileURLToPath(new URL(`${nome}-${largura}.png`, saida)), fullPage: true, animations: 'disabled' })
@@ -40,17 +52,56 @@ try {
   browser = await playwright.chromium.launch({ headless: true, ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) })
   const context = await browser.newContext()
   const page = await context.newPage()
-  page.on('pageerror', (erro) => resultado.errosPagina.push(erro.message))
+  observar(page)
+  const clienteContext = await browser.newContext({ viewport: { width: 390, height: 844 } })
+  const cliente = await clienteContext.newPage()
+  observar(cliente)
+  const data = dataMinima(new Date())
+  async function pedirPeloFormulario(quantidade) {
+    await cliente.goto(admin.origem)
+    await cliente.getByRole('button', { name: 'Quero encomendar', exact: true }).click()
+    await cliente.getByLabel('Data desejada').fill(data)
+    await cliente.getByLabel('Bolo escolhido').selectOption('bolo-cenoura')
+    await cliente.getByLabel('Nome completo').fill('Cliente de Demonstração')
+    await cliente.getByLabel('Telefone/WhatsApp').fill('(73) 99999-9999')
+    for (let i = 1; i < quantidade; i++) await cliente.getByRole('button', { name: 'Aumentar quantidade de bolos' }).click()
+    await cliente.getByRole('checkbox').check()
+    const resposta = cliente.waitForResponse((res) => new URL(res.url()).pathname === '/api/encomendas' && res.request().method() === 'POST')
+    await cliente.getByRole('button', { name: 'Confirmar encomenda', exact: true }).click()
+    const criado = await resposta
+    assert.equal(criado.status(), 201)
+    const pedido = await criado.json()
+    await cliente.getByText(`Encomenda nº ${pedido.id} confirmada!`, { exact: true }).waitFor()
+    assert(await cliente.getByText(/pagamento será realizado na retirada/).count())
+    await cliente.waitForFunction((esperado) => document.querySelector('.availability-summary > div:last-child dd')?.textContent === String(esperado), 5 - repo.disponibilidade(data).quantidadeReservada)
+    return pedido
+  }
+  const pedido = await pedirPeloFormulario(2)
+  await verificar(cliente, '01-cliente-confirmado', 390)
+  assert.equal(repo.buscar(pedido.id).quantidadeBolos, 2)
+  assert.equal(repo.disponibilidade(data).quantidadeDisponivel, 3)
+  resultado.passos.push('Cliente anônimo confirma dois bolos pelo formulário (201); SQLite reserva dois e saldo cai de cinco para três')
   await page.goto(`${admin.origem}/admin`)
   await page.getByLabel('Usuário', { exact: true }).waitFor()
+  await page.keyboard.press('Tab')
+  assert.equal(await page.locator(':focus').textContent(), 'Pular para o conteúdo')
+  await page.keyboard.press('Enter')
+  assert.equal(await page.locator(':focus').getAttribute('id'), 'admin-conteudo')
   for (const largura of [360, 390, 768, 1280]) await verificar(page, 'login', largura)
-  const dados = { nomeCliente: 'Cliente de Demonstração', telefone: '73999999999', produto: 'bolo-cenoura', dataEntrega: '2099-12-25', incluirPaoDeQueijo: true, quantidadeBolos: 2 }
-  const pedido = repo.criar(dados, () => new Date())
-  repo.criar({ ...dados, produto: 'bolo-coco', incluirPaoDeQueijo: false, quantidadeBolos: 1 }, () => new Date())
+  const dados = { nomeCliente: 'Outro Cliente de Teste', telefone: '73999999999', produto: 'bolo-coco', dataEntrega: data, incluirPaoDeQueijo: false, quantidadeBolos: 1 }
+  assert.equal((await clienteContext.request.post(`${admin.origem}/api/encomendas`, { data: dados })).status(), 201)
+  for (const [metodo, caminho, corpo] of [['GET', '/encomendas'], ['GET', `/encomendas/${pedido.id}`], ['PATCH', `/encomendas/${pedido.id}`, { status: 'entregue' }], ['DELETE', `/encomendas/${pedido.id}`]]) {
+    const negado = await clienteContext.request.fetch(`${admin.origem}/api${caminho}`, { method: metodo, ...(corpo ? { data: corpo } : {}) })
+    assert.equal(negado.status(), 401)
+    assert.deepEqual(Object.keys(await negado.json()), ['erro'])
+  }
+  resultado.passos.push('GET/lista, GET/ID, PATCH e DELETE anônimos negados com 401, sem dados pessoais')
   await page.getByLabel('Usuário', { exact: true }).fill(admin.usuario)
   await page.getByLabel('Senha', { exact: true }).fill(senha)
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
   await page.locator('.admin-card').first().waitFor()
+  assert(await page.locator('.admin-card').first().getByText('Cliente de Demonstração', { exact: true }).count())
+  resultado.passos.push('Administradora entra e encontra o mesmo ID, contato, sabor, quantidade e adicional criados no formulário')
   for (const largura of [360, 390, 768, 1280]) await verificar(page, 'pedidos', largura)
   assert.equal((await context.cookies()).find((c) => c.name === 'cafe_admin')?.httpOnly, true)
   assert.equal(await page.evaluate(() => localStorage.length + sessionStorage.length), 0)
@@ -58,9 +109,36 @@ try {
   await page.locator('.admin-card').first().getByRole('button', { name: 'Salvar status' }).click()
   await page.getByText(`Status do pedido nº ${pedido.id} atualizado para em preparo.`, { exact: true }).waitFor()
   assert.equal(repo.buscar(pedido.id).status, 'em preparo')
+  resultado.focoStatus.push(await page.evaluate(() => ({ tag: document.activeElement.tagName, id: document.activeElement.id })))
+  assert.equal(resultado.focoStatus[0].id, `status-${pedido.id}`)
+  assert.equal(repo.disponibilidade(data).quantidadeDisponivel, 2)
   await page.getByLabel('Filtrar por status', { exact: true }).selectOption('entregue')
   await page.getByText('Nenhuma encomenda por aqui com esses filtros.').waitFor()
   await page.getByRole('button', { name: 'Limpar filtros' }).click()
+  await page.getByLabel('Filtrar por data', { exact: true }).fill(data)
+  assert.equal(await page.locator('.admin-card').count(), 2)
+  await page.getByLabel(`Status do pedido nº ${pedido.id}`, { exact: true }).selectOption('entregue')
+  await page.locator('.admin-card').first().getByRole('button', { name: 'Salvar status' }).click()
+  await page.getByText(`Status do pedido nº ${pedido.id} atualizado para entregue.`, { exact: true }).waitFor()
+  assert.equal(repo.disponibilidade(data).quantidadeDisponivel, 2)
+  // Reinicia a API e reabre o arquivo, provando persistência e invalidação da sessão.
+  const portaApi = api.address().port
+  await new Promise((resolve) => api.close(resolve))
+  api = null
+  repo.fechar()
+  repo = abrirEncomendas(arquivo)
+  assert.equal(repo.buscar(pedido.id).status, 'entregue')
+  assert.equal(repo.disponibilidade(data).quantidadeDisponivel, 2)
+  api = criarApp(repo, { admin }).listen(portaApi, '127.0.0.1')
+  await once(api, 'listening')
+  await page.reload()
+  await page.getByLabel('Usuário', { exact: true }).fill(admin.usuario)
+  await page.getByLabel('Senha', { exact: true }).fill(senha)
+  await page.getByRole('button', { name: 'Entrar', exact: true }).click()
+  await page.locator('.admin-card').first().waitFor()
+  assert.equal(await page.locator('.admin-status').first().textContent(), 'entregue')
+  await verificar(page, '02-status-persistido', 390)
+  resultado.passos.push('Em preparo e entregue não liberam bolos; status e saldo persistem após reiniciar API e reabrir SQLite')
   await page.getByRole('button', { name: `Excluir pedido nº ${pedido.id}`, exact: true }).click()
   await verificar(page, 'confirmacao-exclusao', 390)
   await page.getByRole('button', { name: 'Manter pedido' }).click()
@@ -69,14 +147,37 @@ try {
   await page.getByRole('button', { name: `Sim, excluir pedido nº ${pedido.id}`, exact: true }).click()
   await page.getByText(`Pedido nº ${pedido.id} excluído.`, { exact: true }).waitFor()
   assert.equal(repo.listar().length, 1)
+  assert.equal(repo.disponibilidade(data).quantidadeDisponivel, 4)
+  await verificar(page, '03-exclusao-concluida', 390)
+  await cliente.goto(admin.origem)
+  await cliente.getByRole('button', { name: 'Quero encomendar', exact: true }).click()
+  await cliente.getByLabel('Data desejada').fill(data)
+  await cliente.waitForFunction(() => document.querySelector('.availability-summary > div:last-child dd')?.textContent === '4')
+  await verificar(cliente, '03b-saldo-liberado', 390)
+  resultado.passos.push('Cancelar exclusão preserva pedido; confirmação exclui dois bolos e saldo sobe de dois para quatro')
   await page.reload()
   await page.locator('.admin-card').waitFor()
+  const cookieAnterior = (await context.cookies()).find((cookie) => cookie.name === 'cafe_admin')
   await page.getByRole('button', { name: 'Sair', exact: true }).click()
   await page.getByLabel('Usuário', { exact: true }).waitFor()
+  await verificar(page, '04-logout', 390)
   const negado = await context.request.get(`${admin.origem}/api/encomendas`)
   assert.equal(negado.status(), 401)
+  assert.equal((await context.request.get(`${admin.origem}/api/encomendas`, { headers: { Cookie: `${cookieAnterior.name}=${cookieAnterior.value}` } })).status(), 401)
+  assert.equal(await page.getByText('Outro Cliente de Teste', { exact: true }).count(), 0)
+  for (const method of ['PATCH', 'DELETE']) {
+    const res = await context.request.fetch(`${admin.origem}/api/encomendas/${repo.listar()[0].id}`, { method, ...(method === 'PATCH' ? { data: { status: 'entregue' } } : {}) })
+    assert.equal(res.status(), 401)
+  }
+  resultado.passos.push('Logout limpa a tela e bloqueia listagem e alterações com o cookie anterior')
+  await pedirPeloFormulario(1)
+  assert.equal(repo.disponibilidade(data).quantidadeDisponivel, 3)
+  await verificar(cliente, '05-cliente-apos-logout', 390)
+  resultado.passos.push('Após logout, cliente sem autenticação cria outro bolo; saldo público reflete três disponíveis')
   assert.equal(resultado.errosPagina.length, 0)
-  resultado.passos.push('Login por cookie real, sessão após reload, filtros, status no SQLite, cancelar/confirmar exclusão e logout com acesso negado')
+  assert.equal(resultado.falhasRede.length, 0)
+  assert(resultado.errosHttp.every((res) => res.status === 401 && res.caminho === '/api/admin/sessao'))
+  resultado.passos.push('Cookie HttpOnly, sessão após reload, filtros e ausência de credenciais no armazenamento do navegador verificados')
   console.log(JSON.stringify(resultado, null, 2))
 } finally {
   await writeFile(new URL('resultado.json', saida), JSON.stringify(resultado, null, 2))
@@ -84,4 +185,5 @@ try {
   await vite?.close()
   if (api) await new Promise((resolve) => api.close(resolve))
   repo.fechar()
+  await rm(temporaria, { recursive: true, force: true })
 }

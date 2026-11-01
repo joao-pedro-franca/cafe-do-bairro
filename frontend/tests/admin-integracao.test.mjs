@@ -16,13 +16,14 @@ const descritores = new Map(Object.keys(globais).map((chave) => [chave, Object.g
 for (const [chave, valor] of Object.entries(globais)) Object.defineProperty(globalThis, chave, { value: valor, configurable: true, writable: true })
 const { createRoot } = await import('react-dom/client')
 let vite, api, repo, base, Admin, raiz, container, cookie = '', interceptar
+let deslocamentoRelogio = 0
 const senha = 'senha-ficticia-integracao'
 const dados = { nomeCliente: 'Cliente de Teste', telefone: '73999999999', produto: 'bolo-cenoura', dataEntrega: '2099-12-25', incluirPaoDeQueijo: true, quantidadeBolos: 2 }
 
 before(async () => {
   const admin = { usuario: 'marta-teste', senhaHash: await gerarHash(senha), origem: 'http://127.0.0.1:5173' }
   repo = abrirEncomendas(':memory:')
-  api = criarApp(repo, { admin }).listen(0, '127.0.0.1')
+  api = criarApp(repo, { admin, agora: () => new Date(Date.now() + deslocamentoRelogio) }).listen(0, '127.0.0.1')
   await once(api, 'listening')
   vite = await createServer({ root: fileURLToPath(new URL('..', import.meta.url)), server: { host: '127.0.0.1', port: 0, hmr: false, watch: null, proxy: { '/api': { target: `http://127.0.0.1:${api.address().port}` } } }, logLevel: 'silent' })
   await vite.listen()
@@ -32,13 +33,18 @@ before(async () => {
   Admin = (await vite.ssrLoadModule('/src/pages/Admin.tsx')).Admin
 })
 beforeEach(async () => {
+  // Isola a janela de tentativas de cada cenário sem desabilitar a proteção da API.
+  deslocamentoRelogio += 16 * 60 * 1000
   repo.criar(dados, () => new Date())
   cookie = ''
   interceptar = null
   globalThis.fetch = async (url, opcoes) => {
     assert.equal(opcoes.credentials, 'same-origin')
     assert.equal(opcoes.headers.Authorization, undefined)
-    if (interceptar) await interceptar(url, opcoes)
+    if (interceptar) {
+      const resposta = await interceptar(url, opcoes)
+      if (resposta) return resposta
+    }
     const res = await originalFetch(new URL(url, base), { ...opcoes, headers: { ...opcoes.headers, Origin: base, ...(cookie ? { Cookie: cookie } : {}) } })
     // O Node não tem cookie jar: simula apenas o transporte que o navegador faz.
     const novoCookie = res.headers.get('set-cookie')
@@ -109,6 +115,7 @@ test('login → proxy → sessão → SQLite: dados só aparecem após autentica
   await enviar(container.querySelector('.admin-card form'))
   await esperar(() => container.querySelector('[role="status"]')?.textContent.includes('atualizado'))
   assert.equal(repo.buscar(id).status, 'em preparo')
+  assert.equal(document.activeElement?.id, `status-${id}`)
   assert.equal(repo.disponibilidade(dados.dataEntrega).quantidadeReservada, 2)
   assert.equal(window.localStorage.length, 0)
   assert.equal(window.sessionStorage.length, 0)
@@ -168,4 +175,15 @@ test('duplo login é bloqueado e sessão perdida durante operação limpa dados 
   await esperar(() => container.querySelector('#admin-usuario'))
   assert(!container.textContent.includes(dados.nomeCliente))
   assert(container.querySelector('[role="alert"]'))
+})
+
+test('resposta inválida ao atualizar mostra erro sem apagar pedidos nem quebrar o painel', async () => {
+  await login()
+  await esperar(() => container.querySelector('.admin-card'))
+  interceptar = async (url) => url === '/api/encomendas' ? new Response('<html>Resposta incompleta</html>', { status: 200 }) : undefined
+  await clicar(botao('Atualizar lista'))
+  await esperar(() => container.querySelector('[role="alert"]'))
+  assert(container.textContent.includes('resposta do servidor está incompleta ou inválida'))
+  assert.equal(container.querySelectorAll('.admin-card').length, 1)
+  assert(container.textContent.includes(dados.nomeCliente))
 })
