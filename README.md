@@ -6,11 +6,11 @@ Projeto para o desafio técnico da TecnoJr. Os requisitos estão em [BRIEF.md](B
 
 ### V1.1 — navegação entre seções
 
-Os links continuam sendo âncoras nativas, preservando hash, histórico e navegação pelo teclado. O CSS já solicitava rolagem suave, mas, no Edge deste ambiente, a medição mostrou um salto mesmo com `scroll-behavior: smooth` e movimento reduzido desativado. A especificação [permite que o navegador ignore essa propriedade](https://www.w3.org/TR/css-overflow/#smooth-scrolling).
+Os links continuam sendo âncoras HTML, com hash, histórico e navegação pelo teclado. A correção atual intercepta somente os destinos Início, Cardápio, Encomendas e Contato antes do salto nativo e controla a rolagem com `requestAnimationFrame` por aproximadamente **1,2 segundo**, desacelerando ao chegar ao destino.
 
-`src/utils/rolagem.ts` aplica um fallback de 450 ms somente quando identifica esse salto nos destinos Início, Cardápio, Encomendas e Contato. Quando a rolagem nativa está animando, ela é preservada. Nenhum clique é cancelado e não há manipulação manual do histórico ou do foco. Roda, toque, ponteiro e teclado interrompem o fallback. `prefers-reduced-motion: reduce` mantém a navegação direta, inclusive se a preferência mudar durante a animação.
+O fallback anterior de 450 ms era condicional e deixava a navegação nativa acontecer primeiro; por isso podia mostrar um salto e terminava cedo demais. Agora `src/utils/rolagem.ts` usa `preventDefault` nesses links, atualiza o hash com `pushState` sem rolar a tela e move o foco com `preventScroll`. Voltar/avançar preserva a restauração de posição do navegador e ajusta o foco ao destino. Roda, toque, ponteiro e teclado interrompem a animação. `prefers-reduced-motion: reduce` mantém a navegação direta, inclusive se a preferência mudar durante o percurso. Links modificados, externos, novos alvos e os links de erro do formulário permanecem com seu comportamento habitual.
 
-O diagnóstico e o teste de navegador ficam em `scripts/testar-rolagem.mjs` e `docs/v1.1/rolagem*.json`. Para repetir, com as ferramentas Playwright já instaladas em `.audit-tools`, execute `node scripts/testar-rolagem.mjs` na raiz.
+O diagnóstico e o teste de navegador ficam em `scripts/testar-rolagem.mjs` e `docs/v1.1/rolagem*.json`. Os arquivos `rolagem-450ms.json` e `rolagem-1200ms.json` registram as medições antes/depois, incluindo 100, 300, 600 e 900 ms. Para repetir, com as ferramentas Playwright já instaladas em `.audit-tools`, execute `node scripts/testar-rolagem.mjs` na raiz.
 
 ### V1.1 — edição de encomendas
 

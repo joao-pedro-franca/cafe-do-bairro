@@ -4,11 +4,25 @@ Etapa de 01/11/2026, sobre a V1.0. Duas melhorias, em commits separados: rolagem
 
 ## Rolagem entre seções
 
-O CSS já estava correto. No Edge local, porém, com `prefers-reduced-motion: reduce` desativado e estilo calculado `smooth`, o destino era alcançado já no primeiro quadro. Não foi encontrado handler cancelando os links. O motivo exato da política/configuração interna do navegador não foi determinado; a [especificação permite ignorar a suavização nativa](https://www.w3.org/TR/css-overflow/#smooth-scrolling).
+O CSS já solicitava suavização, mas a implementação anterior deixava a âncora nativa agir antes de decidir se usaria um fallback de 450 ms. Isso não impedia o salto inicial em navegadores que ignoravam a suavização. Além disso, o percurso terminava cedo demais: a nova medição da versão anterior chegou a 6.835 px aos 304 ms e ao destino de 7.211 px antes dos 603 ms. Não foi identificada a configuração interna específica do navegador que motivou o relato do usuário.
 
-O fallback em `frontend/src/utils/rolagem.ts` observa a navegação nativa e anima por 450 ms apenas se ocorreu o salto. Não substitui as âncoras, não usa `preventDefault`, não reescreve histórico e não move o foco. Quando o navegador já anima, deixa o CSS trabalhar. Interação com roda, toque, ponteiro ou teclado interrompe a animação; movimento reduzido mantém a navegação direta e sua ativação durante o fallback conclui a rolagem sem animação.
+`frontend/src/utils/rolagem.ts` agora intercepta os quatro destinos entre seções com `preventDefault`, atualiza o hash/histórico com `pushState` e anima o percurso inteiro com `requestAnimationFrame` por **1.200 ms**, usando a curva cúbica `1 - (1 - progresso)³`. Cada quadro usa rolagem instantânea para a posição calculada, sem depender da suavização nativa. O foco vai ao destino com `preventScroll`, sem antecipar o deslocamento. A margem CSS da seção é respeitada. Voltar/avançar usa a restauração do próprio navegador e ajusta o foco sem rolar de novo. Skip link, âncoras de erros, cliques modificados e links externos não são interceptados.
 
-As medições [antes](rolagem-antes.json) e [depois](rolagem.json) mostram, respectivamente, posição única e posições intermediárias com movimento permitido. Cabeçalho, os dois CTAs do Hero, cardápio, rodapé, Enter e histórico voltar/avançar foram exercitados. O modo reduzido permaneceu com uma única posição, sem animação.
+Interação com roda, toque, ponteiro ou teclado cancela os próximos quadros. Movimento reduzido navega diretamente; se a preferência for ativada durante o percurso, a página conclui o deslocamento sem continuar animando. A animação não altera o formulário de encomendas, painel ou API.
+
+As medições atuais [antes, 450 ms](rolagem-450ms.json) e [depois, 1.200 ms](rolagem-1200ms.json) guardam todos os quadros e amostras próximas de 100, 300, 600, 900 e 1.200 ms. Os arquivos anteriores `rolagem-antes.json` e `rolagem.json` permanecem apenas como histórico. O teste usa cliques reais do Playwright e Enter no Edge, além de histórico, continuação por Tab, interrupção com roda real e mudança de movimento reduzido durante a animação. Cabeçalho, ambos os CTAs do Hero, cardápio e rodapé foram verificados. As larguras são 360, 390, 768 e 1280 px. A curva segue progressivamente em uma única direção, com mais de 30 posições distintas por percurso; em movimento reduzido, todos os quadros posteriores ao clique já estão no destino.
+
+Amostra da execução concluída, clicando em Encomendas no cabeçalho em 390 px, partindo de 0 e com destino em aproximadamente 7.211 px:
+
+| Tempo registrado | Posição vertical |
+| --- | --- |
+| 101 ms | 1.212 px |
+| 307 ms | 4.045 px |
+| 607 ms | 6.255 px |
+| 907 ms | 7.084 px |
+| 1.207 ms | 7.211 px |
+
+As posições intermediárias demonstram que não houve teletransporte ao destino nem salto para trás antes da animação. O registro segue por cerca de 1.450 ms para confirmar que a página permanece parada após o término. Foram repetidos os 50 testes frontend, os 31 testes backend, lint, typecheck e builds disponíveis. A correção está restrita à branch `melhorias-v1.1`, sem merge na `Main`.
 
 ## Editar pedidos
 
