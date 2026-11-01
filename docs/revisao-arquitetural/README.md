@@ -175,6 +175,10 @@ além do build. O backend não tem script de lint.
 
 ### Integração em navegador
 
+Esta seção preserva os resultados da primeira etapa. As duas falhas abaixo foram
+investigadas e resolvidas no encerramento descrito em **Conclusão das auditorias
+de navegador**, ao final deste documento.
+
 Os roteiros existentes são executados em cópia temporária do projeto, usando
 `--sem-capturas` quando suportado. Ela exclui `.git`, arquivos `.env`, bases SQLite, diretório de
 dados de desenvolvimento e builds. Cada roteiro usa API/Vite próprios, portas e
@@ -231,3 +235,133 @@ Não houve teste de carga, implantação HTTPS, teste em aparelho físico ou val
 adicional em Safari/Firefox nesta etapa. A base real de desenvolvimento não foi
 aberta pelos testes. Mudanças futuras nas migrações e regras continuam exigindo
 os testes de rollback, histórico e concorrência já existentes.
+
+## Conclusão das auditorias de navegador
+
+Esta continuação parte do commit `2c8462b`, com Git limpo, na mesma branch
+`refactor/revisao-arquitetural`. Seu escopo é corrigir os dois roteiros que ficaram
+parciais; não envolve nova refatoração ou mudança na aplicação.
+
+### Contatos comerciais: expectativa antiga do teste
+
+`auditar-preentrega.mjs` procurava um `<summary>` de canal indisponível e exigia
+zero links WhatsApp. Essas condições pertenciam à apresentação anterior, enquanto
+o requisito atual publica WhatsApp autorizado e Instagram identificado como da
+TecnoJr. A opção `--comercial` apenas escolhia a saída do relatório, sem atualizar
+essas verificações.
+
+A correção substitui a expectativa antiga por verificações dos controles reais:
+
+- São seis links, dois em cada local: hero, contato e rodapé, sem canais pendentes.
+- O WhatsApp tem domínio, número autorizado e mensagem codificada esperados.
+- O Instagram aponta ao perfil correto e está identificado como da TecnoJr.
+- Os links indicam nova aba e usam `target="_blank"` e `rel="noopener noreferrer"`.
+- Os dois controles da seção de contato são acionados e abrem novas abas com os
+  destinos corretos. As requisições são interceptadas pelo Playwright antes da
+  rede e recebem uma página de teste; não há acesso às contas nem envio de mensagem.
+- A seção de contatos também recebe análise axe. Toda análise axe do roteiro
+  agora exige zero violações, inclusive fora do modo `--visual`.
+
+As verificações de encomenda, conflito, rascunho, limite, login, redução de movimento
+e persistência continuam presentes. Os testes frontend também preservam os casos
+em que contatos não autorizados ou inválidos não podem produzir links externos.
+
+### Foco: corrida entre o teste e a montagem do React
+
+A investigação usou uma cópia temporária e instrumentou o `keydown` de Tab,
+registrando o estado da árvore DOM no próprio evento, sem antes inserir uma espera
+que alterasse a reprodução. Em 12 navegações com a sequência antiga, uma entregou
+a tecla antes da primeira renderização do React:
+
+```json
+{"rootChildren":0,"skip":false,"active":"BODY"}
+```
+
+Depois da tecla, o DOM já podia conter os quatro filhos da landing e o documento
+estar em `readyState="complete"`, mas o foco permanecia no corpo. Isso explica o
+timeout posterior em `:focus`: o link não existia quando o navegador processou Tab.
+O retorno de `page.goto`, que aguarda `load` por padrão, não garante o primeiro
+commit de `createRoot`.
+
+Com o DOM montado, a navegação nativa funciona: o primeiro Tab alcança o link
+**Pular para o conteúdo**, e Enter foca `main#conteudo`. Não foi demonstrado defeito
+na navegação da aplicação nem falha do mecanismo de foco do Edge. O problema
+reproduzido pertence à sincronização do teste.
+
+Os roteiros agora aguardam o link visível antes da tecla e verificam que o foco
+inicial continua no `body`. O teste não chama `focus()` para colocar o usuário no
+link de pular conteúdo: Tab ainda precisa alcançá-lo pela ordem real do documento.
+Após Enter, uma espera observa o foco em `#conteudo`, mantendo a verificação do
+destino. Não foram ampliados timeouts ou adicionadas tentativas automáticas.
+
+O roteiro comercial também passou a exercitar os links já publicados na seção
+de contato, em vez de injetar outra instância React de `ContactLinks` apenas para
+o teste. Abertura por Enter, destino, nova aba, segurança dos links e análise axe
+continuam verificados nos controles efetivamente usados na página.
+
+### Preservação e arquivos
+
+Somente `scripts/auditar-preentrega.mjs`,
+`scripts/testar-apresentacao-comercial.mjs` e esta documentação foram alterados,
+além dos novos relatórios desta conclusão. Nenhum arquivo de `frontend/src` ou
+`backend/src` precisou mudar.
+
+Ambos os roteiros aceitam `--saida=CAMINHO`, relativo à pasta de execução ou
+absoluto, para separar novas evidências das históricas. O comercial também aceita
+`--sem-capturas`; essa opção dispensa somente PNGs/JPEGs, mantendo fotos decodificadas,
+verificações de geometria, teclado, rede e axe. Os comandos sem essas opções mantêm
+as convenções anteriores de saída; para repetir, use uma pasta nova em `--saida`.
+
+Os navegadores foram executados em cópia temporária, com SQLite temporário ou
+em memória e sem copiar a base real de desenvolvimento, credenciais `.env` ou
+`.git`. Os roteiros de rolagem e sazonalidade não foram alterados e geraram suas
+saídas antigas apenas nessa cópia. Nenhuma imagem ou evidência histórica do
+repositório original foi sobrescrita.
+
+### Verificações desta conclusão
+
+| Verificação | Resultado observado |
+| --- | --- |
+| Frontend: `npm.cmd test` | 87 aprovados, zero falhas |
+| Backend: `npm.cmd test` | 62 aprovados, zero falhas |
+| Frontend: `npm.cmd run lint` | Aprovado |
+| Sintaxe dos dois roteiros: `node --check` | Aprovada |
+| Comercial: `--contatos --sem-capturas --saida=.../comercial` | Aprovado: quatro larguras, 11 análises axe sem violações, zero erros de página e dois destinos interceptados |
+| Público: `--comercial --sem-capturas --saida=.../publico` | Aprovado: oito medições de largura/estado, sete análises axe sem violações, zero erros de página e falhas de rede inesperadas |
+| Rolagem: `node --experimental-strip-types scripts/testar-rolagem.mjs --comercial` | Aprovado: 12 cenários, incluindo teclado, hash/foco, histórico, interrupção por roda e movimento reduzido |
+| Sazonalidade: `node --experimental-strip-types scripts/testar-sazonais.mjs --sem-capturas` | Aprovado: 16 estados/larguras, 16 análises axe sem violações e zero erros de página |
+| Comercial com capturas: `--contatos --saida=.../comercial-com-capturas` | Segunda execução completa aprovada: quatro larguras, 11 análises axe sem violações, zero erros de página e dois destinos interceptados |
+
+Os roteiros de navegador foram executados sequencialmente para não disputarem
+recursos entre si. As suítes frontend/backend também foram efetivamente repetidas,
+sem alteração em seus testes nesta continuação. O aviso experimental de SQLite
+continuou esperado. Os erros HTTP `401`/`409` do roteiro público são intencionais;
+cancelamentos de GET são registrados separadamente. A reprodução diagnóstica da
+corrida não é contabilizada como execução aprovada da auditoria.
+
+Relatórios novos, copiados das execuções concluídas na pasta temporária:
+
+- [Fluxo público](navegador-final/publico.json).
+- [Comercial sem capturas](navegador-final/comercial.json).
+- [Comercial com capturas](navegador-final/comercial-com-capturas.json).
+- [Sazonalidade](navegador-final/sazonais.json).
+- [Rolagem e navegação](navegador-final/rolagem.json).
+
+Somente os JSONs foram copiados para a pasta nova `navegador-final/`, depois de
+verificar que ela ainda não existia. As 15 capturas da segunda execução comercial
+permanecem na cópia temporária; nenhuma foto ou captura histórica foi substituída.
+Os relatórios preservam portas locais efêmeras, próprias das execuções isoladas.
+
+Para repetir os dois roteiros corrigidos a partir da raiz, escolha uma pasta de
+saída ainda não usada. Por exemplo, substitua `NOVA-RODADA` nos comandos abaixo:
+
+```powershell
+node --experimental-strip-types scripts/auditar-preentrega.mjs --comercial --sem-capturas --saida=docs/revisao-arquitetural/NOVA-RODADA/publico
+node --experimental-strip-types scripts/testar-apresentacao-comercial.mjs --contatos --sem-capturas --saida=docs/revisao-arquitetural/NOVA-RODADA/comercial
+```
+
+Não foram repetidos builds/typechecks
+nesta continuação, pois não houve mudança no código TypeScript da aplicação;
+os resultados de build da etapa anterior permanecem registrados acima.
+Não houve merge, push ou alteração da tag `v2.0`, que continua apontando para
+`7abec6e180df6e3cb1e6bc70a91a7fa2e97874a6`.

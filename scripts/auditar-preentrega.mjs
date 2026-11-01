@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { once } from 'node:events'
 import { randomBytes } from 'node:crypto'
@@ -18,7 +18,8 @@ const { chromium } = playwright
 const { AxeBuilder } = await import(pathToFileURL(ferramentas.resolve('@axe-core/playwright')).href)
 const { createServer } = await import(pathToFileURL(front.resolve('vite')).href)
 const visual = process.argv.includes('--visual')
-const saida = join(raiz, 'docs', ...(process.argv.includes('--comercial') ? ['apresentacao-comercial', 'regressao-publico'] : process.argv.includes('--sazonais') ? ['produtos-sazonais', 'regressao-publico'] : visual ? ['refinamento-visual'] : process.argv.includes('--itens') ? ['multissabores', 'publico'] : process.argv.includes('--final') ? ['auditoria-final', 'publico'] : ['auditoria']))
+const saidaPersonalizada = process.argv.find((arg) => arg.startsWith('--saida='))?.slice('--saida='.length)
+const saida = saidaPersonalizada ? resolve(saidaPersonalizada) : join(raiz, 'docs', ...(process.argv.includes('--comercial') ? ['apresentacao-comercial', 'regressao-publico'] : process.argv.includes('--sazonais') ? ['produtos-sazonais', 'regressao-publico'] : visual ? ['refinamento-visual'] : process.argv.includes('--itens') ? ['multissabores', 'publico'] : process.argv.includes('--final') ? ['auditoria-final', 'publico'] : ['auditoria']))
 await mkdir(saida, { recursive: true })
 const temporaria = await mkdtemp(join(tmpdir(), 'cafe-auditoria-'))
 const arquivo = join(temporaria, 'auditoria.sqlite')
@@ -45,7 +46,7 @@ async function geometria(page) {
 async function acessibilidade(page, passo) {
   const analise = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
   resultado.acessibilidade.push({ passo, violacoes: analise.violations.map((v) => ({ id: v.id, impacto: v.impact, descricao: v.description, elementos: v.nodes.map((n) => ({ alvo: n.target, resumo: n.failureSummary })) })) })
-  if (visual) assert.equal(analise.violations.length, 0, `Violação de acessibilidade em ${passo}`)
+  assert.equal(analise.violations.length, 0, `Violação de acessibilidade em ${passo}`)
 }
 
 try {
@@ -92,9 +93,12 @@ try {
 
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto(url, { waitUntil: 'networkidle' })
+  await page.locator('.skip-link').waitFor({ state: 'visible' })
+  assert(await page.evaluate(() => document.activeElement === document.body))
   await page.keyboard.press('Tab')
   assert.equal(await page.locator(':focus').textContent(), 'Pular para o conteúdo')
   await page.keyboard.press('Enter')
+  await page.waitForFunction(() => document.activeElement?.id === 'conteudo')
   assert.equal(await page.locator(':focus').getAttribute('id'), 'conteudo')
   await page.locator('.hero-actions a[href="#encomendas"]').click()
   await page.locator('.menu-order-action a[href="#encomendas"]').click()
@@ -192,9 +196,45 @@ try {
   resultado.passos.push('409 real atualiza saldo e permite corrigir quantidade sem perder dados')
 
   await page.locator('header nav a[href="#contato"]').click()
-  await page.locator('#contato .contact-pending summary').first().click()
+  await page.waitForFunction(() => document.activeElement?.id === 'contato')
+  assert.equal(await page.locator('.contact-pending').count(), 0)
+  assert.equal(await page.locator('.contact-links a').count(), 6)
+  for (const secao of ['.hero', '#contato', '.site-footer']) {
+    const links = page.locator(`${secao} .contact-links a`)
+    assert.equal(await links.count(), 2)
+    const whatsapp = new URL(await links.nth(0).getAttribute('href'))
+    assert.equal(whatsapp.origin, 'https://wa.me')
+    assert.equal(whatsapp.pathname, '/5573988255560')
+    assert.equal(whatsapp.searchParams.get('text'), 'Olá! Gostaria de fazer uma encomenda no Café do Bairro.')
+    assert.equal(await links.nth(1).getAttribute('href'), 'https://www.instagram.com/tecnojr/')
+    assert((await links.nth(1).textContent()).includes('Instagram da TecnoJr'))
+    for (const link of await links.all()) {
+      assert.equal(await link.getAttribute('target'), '_blank')
+      assert.equal(await link.getAttribute('rel'), 'noopener noreferrer')
+      assert((await link.textContent()).includes('(nova aba)'))
+    }
+  }
+  const destinos = []
+  for (const padrao of ['https://wa.me/**', 'https://www.instagram.com/**']) {
+    await contexto.route(padrao, async (rota) => {
+      destinos.push(rota.request().url())
+      await rota.fulfill({ contentType: 'text/html', body: '<title>Contato interceptado para teste</title>' })
+    })
+  }
+  for (const link of await page.locator('#contato .contact-links a').all()) {
+    const novaAba = contexto.waitForEvent('page')
+    await link.click()
+    const popup = await novaAba
+    await popup.waitForLoadState()
+    assert.equal(await popup.title(), 'Contato interceptado para teste')
+    await popup.close()
+  }
+  assert.equal(destinos.length, 2)
+  assert.equal(new URL(destinos[0]).pathname, '/5573988255560')
+  assert.equal(new URL(destinos[0]).searchParams.get('text'), 'Olá! Gostaria de fazer uma encomenda no Café do Bairro.')
+  assert.equal(destinos[1], 'https://www.instagram.com/tecnojr/')
   await captura(page, '09-contato-390.png')
-  assert.equal(await page.locator('a[href^="https://wa.me/"]').count(), 0)
+  await acessibilidade(page, 'contatos-autorizados-390')
   await page.locator('footer').scrollIntoViewIfNeeded()
   await captura(page, '10-rodape-390.png')
   await page.getByRole('link', { name: /Área administrativa/ }).click()
@@ -202,7 +242,7 @@ try {
   assert.equal(await page.locator('.admin-card').count(), 0)
   await captura(page, '11-login-admin-390.png')
   await acessibilidade(page, 'login-admin-390')
-  resultado.passos.push('Contato ainda não habilitado sem link externo falso, rodapé e login /admin sem expor pedidos')
+  resultado.passos.push('Seis links comerciais seguros; WhatsApp e Instagram abrem novas abas com destinos interceptados, sem acessar terceiros; rodapé e login /admin sem expor pedidos')
   await page.emulateMedia({ reducedMotion: 'reduce' })
   assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior), 'auto')
   resultado.passos.push('Preferência de movimento reduzido respeitada')

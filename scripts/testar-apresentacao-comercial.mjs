@@ -3,7 +3,7 @@ import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { mkdir, mkdtemp, rm, writeFile, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { once } from 'node:events'
 import { criarApp } from '../backend/src/app.ts'
 import { abrirEncomendas } from '../backend/src/database/encomendas.ts'
@@ -14,13 +14,15 @@ const front = createRequire(new URL('../frontend/package.json', import.meta.url)
 const { default: playwright } = await import(pathToFileURL(audit.resolve('playwright')).href)
 const { AxeBuilder } = await import(pathToFileURL(audit.resolve('@axe-core/playwright')).href)
 const { createServer } = await import(pathToFileURL(front.resolve('vite')).href)
-const saida = fileURLToPath(new URL(process.argv.includes('--contatos') ? '../docs/apresentacao-comercial/contatos-autorizados/' : '../docs/apresentacao-comercial/', import.meta.url))
+const saidaPersonalizada = process.argv.find((arg) => arg.startsWith('--saida='))?.slice('--saida='.length)
+const saida = saidaPersonalizada ? resolve(saidaPersonalizada) : fileURLToPath(new URL(process.argv.includes('--contatos') ? '../docs/apresentacao-comercial/contatos-autorizados/' : '../docs/apresentacao-comercial/', import.meta.url))
 await mkdir(saida, { recursive: true })
 const temporaria = await mkdtemp(join(tmpdir(), 'cafe-comercial-'))
 const repo = abrirEncomendas(join(temporaria, 'auditoria.sqlite'))
 let api, vite, browser
 const resultado = { larguras: [], fotografias: [], acessibilidade: [], passos: [], errosPagina: [], contatosInterceptados: [], falhasEsperadas: [] }
 async function capturar(page, nome, seletor) {
+  if (process.argv.includes('--sem-capturas')) return
   const opcoes = { path: join(saida, nome + '.jpg'), type: 'jpeg', quality: 85, animations: 'disabled' }
   if (seletor) await page.locator(seletor).screenshot(opcoes)
   else await page.screenshot({ ...opcoes, fullPage: true })
@@ -104,26 +106,23 @@ try {
   }
   resultado.passos.push('Onze fotografias locais decodificadas, preços legíveis, hero identificado e teclado nas quatro larguras.')
   await page.goto(base)
+  // O evento load pode anteceder o primeiro commit do createRoot do React.
+  // Esperar o link existir não move o foco nem substitui a navegação por teclado.
+  await page.locator('.skip-link').waitFor({ state: 'visible' })
+  assert(await page.evaluate(() => document.activeElement === document.body))
   await page.keyboard.press('Tab')
   assert.equal(await page.locator(':focus').textContent(), 'Pular para o conteúdo')
   await page.keyboard.press('Enter')
+  await page.waitForFunction(() => document.activeElement?.id === 'conteudo')
   assert.equal(await page.locator(':focus').getAttribute('id'), 'conteudo')
+  resultado.passos.push('Após recarregar e montar a landing, o primeiro Tab alcança o link de pular conteúdo e Enter foca o main, sem foco programático no teste.')
 
   // Exercita os contatos autorizados sem alcançar as contas: interceptação antes da rede.
   await contexto.route('https://wa.me/**', async (route) => { resultado.contatosInterceptados.push(route.request().url()); await route.fulfill({ contentType: 'text/html', body: '<title>Destino de teste interceptado</title>' }) })
   await contexto.route('https://www.instagram.com/**', async (route) => { resultado.contatosInterceptados.push(route.request().url()); await route.fulfill({ contentType: 'text/html', body: '<title>Destino de teste interceptado</title>' }) })
-  await page.evaluate(async () => {
-    const react = await import('/node_modules/.vite/deps/react.js')
-    const dom = await import('/node_modules/.vite/deps/react-dom_client.js')
-    const createElement = react.createElement ?? react.default.createElement
-    const createRoot = dom.createRoot ?? dom.default.createRoot
-    const { ContactLinks } = await import('/src/components/ContactLinks.tsx')
-    const teste = document.createElement('section'); teste.id = 'contatos-teste'; teste.setAttribute('aria-label', 'Canais de teste'); document.querySelector('main').append(teste)
-    createRoot(teste).render(createElement(ContactLinks))
-  })
-  await page.locator('#contatos-teste a').first().waitFor()
   await page.setViewportSize({ width: 390, height: 844 })
-  for (const link of await page.locator('#contatos-teste a').all()) {
+  // Exercita os controles publicados, sem injetar outra instância do componente.
+  for (const link of await page.locator('#contato .contact-links a').all()) {
     assert.equal(await link.getAttribute('target'), '_blank')
     assert.equal(await link.getAttribute('rel'), 'noopener noreferrer')
     const popupPromise = contexto.waitForEvent('page')
@@ -138,7 +137,7 @@ try {
   assert.equal(whatsapp.pathname, '/5573988255560')
   assert.equal(whatsapp.searchParams.get('text'), 'Olá! Gostaria de fazer uma encomenda no Café do Bairro.')
   assert.equal(resultado.contatosInterceptados[1], 'https://www.instagram.com/tecnojr/')
-  await capturar(page, 'contatos-autorizados-teste-390', '#contatos-teste')
+  await capturar(page, 'contatos-autorizados-teste-390', '#contato .contact-links')
   await axe(page, 'contatos-autorizados-teste-390')
   resultado.passos.push('WhatsApp/Instagram autorizados com SVG, nova aba, rel seguro e destinos interceptados; nenhuma conta externa acessada.')
 
