@@ -1,298 +1,214 @@
 # Café do Bairro
 
-Projeto para o desafio técnico da TecnoJr. Os requisitos estão em [BRIEF.md](BRIEF.md).
+Aplicação Full Stack desenvolvida para o processo seletivo da **TecnoJr 2026.2**, a partir do cenário de Dona Marta: uma cafeteria que recebe encomendas pelo WhatsApp e organiza os pedidos em um caderno.
 
-## Etapa atual
+A solução reúne um site responsivo para consultar o cardápio e registrar encomendas e um painel administrativo para acompanhar pedidos e controlar produtos disponíveis. O objetivo é facilitar o atendimento e evitar reservas acima da capacidade diária.
 
-### Apresentação comercial
+**Projeto acadêmico demonstrativo:** os pedidos ficam registrados no sistema, mas não geram preparação real de produtos.
 
-Na branch `feature/apresentacao-comercial`, a landing preserva o visual de casa de vó e apresenta os 11 produtos com **fotografias reais licenciadas**, em WebP local e duas resoluções. O hero permanece com a imagem anterior e sua identificação de IA. Hero, cardápio, informações, rodapé e metadados da página receberam textos comerciais; o aviso honesto de demonstração fica junto do formulário que coleta dados e registra pedidos.
+## Da entrevista à solução
 
-Identidade, título/descrição da página, horários, endereço e contatos são configurados em `frontend/src/data/cafeConfig.ts`. A apresentação agora usa os **dados fictícios autorizados para o desafio**: Rua Mariano Gonçalves, 128, Bairro das Acácias, Vila Aurora – BA; segunda a sábado, das 8h às 18h. Esses valores não são dados verificados de uma empresa real. O campo `confirmado` libera a publicação dos valores autorizados, sem certificar a existência de um estabelecimento.
+A identidade visual representa um **café acolhedor, inspirado em uma casa de vó**. Tons terrosos e marrons, texturas de papel e madeira, fundos xadrez que lembram toalhas de mesa, elementos botânicos e fotografias dos produtos compõem uma apresentação calorosa e familiar, pensada primeiro para o celular.
 
-O WhatsApp **5573988255560** foi expressamente autorizado pelo proprietário do número para a demonstração e abre `https://wa.me/5573988255560` com a mensagem codificada “Olá! Gostaria de fazer uma encomenda no Café do Bairro.” Nada é enviado automaticamente. O botão **Instagram** usa `https://www.instagram.com/tecnojr/`: o perfil pertence à TecnoJr, não ao café fictício, e não indica parceria comercial. Essa identificação fica na documentação técnica; os botões exibem apenas **WhatsApp** e **Instagram**, sem explicações visuais adicionais. Os botões compartilhados estão habilitados no hero, contato e rodapé. Conversas não criam pedidos no SQLite; o formulário continua sendo o fluxo de registro. A condição demonstrativa permanece ativa (`demonstracao: true`), com aviso junto dos campos.
+As necessidades de Dona Marta orientaram as decisões funcionais:
 
-Veja [arquivos, decisões, configuração, testes e capturas](docs/apresentacao-comercial/README.md) e os [créditos individuais das fotografias](docs/creditos-imagens.md). Preços continuam somente em `backend/src/catalogo.ts`; disponibilidade continua no SQLite. API, banco, regras de produção, precificação e autenticação não foram modificados nesta etapa.
+| Necessidade | Resposta da aplicação |
+| --- | --- |
+| Organizar a produção | Cinco unidades de produção por dia, compartilhadas entre os pedidos. Bolos e, provisoriamente, panetones consomem esse grupo; cafés e dúzias de pão de queijo não consomem esse limite. |
+| Ter tempo para preparar | Retirada a partir de amanhã, considerando o calendário de `America/Bahia`, sem exigir 24 horas exatas. |
+| Evitar aprovação manual | Havendo disponibilidade, o pedido é registrado como `recebida` e sua capacidade fica reservada automaticamente. |
+| Manter o pagamento simples | Pagamento na retirada, sem checkout ou integração de pagamento online. |
+| Atender pedidos variados | Múltiplos sabores e produtos no mesmo pedido, com quantidades individuais; pão de queijo encomendado por dúzia. |
+| Vender panetones e bolos de Natal em dezembro | A menção a essas vendas sazonais motivou o controle dos meses de retirada em que cada produto aceita encomendas. |
+| Atualizar informações e oferta | Informações comerciais centralizadas em configuração; disponibilidade e meses dos produtos gerenciados pelo painel. |
 
-**Trocar fotos:** substitua `<id>.webp` e `<id>-480.webp` em `frontend/public/images/produtos/`, mantendo os nomes. Alternativamente, ajuste `imagem`, `imagemPequena` e `imagemAlt` do produto em `backend/src/produtos.ts`; `imagemPequena` pode ser removida quando houver apenas uma resolução. Atualize a fonte/licença no manifesto e nos créditos públicos. O script opcional `python scripts/preparar-fotografias.py CAMINHO_DAS_COPIAS` (Pillow) otimiza cópias locais previamente autorizadas, aplica os recortes e gera os créditos. O site não faz downloads de bancos de imagens durante a navegação.
+O [brief original](BRIEF.md) foi preservado como registro inicial. A entrega evoluiu da simplificação de cinco pedidos de um produto para **cinco unidades de produção**, distribuídas entre encomendas com múltiplos itens. Todos os status contam para o limite; marcar como entregue não libera a capacidade daquela data.
 
-### Disponibilidade de todos os produtos
+A sazonalidade considera o **mês da retirada**, não o mês do pedido: em novembro é possível encomendar um panetone habilitado para dezembro. Os produtos natalinos começam desabilitados, com dezembro selecionado; a administradora decide quando habilitá-los.
 
-Na branch `feature/produtos-sazonais`, Dona Marta pode entrar em `/admin` e usar **Disponibilidade do cardápio**, abaixo dos pedidos. Cada cartão mostra nome, categoria, preço por unidade de venda e estado confirmado. Marque **Aceita encomendas**, escolha **O ano todo** ou **Apenas meses selecionados** e clique em **Salvar [produto]**. A confirmação aparece somente após a resposta válida do servidor; erros mantêm o rascunho. Não é necessário alterar código ou publicar novamente para mudar essas configurações.
+## Funcionalidades principais
 
-Os 11 produtos recebem padrões apenas uma vez: seis bolos habilitados o ano todo; pão de queijo habilitado por dúzia; cafés desabilitados; panetone e bolo de Natal desabilitados com dezembro selecionado. As decisões posteriores ficam no SQLite e sobrevivem à reinicialização. Exibição no cardápio e aceitação de encomendas são independentes. Preços e cadastro não são editáveis no painel.
+### Área do cliente
 
-O período considera o **mês da retirada**: em novembro é possível pedir panetone habilitado para dezembro. Café pode ser pedido por xícara e pão de queijo por dúzia, inclusive sem bolos. A dúzia opcional anterior continua funcionando, mas não pode coexistir com pão de queijo nos itens do mesmo pedido. A API valida tudo novamente na transação; se a disponibilidade mudar durante o preenchimento, responde `409`, atualiza a consulta e mantém o rascunho para correção. Nenhum produto é removido silenciosamente.
+- Cardápio com 11 produtos, fotografias locais, descrições, tamanhos e preços.
+- Consulta de disponibilidade por data e dos produtos habilitados para o mês da retirada.
+- Formulário expansível com produtos e quantidades, preservando o preenchimento ao fechar e reabrir.
+- Registro da encomenda com número do pedido e resumo dos valores calculados pelo servidor, após a confirmação.
+- Validação e recuperação de conflito sem apagar o rascunho.
+- Informações comerciais e links de WhatsApp e Instagram, com nova aba segura e indicação acessível não visual.
 
-**Capacidade confirmada:** cinco bolos por dia. **Decisão provisória solicitada para o protótipo:** panetones compartilham essas cinco unidades; cafés e dúzias não têm limite diário inventado. O painel separa unidades de venda, bolos e unidades do grupo de produção. Desativar um produto não cancela nem reprecifica pedidos existentes; contato/status e itens mantidos ou reduzidos continuam editáveis. Novas inclusões, aumentos e mudanças de data precisam seguir a disponibilidade vigente.
+### Área administrativa
 
-Nomes, categorias, unidades e critérios de produção agora vêm de `backend/src/produtos.ts`, compartilhado com o frontend. Para alterar **preços**, edite `backend/src/catalogo.ts` em centavos e publique as duas aplicações juntas; `paoDeQueijoCentavos` é o preço da dúzia e `produtos['pao-queijo']` é o preço unitário exibido no cardápio. Isso afeta novos itens, preservando os preços históricos registrados. Adicionar novos produtos ao catálogo ainda exige código; gerenciar sua disponibilidade depois não exige deploy.
+- Autenticação com credenciais configuradas no servidor e sessão protegida.
+- Listagem e filtros por data, prazo de retirada e status.
+- Edição de contato, itens, quantidades, data, acompanhamento e status: `recebida`, `em preparo` e `entregue`.
+- Exclusão com confirmação explícita, liberando a produção reservada pelo pedido.
+- Resumo financeiro e prévia da edição, preservando os preços registrados nos itens existentes.
+- Gerenciamento dos produtos que aceitam encomendas e dos meses de retirada, com persistência no SQLite.
 
-Veja [arquitetura, migração, arquivos alterados, testes e capturas](docs/produtos-sazonais/README.md). Os testes e a auditoria usam exclusivamente bancos temporários. Para uma base existente, pare a API e faça o backup descrito no [README da API](backend/README.md#persistência-capacidade-e-concorrência) antes da primeira inicialização desta versão; a migração é transacional, repetível e preserva dados e preços. Publique frontend e backend juntos.
+O painel não edita preços, cadastro dos produtos, endereço ou horários. Dados comerciais ficam em `frontend/src/data/cafeConfig.ts`; nomes, descrições e imagens em `backend/src/produtos.ts`; preços em centavos em `backend/src/catalogo.ts`. Alterar esses arquivos exige nova publicação. Disponibilidade e meses são gerenciados pela interface.
 
-### Precificação das encomendas
+<details>
+<summary>Ver capturas reais do cardápio e do controle administrativo</summary>
 
-Pedidos agora registram os preços unitários em centavos e exibem subtotais, acompanhamento e total a pagar na retirada. O painel mostra uma prévia financeira ao editar; o valor definitivo só muda após a resposta confirmada do servidor. A confirmação pública usa o mesmo resumo. A fonte única de preços é `backend/src/catalogo.ts`, também consumida pelo frontend. Veja [contrato, migração, histórico, arquivos e capturas](docs/precificacao/README.md).
+Registros das validações de apresentação comercial e sazonalidade. As configurações do painel são exemplos usados nos testes.
 
-**Base existente:** antes de iniciar esta versão, pare a API e faça backup conforme o [roteiro da API](backend/README.md#persistência-capacidade-e-concorrência). A migração é transacional e idempotente. Pedidos anteriores sem preços recebem os valores do catálogo atual e uma identificação de inicialização; esses valores não comprovam o preço originalmente combinado. Publique frontend e backend juntos.
+![Cardápio com fotografias, categorias, preços e disponibilidade](docs/apresentacao-comercial/contatos-autorizados/cardapio-1280.jpg)
 
-### Tons terrosos e detalhes botânicos
+![Painel com habilitação dos produtos e seleção dos meses de retirada](docs/produtos-sazonais/admin-disponibilidade-1280.jpg)
 
-A landing preserva o layout aprovado, a fotografia do hero e a madeira do cardápio, com maior presença de café, caramelo e café com leite em molduras, fundos e botões. O vaso de flores foi aprimorado e adaptado ao celular; ramos e utensílios locais enriquecem as margens sem ocupar os controles. Veja os [comparativos de todas as seções, arquivos e validações](docs/tons-terrosos/README.md).
+</details>
 
-### Refinamento visual da landing page
+## Tecnologias utilizadas
 
-O visual público segue a referência aprovada em `docs/referencia-visual.png`: hero com mesa caseira, papel creme com textura leve, divisões em tecido xadrez, cartões artesanais, bilhetes, folhagens e utensílios desenhados. A imagem ilustrativa foi criada com IA e otimizada em WebP responsivo; os ornamentos são SVG locais. Fluxos, múltiplos sabores, capacidade, autenticação e filtros administrativos foram preservados. Veja o [relatório visual, arquivos e validações](docs/refinamento-visual/README.md).
+| Tecnologia | Papel no projeto |
+| --- | --- |
+| React e TypeScript | Interface baseada em componentes, formulários e contratos tipados. |
+| Vite | Desenvolvimento, proxy da API e build do frontend. |
+| HTML e CSS | Estrutura semântica, responsividade e identidade visual sem framework de estilos. |
+| Node.js e Express | API REST, autenticação e regras de negócio, também em TypeScript. |
+| SQLite | Persistência de encomendas, preços históricos e configurações, usando `node:sqlite`. |
+| Git e GitHub | Versionamento e organização do código e da documentação. |
 
-### Encomendas com múltiplos sabores
+<a id="executar"></a>
 
-Uma encomenda contém `itens: [{ produto, quantidade }]`. Cliente e administradora podem adicionar e remover produtos, ajustar cada quantidade e visualizar o total, sem linhas duplicadas. A seleção foi ampliada dos seis bolos para todos os produtos habilitados na data de retirada. O adicional anterior continua sendo uma única dúzia opcional por pedido.
+## Como executar localmente
 
-O painel substitui a composição inteira pelo PATCH existente, sem editar o ID. Cancelar descarta o rascunho. Conflitos `409` não salvam nada e preservam os dados digitados. Trocar sabores sem mudar total/data continua permitido em pedidos antigos. A autenticação, CSRF, origem, rolagem de 1,2 segundo e demais fluxos foram preservados.
+Requer **Node.js 24.11.0 ou superior** e npm. Os exemplos usam Windows/PowerShell: `npm.cmd` evita o bloqueio de `npm.ps1`; em outros terminais, use `npm`.
 
-**Banco existente:** pare a API e faça backup antes de iniciar esta versão com dados reais de desenvolvimento. A migração converte cada pedido antigo em um item, sem alterar IDs/metadados, e remove as colunas antigas para manter uma única fonte de verdade. Os testes usam bancos temporários. Frontend e backend devem ser atualizados juntos porque o contrato antigo de produto/quantidade na raiz não é mais aceito.
+Abra dois terminais na raiz do repositório.
 
-Veja os [novos contratos e o backup da API](backend/README.md#persistência-capacidade-e-concorrência) e o [relatório, testes, capturas e roteiro desta etapa](docs/multissabores/README.md).
-
-### Base V1.1 preservada — navegação entre seções
-
-Os links continuam sendo âncoras HTML, com hash, histórico e navegação pelo teclado. A correção atual intercepta somente os destinos Início, Cardápio, Encomendas e Contato antes do salto nativo e controla a rolagem com `requestAnimationFrame` por aproximadamente **1,2 segundo**, desacelerando ao chegar ao destino.
-
-O fallback anterior de 450 ms era condicional e deixava a navegação nativa acontecer primeiro; por isso podia mostrar um salto e terminava cedo demais. Agora `src/utils/rolagem.ts` usa `preventDefault` nesses links, atualiza o hash com `pushState` sem rolar a tela e move o foco com `preventScroll`. Voltar/avançar preserva a restauração de posição do navegador e ajusta o foco ao destino. Roda, toque, ponteiro e teclado interrompem a animação. `prefers-reduced-motion: reduce` mantém a navegação direta, inclusive se a preferência mudar durante o percurso. Links modificados, externos, novos alvos e os links de erro do formulário permanecem com seu comportamento habitual.
-
-O diagnóstico e o teste de navegador ficam em `scripts/testar-rolagem.mjs` e `docs/v1.1/rolagem*.json`. Os arquivos `rolagem-450ms.json` e `rolagem-1200ms.json` registram as medições antes/depois, incluindo 100, 300, 600 e 900 ms. Para repetir, com as ferramentas Playwright já instaladas em `.audit-tools`, execute `node scripts/testar-rolagem.mjs` na raiz.
-
-### V1.1 — edição de encomendas
-
-No painel, **Editar pedido** abre um formulário dentro do cartão, preenchido com nome, telefone, lista de sabores/quantidades, data, dúzia opcional e status. O ID não é editável. **Salvar alterações** usa o PATCH existente, enviando somente diferenças; **Cancelar** descarta o rascunho sem enviar nada. A edição rápida de status e a exclusão confirmada continuam disponíveis.
-
-O cartão só muda após a resposta válida do servidor. Durante o envio, os controles ficam bloqueados. Um `409` mantém o formulário preenchido e informa que nada foi salvo; ajuste quantidade/data e salve novamente. Se a conexão falhar, o resultado pode ser incerto: confira o pedido em outra aba antes de repetir. Não há repetição automática de PATCH. O rascunho fica só na memória e é descartado ao cancelar, sair ou recarregar.
-
-Contato, sabor, adicional e status de pedidos antigos podem mudar sem reenviar a data. Alterar data ou quantidade total exige amanhã ou depois no fuso da Bahia; a capacidade de cinco bolos continua validada atomicamente no servidor, descontando a reserva do próprio pedido. A dúzia não consome bolos. Os filtros e a atualização da lista ficam pausados enquanto há edição para evitar perder o rascunho. Ao fechar, o foco volta ao botão de editar ou ao título da lista caso o pedido saia do filtro.
-
-Veja o [relatório da V1.1 anterior](docs/v1.1/README.md) e os [resultados atuais de múltiplos sabores](docs/multissabores/README.md): **57 testes do frontend e 38 do backend** passaram, além de lint, typecheck e builds disponíveis. O navegador verificou o formulário e a edição em 360, 390, 768 e 1280 px. Os relatórios V1.0/V1.1 anteriores permanecem como histórico.
-
-### Base preservada
-
-Base React + TypeScript + Vite, com CSS tradicional, cabeçalho, hero, cardápio, formulário expansível, informações/contato e rodapé. O formulário é integrado à API REST em `backend/`: a confirmação com número do pedido aparece somente após `201 Created`, com a data reservada e pagamento na retirada. A API implementa CRUD e regras de capacidade com SQLite. `/admin` tem login e painel de encomendas com sessão validada no servidor, filtros, edição completa, alteração rápida de status e exclusão confirmada.
-
-**Regra atual de capacidade:** cinco unidades do grupo de produção por dia, somando somente bolos e, provisoriamente, panetones em todos os pedidos da data. Cafés e dúzias não consomem esse grupo. Essa decisão substitui a contagem por registros descrita no brief original, preservado como histórico. A base e os IDs são preservados.
-
-Veja [como iniciar e testar a API](backend/README.md), incluindo contrato, exemplos PowerShell, persistência e proteção administrativa. O back-end usa TypeScript por solicitação desta etapa, atualizando a recomendação inicial de JavaScript do brief; o brief original foi preservado.
-
-**Os dados comerciais do desafio não comprovam uma empresa operacional.** Endereço e horários são fictícios e autorizados para apresentação; o WhatsApp é do proprietário que autorizou seu uso e o Instagram pertence à TecnoJr. Produtos, preços e tamanhos continuam referências do projeto. Nomes, descrições, tamanhos e caminhos de fotos ficam em `backend/src/produtos.ts`; identidade e informações comerciais ficam em `frontend/src/data/cafeConfig.ts`; preços ficam em `backend/src/catalogo.ts`, em centavos. A identificação discreta de demonstração permanece junto ao formulário de pedidos. O hero criado com IA continua identificado; as 11 fotografias do cardápio são referências licenciadas.
-
-## Executar
-
-Requer **Node.js 24.11 ou posterior** e npm para executar os dois lados e os testes de integração. Abra **dois terminais**, cada um inicialmente na raiz do repositório.
-
-No terminal 1, inicie a API:
+**Terminal 1 — API:**
 
 ```powershell
 cd backend
-npm.cmd install
+npm.cmd ci
 npm.cmd run dev
 ```
 
-No terminal 2, inicie o site:
+A API escuta em `http://127.0.0.1:3001`. O SQLite é criado automaticamente em `backend/data/cafe.sqlite`; `DATABASE_PATH` permite escolher outro arquivo. Antes de atualizar uma base que precisa preservar, siga o [procedimento de backup](backend/README.md#persistência-capacidade-e-concorrência).
+
+**Terminal 2 — site:**
 
 ```powershell
 cd frontend
-npm.cmd install
+npm.cmd ci
 npm.cmd run dev
 ```
 
-Abra o endereço informado pelo Vite, normalmente **http://127.0.0.1:5173**. A API escuta em `127.0.0.1:3001`; o proxy de desenvolvimento encaminha `/api` para essa porta. Mantenha os dois terminais abertos e use Ctrl+C em cada um para parar.
+Abra **http://127.0.0.1:5173**, ou o endereço informado pelo Vite. O proxy encaminha `/api` para a API local. Mantenha os dois processos ativos; `Ctrl+C` encerra cada um.
 
-O POST é público e **não exige credenciais administrativas**. Sem configurar acesso no servidor, o fluxo público continua funcionando e o login informa que o painel está indisponível. Para habilitar o painel, siga a configuração abaixo. O Bearer token continua opcional para testar o CRUD pelo PowerShell; nunca coloque segredos em variáveis `VITE_*` ou no código React.
+O formulário público funciona sem credenciais administrativas. Para usar o painel, configure o servidor conforme a próxima seção. Se a instalação apresentar erro de certificado no Node 24, tente `$env:NODE_USE_SYSTEM_CA='1'` e repita o comando, mantendo a validação HTTPS.
 
-### Habilitar o painel administrativo
+<a id="habilitar-o-painel-administrativo"></a>
 
-Na pasta `backend/`, antes de iniciar a API, escolha seu próprio usuário e senha. Não há conta nem senha padrão. Este exemplo solicita a senha sem mostrá-la e guarda no ambiente **somente seu hash**:
+## Como acessar o painel administrativo
+
+O painel fica em **http://127.0.0.1:5173/admin** e no link **Área administrativa** do rodapé. **Não existe usuário ou senha padrão.**
+
+No terminal da API, interrompa o processo com `Ctrl+C`. Ainda na pasta `backend/`, escolha seu usuário e uma senha entre **12 e 128 caracteres**:
 
 ```powershell
 $env:ADMIN_USER = Read-Host 'Escolha o usuário administrativo'
-$senhaSegura = Read-Host 'Escolha uma senha de 12 a 128 caracteres' -AsSecureString
+$senhaSegura = Read-Host 'Escolha a senha administrativa' -AsSecureString
 $senhaTexto = [System.Net.NetworkCredential]::new('', $senhaSegura).Password
 $env:ADMIN_PASSWORD_HASH = $senhaTexto | node --experimental-strip-types src/gerar-senha.ts
+$codigoHash = $LASTEXITCODE
 Remove-Variable senhaTexto, senhaSegura
-if ($LASTEXITCODE -ne 0) { throw 'Não foi possível gerar o hash da senha.' }
+if ($codigoHash -ne 0) { throw 'Não foi possível gerar o hash da senha.' }
 $env:ADMIN_ORIGIN = 'http://127.0.0.1:5173'
 npm.cmd run dev
 ```
 
-No outro terminal, inicie o Vite como descrito acima e abra **http://127.0.0.1:5173/admin**, ou use o link no rodapé. Use o usuário e a senha que você escolheu. Mantenha a origem exatamente igual a `ADMIN_ORIGIN` (protocolo, host e porta); se o Vite informar outra porta, ajuste a variável e reinicie a API. `localhost` e `127.0.0.1` são origens diferentes. Não é necessário configurar `ADMIN_TOKEN` para o painel.
+A senha não é exibida nem enviada como argumento de linha de comando; o servidor recebe seu hash `scrypt`. Entre com as credenciais escolhidas. Não é necessário configurar `ADMIN_TOKEN` para usar o painel.
 
-O servidor verifica a senha com `scrypt` e cria uma sessão de até oito horas. O cookie é `HttpOnly` e `SameSite=Strict`; o React não lê o cookie e não armazena credenciais no localStorage ou sessionStorage. O token CSRF fica só na memória da página e protege alterações junto à verificação da origem. Em produção, HTTPS é obrigatório e o cookie usa `Secure` e o prefixo `__Host-`. As sessões e o limite de tentativas ficam na memória de uma única instância: reiniciar a API exige entrar novamente, mas mantém as encomendas no SQLite. Esta versão não oferece infraestrutura de múltiplas instâncias.
+`ADMIN_ORIGIN` deve corresponder exatamente à origem do site. Se o Vite escolher outra porta, ajuste a variável e reinicie a API; `localhost` e `127.0.0.1` são origens diferentes.
 
-O login permite até cinco tentativas por IP a cada 15 minutos, com teto global de 30 e limite de verificações simultâneas. O servidor não confia em `X-Forwarded-For`; atrás de um proxy, os acessos compartilham o IP do proxy. Não habilite `trust proxy` indiscriminadamente. Os limites também contam logins bem-sucedidos, e reiniciar o servidor os reinicia.
+As variáveis duram enquanto o terminal estiver aberto. Não há carregamento automático de `.env`; consulte as alternativas no [README da API](backend/README.md). Não versione senhas, hashes ou tokens nem os coloque em variáveis `VITE_*`.
 
-As variáveis duram enquanto o terminal estiver aberto. Para manter configuração entre execuções, configure o ambiente do serviço ou um `.env` local ignorado e carregue explicitamente com `node --env-file=.env --watch --experimental-strip-types src/server.ts` dentro de `backend/`. Nunca versione o arquivo nem cole credenciais no README. O hash também é informação sensível. Trocar credenciais requer reiniciar a API, encerrando as sessões anteriores.
+A sessão expira em até oito horas e termina ao sair ou reiniciar a API, sem apagar pedidos. Cookies `HttpOnly`, validação de origem e token CSRF protegem as operações. Em produção, a configuração exige HTTPS e cookie `Secure`.
 
-### Demonstrar o painel
+## Arquitetura e organização do projeto
 
-1. Faça uma encomenda com dados fictícios pelo formulário público. Entre em `/admin` e confira nome, telefone, sabor, quantidade, data, dúzia opcional e status `recebida`.
-2. Use **Ver pedidos dentro dos próximos:** para escolher de 1 a 30 dias (de amanhã até o último dia, inclusive) ou **30+** (após o trigésimo dia, sem teto). **Todos os prazos** também mostra pedidos de hoje e antigos. O prazo segue o calendário de `America/Bahia`, combina com status e alterna com a data específica: escolher um limpa o outro. **Limpar filtros** limpa os três campos; **Atualizar lista** busca encomendas novas e alterações feitas em outra aba. Veja os [detalhes e testes do filtro de prazo](docs/prazos/README.md).
-3. Escolha **em preparo** e clique em **Salvar status**; depois teste **entregue**. A alteração deve persistir após atualizar a página e não liberar capacidade.
-4. Clique em **Excluir pedido**. **Manter pedido** cancela; somente **Sim, excluir pedido nº …** apaga o registro e libera sua quantidade de bolos na data. A exclusão é irreversível.
-5. Use **Sair**, atualize a página e confira que o login é exigido. Acessar `/api/encomendas` sem sessão ou Bearer válido não retorna dados pessoais.
-6. Confira em 360, 390, 768 e 1280 px, com teclado e no celular. O painel usa cartões, sem tabela horizontal. Não compartilhe uma sessão autenticada em um dispositivo público.
+**React → API Express → SQLite**
 
-Para editar todos os campos, clique em **Editar pedido**, altere os dados e use **Salvar alterações** ou **Cancelar**. Teste uma troca de data e quantidade, um conflito de capacidade e uma alteração apenas de contato em pedido antigo. O PATCH completo também continua disponível por Bearer. Mais detalhes estão no [README da API](backend/README.md). Não há cadastro público, pagamentos, notificações ou contas adicionais.
+O React apresenta a interface e envia solicitações HTTP. O Express valida os dados, autentica as operações administrativas e aplica as regras de negócio. O SQLite armazena encomendas, itens e configurações persistentes.
 
-Auditoria da V1.0: **40 testes do frontend e 30 do backend** aprovados. Veja o [relatório integrado anterior](docs/auditoria-final/README.md) e os [resultados atuais da V1.1](docs/v1.1/README.md).
+A API verifica disponibilidade e grava a encomenda na mesma transação `BEGIN IMMEDIATE`, protegendo o limite diário contra pedidos concorrentes. Os preços unitários são armazenados em centavos, e os totais são derivados dos valores registrados.
 
-`npm.cmd` evita o bloqueio de `npm.ps1` pela política de scripts do Windows; em outros terminais pode usar `npm`.
-
-Para verificar o front-end, dentro de `frontend/`:
-
-```powershell
-npm.cmd run lint
-npm.cmd run build
-npm.cmd test
-npm.cmd run preview
+```text
+frontend/
+  src/       Componentes, seções, painel, hooks, serviços, configurações e estilos
+  tests/     Testes de utilitários, contratos e integração React/API
+backend/
+  src/       Express, rotas, autenticação, regras, catálogo e persistência
+  tests/     Testes HTTP, migrações, preços, segurança e concorrência
+scripts/     Auditorias de navegador e apoio às imagens
+docs/        Decisões, revisões, capturas e evidências
+BRIEF.md     Requisitos iniciais e contexto do desafio
 ```
 
-O build verifica TypeScript e gera `frontend/dist/`. O preview serve esse build localmente. **O proxy configurado em `server.proxy` vale para desenvolvimento**, não é uma configuração de implantação. Para publicar o build, será necessário encaminhar `/api` no servidor da implantação, preservando HTTPS e a autenticação das rotas administrativas.
+Catálogo e cálculos puros são reutilizados entre frontend e backend no mesmo repositório. O [README técnico da API](backend/README.md) detalha endpoints, variáveis de ambiente, persistência e migrações.
 
-Para verificar o back-end, dentro de `backend/`:
+## Testes e qualidade
+
+A [revisão final documentada](docs/revisao-arquitetural/README.md#verificações-desta-conclusão) registra **87 testes frontend e 62 testes backend aprovados**, além de lint, verificação TypeScript e builds. Os cenários cobrem pedidos, sessão/CSRF, conflitos com preservação do rascunho, preços históricos, migrações com rollback e concorrência entre processos.
+
+As auditorias em Edge/Chromium verificaram larguras de **360, 390, 768 e 1280 px**, teclado, movimento reduzido, contatos interceptados e integração com SQLite temporário. Os relatórios finais de [fluxo público](docs/revisao-arquitetural/navegador-final/publico.json), [apresentação comercial](docs/revisao-arquitetural/navegador-final/comercial.json) e [sazonalidade](docs/revisao-arquitetural/navegador-final/sazonais.json) registram, respectivamente, **7, 11 e 16 análises axe sem violações detectadas**. Isso não substitui testes com leitor de tela, outros navegadores ou aparelhos físicos.
+
+Para reproduzir, partindo da raiz e com as dependências das duas pastas instaladas:
 
 ```powershell
+Push-Location frontend
+npm.cmd test
+npm.cmd run lint
+npm.cmd exec -- tsc -b
+npm.cmd run build
+Pop-Location
+
+Push-Location backend
 npm.cmd test
 npm.cmd run typecheck
 npm.cmd run build
+Pop-Location
 ```
 
-Instale as dependências **das duas pastas** antes de executar os testes de integração do front-end. Eles iniciam API e Vite em portas temporárias, usam banco em memória e encerram tudo ao terminar; não precisam dos servidores de desenvolvimento ativos e não gravam pedidos na base local.
+Os testes usam bancos em memória ou arquivos temporários, sem depender da base de desenvolvimento. O frontend verifica tipos com `tsc -b`, também executado pelo build; o backend não possui comando de lint. No Node 24.11, o aviso experimental de `node:sqlite` é esperado.
 
-Se a instalação informar `UNABLE_TO_VERIFY_LEAF_SIGNATURE` no Node 24, tente usar os certificados do sistema, sem desabilitar HTTPS:
+<details>
+<summary>Reproduzir as auditorias de navegador no Windows</summary>
+
+Os roteiros usam Playwright, axe e o Microsoft Edge instalado. Se necessário, instale as ferramentas opcionais na pasta ignorada `.audit-tools`, a partir da raiz:
 
 ```powershell
-$env:NODE_USE_SYSTEM_CA='1'
-npm.cmd install
+npm.cmd install --prefix .audit-tools --no-save --package-lock=false playwright @axe-core/playwright
+node --experimental-strip-types scripts/auditar-preentrega.mjs --comercial --sem-capturas --saida=docs/revisao-arquitetural/NOVA-RODADA/publico
+node --experimental-strip-types scripts/testar-apresentacao-comercial.mjs --contatos --sem-capturas --saida=docs/revisao-arquitetural/NOVA-RODADA/comercial
 ```
 
-## Organização e decisões
+Escolha uma pasta ainda não usada no lugar de `NOVA-RODADA`, preservando as evidências anteriores. Os roteiros iniciam e encerram seus servidores e bancos temporários; não precisam da API de desenvolvimento ativa. Os destinos externos são interceptados, sem acesso às contas nem envio de mensagens.
 
-- `src/components/`: cabeçalho, marca e acessos de contato reutilizáveis.
-- `src/sections/Hero.tsx`: apresentação e dois CTAs com âncoras nativas.
-- `src/sections/Cardapio.tsx`: categorias e cartões do cardápio; `components/ProductPhoto.tsx` exibe fotografias locais com carregamento responsivo e `ProductIllustration.tsx` fornece o fallback se um arquivo falhar.
-- `src/sections/Encomendas.tsx`: abertura/fechamento, campos controlados, foco e mensagens de validação.
-- `src/sections/InformacoesContato.tsx`: endereço semântico, horário e canais lidos da configuração central.
-- `src/components/Footer.tsx`: marca, navegação, contatos e link discreto para a área administrativa.
-- `src/pages/Admin.tsx`: login, cartões, filtros, mensagens, status, confirmação de exclusão e saída.
-- `src/services/admin.ts`: requisições administrativas com cookie de sessão e token CSRF em memória.
-- `src/styles/admin.css`: painel mobile-first com a identidade visual do café.
-- `tests/admin-integracao.test.mjs`: login e operações reais através do proxy até o SQLite, incluindo acesso negado e saída.
-- `tests/admin-service.test.mjs`: rejeição de respostas administrativas inválidas antes de atualizar a tela.
-- `src/components/EditarPedido.tsx`: formulário controlado de edição, validação, cancelamento e preservação do rascunho em erros.
-- `src/utils/edicaoEncomenda.ts` e `tests/edicao-encomenda.test.mjs`: cálculo das diferenças normalizadas e validação de pedidos antigos/futuros.
-- `src/utils/contato.ts`: formação dos links externos somente quando confirmados e válidos.
-- `src/styles/contato.css`: seção em papel creme e rodapé chocolate, com disposição adaptada ao celular.
-- `src/services/encomendas.ts`: consulta pública de disponibilidade e POST, verificação das respostas e mensagens de erro; sem token e sem repetição automática de POST.
-- `src/hooks/useDisponibilidade.ts`: consulta ao mudar a data, cancelamento de consultas antigas e atualização após sucesso ou conflito.
-- `src/utils/encomenda.ts`: calendário no fuso do café, formato de telefone e validações iniciais, sem chamadas de rede.
-- `src/styles/encomendas.css`: gaveta animada e formulário em uma coluna no celular e duas em telas maiores.
-- `tests/encomenda.test.mjs`: testes das validações com o executor nativo do Node, sem dependências extras.
-- `tests/encomendas-service.test.mjs`: contrato HTTP, erros de rede, respostas inválidas e códigos de status.
-- `tests/encomendas-integracao.test.mjs`: formulário React com DOM simulado (`happy-dom`, apenas em desenvolvimento), proxy Vite, API e SQLite reais.
-- `vite.config.ts`: proxy local `/api` → `http://127.0.0.1:3001`, sem alterar CORS, hosts permitidos ou validação TLS.
-- `src/data/cafeConfig.ts`: identidade, metadados, informações comerciais, contatos autorizados e identificação do ambiente de demonstração.
-- `src/components/ItensPedido.tsx`, `src/utils/itens.ts` e `src/styles/itens.css`: seleção compartilhada de sabores, total e resumo confirmado.
-- `src/styles/`: tokens visuais e CSS mobile-first, sem bibliotecas de UI.
-- `public/images/`: hero WebP responsivo e ornamentos SVG em `decor/`, sem dependência de imagens externas; a ilustração SVG anterior permanece disponível.
+</details>
 
-A navegação fica visível no celular, sem menu expansível nesta etapa. HTML semântico, foco visível, link para pular ao conteúdo e respeito a movimento reduzido dão uma base acessível. Os contatos usam detalhes expansíveis nativos enquanto os dados não forem confirmados; não simulam envio ou reserva.
+Os resultados citados vêm das revisões registradas; esta atualização de documentação não reexecutou as suítes nem as auditorias.
 
-### Informações, contato e rodapé
+## Documentação complementar
 
-A seção `#contato` apresenta horários/endereço quando confirmados e os canais disponíveis. Sem dados reais, mostra informações em atualização. No celular os blocos ficam empilhados; telas maiores passam a duas ou três colunas. O rodapé mantém a marca com xícara, navegação pelas âncoras, contatos e créditos das fotografias. Foco visível e alvos de pelo menos 44 px são mantidos nos controles.
+- [Brief do desafio](BRIEF.md): necessidades da cliente, requisitos iniciais e direção visual.
+- [API e execução técnica](backend/README.md): contratos, autenticação, ambiente e backup.
+- [Revisão arquitetural e conclusão das auditorias](docs/revisao-arquitetural/README.md): melhorias, testes finais, evidências e limites conhecidos.
+- [Auditoria integrada anterior](docs/auditoria-final/README.md): registro histórico do fluxo completo de um pedido.
+- [Disponibilidade sazonal](docs/produtos-sazonais/README.md) e [precificação](docs/precificacao/README.md): decisões, persistência e preservação de dados.
+- [Créditos das fotografias](docs/creditos-imagens.md): fontes, autores, licenças e adaptações.
 
-`ContactLinks` é compartilhado pelo hero, contato e rodapé. Para liberar canais oficiais, edite **somente `frontend/src/data/cafeConfig.ts`**:
+Os documentos em `docs/` preservam o histórico das etapas; nomes de branches e contagens de testes neles refletem a versão auditada em cada ocasião.
 
-- WhatsApp: preencha `contato.whatsapp.numero` com o número explicitamente autorizado, incluindo DDI `55`, DDD e número brasileiro; personalize `contato.whatsapp.mensagem` e só então marque `contato.whatsapp.confirmado: true`. O destino usa `https://wa.me/` com mensagem codificada. Número ausente/inválido ou não confirmado mantém **Em breve**, sem link externo.
-- Instagram: preencha `contato.instagram.url` com o perfil HTTPS autorizado em `instagram.com` ou `www.instagram.com` e marque `contato.instagram.confirmado: true`. Destinos com credenciais, porta alternativa, query/hash ou caminhos reservados são recusados. Sem perfil autorizado, permanece **Em breve**.
-- Horários: preencha `horario.dias`, `horario.horas` e marque `horario.confirmado: true`. Endereço: preencha `endereco.rua`, `endereco.localidade` e marque `endereco.confirmado: true`. Ambos precisam dos dados completos antes de aparecer no hero e nas informações. Os textos de ausência ficam em `pendente` na mesma configuração.
-- Mantenha `demonstracao: true` enquanto os pedidos não representarem um negócio operacional. Só desative a identificação depois de confirmar o uso real e revisar todos os dados comerciais com o responsável; a opção altera a apresentação, não o registro no SQLite.
+## Observações sobre o ambiente demonstrativo
 
-Links oficiais abrem em nova aba, com indicação não visual no nome acessível (`aria-label`) e `rel="noopener noreferrer"`, preservando a página do café. Os rótulos visíveis são somente **WhatsApp** e **Instagram**; “abre em nova aba” é informado às tecnologias assistivas. Abrir uma conversa não registra nem sincroniza encomendas: a seção orienta reservar pelo formulário. Nenhum dado de formulário é incluído na mensagem de WhatsApp.
+O Café do Bairro **não representa um estabelecimento comercial operacional**. Endereço, horários, cardápio, tamanhos e preços são referências fictícias autorizadas para o desafio. Use dados de teste: os pedidos demonstrativos ficam registrados no projeto, mas não serão preparados nem cobrados por uma cafeteria.
 
-O link **Área administrativa** leva ao login em `/admin`. A API só retorna nomes e telefones depois da autenticação. O painel permite acompanhar, editar e excluir pedidos; o link **Voltar para o café** mantém o retorno à landing page.
+O WhatsApp foi autorizado por seu proprietário e abre uma conversa com mensagem pré-preenchida, sem envio automático. Conversas não criam nem sincronizam pedidos no SQLite. O botão Instagram aponta para [o perfil da TecnoJr](https://www.instagram.com/tecnojr/), não para um perfil próprio do café; isso não indica parceria comercial.
 
-### Revisão do cardápio
+As fotografias do cardápio são referências licenciadas de alimentos, não registros de produtos desse estabelecimento fictício. A imagem do hero foi criada com IA e permanece identificada na interface. O desenvolvimento contou com apoio de **ChatGPT e Codex** na interpretação dos requisitos, implementação, testes, revisão e documentação.
 
-As três categorias e os 11 produtos ficam em `backend/src/produtos.ts`, consumido por `cafeConfig.ts`. `exibirNoCardapio` controla a exibição; `encomenda.tipo` e `sazonalidade` fornecem os padrões iniciais e a unidade do acompanhamento. A disponibilidade vigente vem de `GET /api/produtos`.
-
-- Os seis bolos caseiros começam habilitados o ano todo.
-- Café coado e café com leite começam desabilitados e podem ser habilitados pelo painel.
-- Pão de queijo é apresentado por unidade (R$ 3,00); para encomenda usa dúzia (R$ 25,00), como item independente ou acompanhamento opcional, sem duplicação.
-- Panetone e bolo de Natal começam desabilitados com dezembro selecionado. Podem ser habilitados em quaisquer meses ou no ano todo pelo painel.
-
-O brief original foi preservado como histórico. As descrições, tamanhos e preços continuam ilustrativos. O cardápio apresenta os produtos; o registro acontece no formulário de encomendas.
-
-A apresentação usa listas de cartões, papel claro, bordas discretas e tipografia serifada inspirados no mockup. No celular, os produtos ficam empilhados para permitir leitura sem carrossel. As fotografias reais licenciadas têm recortes 4:3 e são acompanhadas de créditos; o SVG anterior permanece como fallback.
-
-### Formulário de encomendas integrado
-
-Os links do Hero, da navegação e o novo CTA do cardápio levam a `#encomendas`. O botão **Quero encomendar** abre a gaveta dentro da página. Ela permanece montada, e os campos controlados pelo React preservam os valores ao fechar e reabrir. Campos fechados ficam fora da navegação e da árvore de acessibilidade com `inert` e `aria-hidden`. Ao abrir, o foco e a rolagem levam ao título do formulário; ao fechar, o foco retorna ao botão. A preferência por movimento reduzido desativa a animação.
-
-O formulário exige nome e sobrenome, telefone brasileiro com DDD (fixo ou celular, +55 opcional), ao menos um produto habilitado para a retirada e uma data a partir de amanhã no fuso configurado em `cafeConfig.ts`. O telefone válido ganha formatação ao sair do campo. A data mínima é atualizada ao abrir, ao focar a data, periodicamente enquanto a gaveta está aberta e novamente ao confirmar. Não depende do fuso do dispositivo nem interpreta o dia digitado como instante UTC.
-
-Junto dos itens, aparece a opção de adicionar uma dúzia de pão de queijo se estiver habilitada para a data; ela fica desabilitada quando pão de queijo já está nos itens. Nos itens é possível escolher múltiplas dúzias. Cafés e receitas natalinas ficam selecionáveis quando habilitados e dentro dos meses permitidos.
-
-O formulário começa **somente pela data**. Uma data válida dispara `GET /api/disponibilidade?data=YYYY-MM-DD` e atualiza `GET /api/produtos`. A tela apresenta capacidade total, unidades do grupo reservadas e disponíveis. Enquanto consulta, mostra carregamento; se falhar, permite tentar novamente. Dia lotado orienta outra data para bolos/panetones, mantendo produtos sem quota disponíveis. A consulta não ocupa capacidade nem garante reserva.
-
-Após consultar a data e os produtos, aparecem itens, quantidades, nome e telefone. Bolos/panetones respeitam o saldo consultado; cafés e dúzias continuam selecionáveis no dia cheio se habilitados. Um registro contém vários produtos únicos e suas quantidades individuais, com unidades de venda e produção calculadas separadamente.
-
-**Confirmar encomenda** valida os campos localmente e envia `nomeCliente`, `telefone`, `itens`, `dataEntrega` e `incluirPaoDeQueijo` ao `POST /api/encomendas`, sem `id`, `status` ou credenciais administrativas. Campos e envio ficam bloqueados enquanto aparece **Enviando encomenda…**. Uma trava imediata com `useRef` impede dois envios antes de a atualização visual do React terminar; a gaveta pode ser fechada/reaberta durante a espera.
-
-Somente uma resposta `201`, com ID positivo e status `recebida`, permite mostrar **Encomenda nº … confirmada**, reserva da data e pagamento na retirada. Depois disso, o mesmo formulário não reenvia o pedido. **Fazer outra encomenda** limpa os campos e libera explicitamente uma nova solicitação. Fechar e reabrir preserva os dados e o resultado.
-
-O servidor soma novamente o grupo de produção e confere disponibilidade e mês de cada produto na transação ao confirmar. Se faltar capacidade ou um produto deixar de ser permitido, responde `409`. A tela consulta saldo e cardápio novamente, mantendo itens, contato e adicional. Ajuste produtos, quantidades ou data para continuar. Dia lotado permite produtos sem quota. Depois de um `201`, uma nova consulta atualiza o saldo; se falhar, o pedido continua confirmado.
-
-Um `400` mostra a validação do servidor. Falhas de rede, timeout de 20 segundos, respostas inesperadas e erros do servidor não viram confirmação. Como a conexão pode falhar depois da gravação, a interface avisa que o pedido pode ter sido recebido e pede conferir com o café antes de reenviar. Não há retry automático de POST nem idempotência entre recarregamentos/dispositivos nesta etapa. Consultas GET são canceladas ao trocar de data, e respostas antigas não substituem o saldo atual.
-
-O rascunho fica apenas na memória da página; recarregar apaga o preenchimento. Pedidos confirmados persistem no SQLite e não são cancelados ao recarregar. A landing page usa somente os endpoints públicos; consultas administrativas ocorrem exclusivamente no painel autenticado. Não há integração com WhatsApp.
-
-## Auditoria final integrada
-
-A [auditoria final de 01/11/2026](docs/auditoria-final/README.md) acompanhou o mesmo pedido do formulário público até o painel. Criação com `201`, redução de disponibilidade, login, persistência dos status após reiniciar a API e reabrir o SQLite, exclusão liberando a quantidade correta, logout e bloqueio de acessos anônimos foram aprovados. O fluxo público continua funcionando sem autenticação.
-
-Foram corrigidos somente dois problemas: perda de foco ao salvar status e aceitação de respostas administrativas inválidas. O painel agora devolve o foco ao pedido alterado e mostra erro sem quebrar a tela ou apagar a lista quando o servidor/proxy responde com conteúdo inválido. Não houve mudança de esquema do banco, regra de capacidade, credenciais ou funcionalidades extras.
-
-Os dois roteiros de navegador verificaram a landing, o formulário e o painel nas quatro larguras. Axe-core não encontrou violações nas 21 combinações examinadas; os erros HTTP esperados foram `401` sem sessão e `409` no conflito intencional. Veja no relatório os limites de acessibilidade, a configuração segura do login, os comandos para repetir tudo e o roteiro de demonstração.
-
-## Revisão pré-entrega anterior
-
-A [revisão técnica e visual completa](docs/REVISAO-PRE-ENTREGA.md) contém requisitos verificados, correções, pendências, capturas e roteiro de demonstração.
-
-- A revisão anterior contou **32 testes do front-end e 21 do back-end**. A etapa administrativa acrescenta testes de sessão e operações do painel; execute os mesmos comandos acima para conferir a suíte atual.
-- Layout conferido em navegador Edge/Chromium real nas larguras **360, 390, 768 e 1280 px**, sem rolagem horizontal na página e no formulário.
-- Fluxo real pelo proxy: disponibilidade, POST único com `201`, SQLite persistente, dia lotado e recuperação de `409`.
-- Axe-core não detectou violações nos seis estados examinados. Não houve exceção JavaScript; o único erro HTTP final foi o `409` intencional do teste de capacidade.
-- Corrigidos contadores comprimidos no celular, preço cortado no seletor, quebra do ornamento no hero, favicon ausente e telefone normalizado com DDI recusado em atualização.
-- Capturas e resultados estão em `docs/auditoria/`. Safari/iOS, Firefox e leitor de tela continuam como conferências complementares.
-
-O proxy segue a opção oficial [`server.proxy` do Vite](https://vite.dev/config/server-options#server-proxy), mantendo o caminho `/api/encomendas` sem reescrita e sem adicionar credenciais administrativas.
-
-### Testar a gaveta e as validações
-
-1. Execute `npm.cmd run dev` dentro de `frontend/`. Siga os CTAs do Hero e do cardápio e confira se ambos chegam a **Faça sua encomenda**.
-2. Clique em **Quero encomendar**. Inicialmente apenas a data deve aparecer. Escolha uma data futura, confira os três contadores e, com saldo, selecione sabor/quantidade e preencha os contatos. Feche e reabra para conferir a preservação dos valores.
-3. Com data válida e saldo consultado, clique em **Confirmar encomenda** com os demais campos vazios. Confira os erros; nenhum POST deve ser enviado. A consulta GET não grava pedidos.
-4. Teste um nome sem sobrenome, telefone curto/sem DDD e datas de hoje ou anteriores. O calendário deve bloquear os dias anteriores a amanhã; a validação também rejeita uma data anterior digitada manualmente quando o navegador permitir.
-5. Com os dois servidores ativos, use dados fictícios completos, por exemplo `Cliente de Teste`, `(73) 99999-9999`, um bolo e amanhã. Confira o estado de envio e a confirmação com número do pedido e pagamento na retirada. Esta ação grava um pedido de teste.
-6. Navegue por Tab/Shift+Tab e Enter/Espaço. A gaveta fechada não deve receber foco; ao fechar, o foco deve retornar ao botão de abertura. Confira em 360, 390, 768 e 1280 px e com a preferência de movimento reduzido ativada no dispositivo.
-7. Reserve três bolos de teste: a consulta deve mostrar limite 5, reservados 3 e disponíveis 2. Para testar concorrência manual, deixe um formulário com quantidade 3 aberto em uma data livre, reserve três bolos nessa mesma data por outra aba e envie o primeiro: ele recebe `409`, atualiza o saldo para 2 e permite diminuir a quantidade sem apagar os demais dados. Os testes automatizados cobrem isso sem modificar a base local.
-8. Pare a API antes de enviar um novo pedido para verificar o erro de conexão, sem confirmação automática. Reinicie a API para continuar. Não reenvie às cegas se a conexão caiu durante um pedido que já estava em andamento.
-
-### Conferir contato e rodapé
-
-1. Siga o link **Contato** do cabeçalho ou rodapé e confira o destino `#contato`, o endereço e o horário da configuração.
-2. Confira os botões **WhatsApp** e **Instagram** no hero, contato e rodapé. Ambos abrem nova aba, indicada apenas no nome acessível. O destino do Instagram continua sendo o perfil da TecnoJr. O WhatsApp só preenche a conversa; o visitante decide se enviará a mensagem. Os testes de navegador interceptam os destinos, sem acessar as contas nem enviar mensagens. Se os contatos forem desabilitados futuramente, o fallback de indisponibilidade continua protegido pelas validações.
-3. No rodapé, confira os links de navegação e **Área administrativa**. Em `/admin`, sem sessão, deve aparecer o login e **Voltar para o café**; nenhum pedido deve ser exibido.
-4. Revise em 360, 390, 768 e 1280 px, sem rolagem horizontal e com leitura confortável. Os testes de contato não enviam requisições a WhatsApp ou Instagram.
-
-## Próxima etapa
-
-Consultar as pendências da auditoria final: outros motores/dispositivos e leitor de tela, materiais visuais autorizados quando fornecidos e conferência do repositório. Antes de implantar, configurar HTTPS, origem exata do site, ambiente protegido, proxy `/api` na mesma origem e backup/acesso restrito ao SQLite. A revisão pré-entrega anterior permanece como histórico.
+A validação foi local. Uma implantação real exige HTTPS, proxy de `/api` na mesma origem, credenciais protegidas e backup/acesso restrito ao banco, conforme a documentação técnica.
