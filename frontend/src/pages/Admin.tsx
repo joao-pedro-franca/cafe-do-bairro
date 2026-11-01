@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { EditarPedido } from '../components/EditarPedido'
+import { ResumoItens } from '../components/ItensPedido'
 import { CupIcon } from '../components/CupIcon'
 import { cafeConfig } from '../data/cafeConfig'
 import { formatarTelefone } from '../utils/encomenda'
@@ -17,15 +18,14 @@ function CartaoPedido({ pedido, ocupado, salvar, excluir, editar, editor }: {
   editar: () => void; editor?: ReactNode
 }) {
   const [status, setStatus] = useState(pedido.status)
-  const produto = cafeConfig.produtos.find((item) => item.id === pedido.produto)?.nome ?? pedido.produto
   return <li className="admin-card">
     <div className="admin-card-heading"><h3>Pedido nº {pedido.id}</h3><span className="admin-status">{pedido.status}</span></div>
     <p className="admin-customer">{pedido.nomeCliente}</p>
     <dl>
       <div><dt>Telefone</dt><dd>{formatarTelefone(pedido.telefone)}</dd></div>
       <div><dt>Retirada</dt><dd><time dateTime={pedido.dataEntrega}>{dataLegivel(pedido.dataEntrega)}</time></dd></div>
-      <div><dt>Bolo</dt><dd>{produto}</dd></div>
-      <div><dt>Quantidade</dt><dd>{pedido.quantidadeBolos} {pedido.quantidadeBolos === 1 ? 'bolo' : 'bolos'}</dd></div>
+      <div><dt>Sabores</dt><dd><ResumoItens itens={pedido.itens} /></dd></div>
+      <div><dt>Quantidade total</dt><dd>{pedido.totalBolos} {pedido.totalBolos === 1 ? 'bolo' : 'bolos'}</dd></div>
       <div><dt>Pão de queijo</dt><dd>{pedido.incluirPaoDeQueijo ? 'Sim, uma dúzia' : 'Sem acompanhamento'}</dd></div>
     </dl>
     {editor || <><form onSubmit={(event) => { event.preventDefault(); salvar(pedido.id, status) }}>
@@ -173,7 +173,7 @@ export function Admin() {
         {ocupado && <p role="status">Aguarde, concluindo a operação…</p>}
         {exclusao && <section className="admin-confirm" role="alertdialog" aria-labelledby="excluir-titulo" aria-describedby="excluir-descricao">
           <h2 id="excluir-titulo">Excluir pedido nº {exclusao.id}?</h2>
-          <p id="excluir-descricao">O pedido de {exclusao.nomeCliente} para {dataLegivel(exclusao.dataEntrega)} será apagado e liberará {exclusao.quantidadeBolos} {exclusao.quantidadeBolos === 1 ? 'bolo' : 'bolos'} na data. Esta ação não pode ser desfeita.</p>
+          <p id="excluir-descricao">O pedido de {exclusao.nomeCliente} para {dataLegivel(exclusao.dataEntrega)} será apagado e liberará {exclusao.totalBolos} {exclusao.totalBolos === 1 ? 'bolo' : 'bolos'} na data. Esta ação não pode ser desfeita.</p>
           <button ref={cancelar} className="button" disabled={ocupado} onClick={fecharExclusao}>Manter pedido</button>
           <button className="button admin-danger" disabled={ocupado} onClick={() => void executar(async () => {
             await excluirPedido(exclusao.id, sessao.csrfToken)

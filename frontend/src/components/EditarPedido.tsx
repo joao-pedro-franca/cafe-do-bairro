@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { cafeConfig } from '../data/cafeConfig'
-import { formatarTelefone, produtoEncomendavel } from '../utils/encomenda'
+import { formatarTelefone } from '../utils/encomenda'
+import { ItensPedido } from './ItensPedido'
 import { alteracoesPedido, validarEdicao } from '../utils/edicaoEncomenda'
 import type { CamposPedido } from '../utils/edicaoEncomenda'
 import { statusEncomenda } from '../services/admin'
@@ -12,8 +12,8 @@ export function EditarPedido({ pedido, ocupado, erroApi, salvar, cancelar }: {
   salvar: (alteracoes: AlteracoesPedido) => Promise<unknown>; cancelar: () => void
 }) {
   const [campos, setCampos] = useState<CamposPedido>(() => ({
-    nomeCliente: pedido.nomeCliente, telefone: formatarTelefone(pedido.telefone), produto: pedido.produto,
-    quantidadeBolos: pedido.quantidadeBolos, dataEntrega: pedido.dataEntrega,
+    nomeCliente: pedido.nomeCliente, telefone: formatarTelefone(pedido.telefone), itens: pedido.itens.map((item) => ({ ...item })),
+    dataEntrega: pedido.dataEntrega,
     incluirPaoDeQueijo: pedido.incluirPaoDeQueijo, status: pedido.status,
   }))
   const [erros, setErros] = useState<Partial<Record<keyof CamposPedido, string>>>({})
@@ -56,8 +56,7 @@ export function EditarPedido({ pedido, ocupado, erroApi, salvar, cancelar }: {
       <legend className="visually-hidden">Informações modificáveis do pedido</legend>
       <div><label htmlFor={id('nomeCliente')}>Nome completo</label><input id={id('nomeCliente')} value={campos.nomeCliente} autoComplete="name" required maxLength={100} onChange={(e) => mudar('nomeCliente', e.target.value)} {...acessibilidade('nomeCliente')} />{erroCampo('nomeCliente')}</div>
       <div><label htmlFor={id('telefone')}>Telefone/WhatsApp</label><input id={id('telefone')} type="tel" autoComplete="tel" inputMode="tel" required maxLength={25} value={campos.telefone} onChange={(e) => mudar('telefone', e.target.value)} onBlur={() => mudar('telefone', formatarTelefone(campos.telefone))} {...acessibilidade('telefone')} />{erroCampo('telefone')}</div>
-      <div><label htmlFor={id('produto')}>Sabor do bolo</label><select id={id('produto')} value={campos.produto} onChange={(e) => mudar('produto', e.target.value)} {...acessibilidade('produto')}>{cafeConfig.produtos.filter(produtoEncomendavel).map((produto) => <option key={produto.id} value={produto.id}>{produto.nome}</option>)}</select>{erroCampo('produto')}</div>
-      <div><label htmlFor={id('quantidadeBolos')}>Quantidade de bolos</label><input id={id('quantidadeBolos')} type="number" inputMode="numeric" min={1} max={5} step={1} required value={Number.isNaN(campos.quantidadeBolos) ? '' : campos.quantidadeBolos} onChange={(e) => mudar('quantidadeBolos', e.target.valueAsNumber)} {...acessibilidade('quantidadeBolos')} />{erroCampo('quantidadeBolos')}</div>
+      <ItensPedido prefixo={id('itens')} itens={campos.itens} limite={5} administrativo alterar={(itens) => mudar('itens', itens)} erro={erros.itens} />
       <div><label htmlFor={id('dataEntrega')}>Data da retirada</label><input id={id('dataEntrega')} type="date" required value={campos.dataEntrega} onChange={(e) => mudar('dataEntrega', e.target.value)} {...acessibilidade('dataEntrega')} />{erroCampo('dataEntrega')}</div>
       <p className="admin-edit-hint">São até cinco bolos por dia, somando todos os pedidos. Ao mudar data ou quantidade, a retirada precisa ser a partir de amanhã, no horário da Bahia. O servidor confere a capacidade sem contar este pedido duas vezes.</p>
       <label className="admin-edit-check"><input id={id('incluirPaoDeQueijo')} type="checkbox" checked={campos.incluirPaoDeQueijo} onChange={(e) => mudar('incluirPaoDeQueijo', e.target.checked)} />Incluir uma dúzia de pão de queijo</label>

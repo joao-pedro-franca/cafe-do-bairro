@@ -18,7 +18,7 @@ const { createRoot } = await import('react-dom/client')
 let vite, api, repo, base, Admin, raiz, container, cookie = '', interceptar
 let deslocamentoRelogio = 0
 const senha = 'senha-ficticia-integracao'
-const dados = { nomeCliente: 'Cliente de Teste', telefone: '73999999999', produto: 'bolo-cenoura', dataEntrega: '2099-12-25', incluirPaoDeQueijo: true, quantidadeBolos: 2 }
+const dados = { nomeCliente: 'Cliente de Teste', telefone: '73999999999', dataEntrega: '2099-12-25', incluirPaoDeQueijo: true, itens: [{ produto: 'bolo-cenoura', quantidade: 2 }] }
 
 before(async () => {
   const admin = { usuario: 'marta-teste', senhaHash: await gerarHash(senha), origem: 'http://127.0.0.1:5173' }
@@ -81,6 +81,13 @@ async function esperar(condicao) {
   assert.fail(`Estado esperado não encontrado: ${container.textContent}`)
 }
 async function preencher(seletor, valor) {
+  if (Array.isArray(valor)) {
+    for (let i = 0; i < valor.length; i++) {
+      await preencher(seletor + '-sabor-' + i, valor[i].produto)
+      await preencher(seletor + '-quantidade-' + i, String(valor[i].quantidade))
+    }
+    return
+  }
   const el = container.querySelector(seletor)
   await act(async () => {
     const proto = el.tagName === 'SELECT' ? janela.HTMLSelectElement.prototype : janela.HTMLInputElement.prototype
@@ -201,7 +208,7 @@ test('edição completa envia só os sete campos modificados, espera o servidor 
   assert.equal(container.querySelector(`#editar-${id}-nomeCliente`).value, dados.nomeCliente)
   assert.equal(container.querySelector(`#editar-${id}-dataEntrega`).value, dados.dataEntrega)
   assert.equal(container.querySelector(`#editar-${id}-incluirPaoDeQueijo`).checked, true)
-  const mudancas = { nomeCliente: 'Cliente Revisado', telefone: '(73) 98888-8888', produto: 'bolo-coco', quantidadeBolos: '3', dataEntrega: '2099-12-26', status: 'em preparo' }
+  const mudancas = { nomeCliente: 'Cliente Revisado', telefone: '(73) 98888-8888', dataEntrega: '2099-12-26', status: 'em preparo', itens: [{ produto: 'bolo-coco', quantidade: '3' }] }
   for (const [campo, valor] of Object.entries(mudancas)) await preencher(`#editar-${id}-${campo}`, valor)
   await clicar(container.querySelector(`#editar-${id}-incluirPaoDeQueijo`))
   let liberar, chamadas = 0
@@ -209,7 +216,7 @@ test('edição completa envia só os sete campos modificados, espera o servidor 
   interceptar = async (_url, opcoes) => {
     if (opcoes.method !== 'PATCH') return
     chamadas++
-    assert.deepEqual(JSON.parse(opcoes.body), { ...mudancas, telefone: '73988888888', quantidadeBolos: 3, incluirPaoDeQueijo: false })
+    assert.deepEqual(JSON.parse(opcoes.body), { ...mudancas, telefone: '73988888888', incluirPaoDeQueijo: false, itens: [{ produto: 'bolo-coco', quantidade: 3 }] })
     assert(opcoes.headers['X-CSRF-Token'])
     await espera
   }
@@ -246,12 +253,12 @@ test('validação de edição impede campos inválidos e nenhuma alteração nã
   interceptar = async (_url, opcoes) => { if (opcoes.method === 'PATCH') chamadas++ }
   await enviar(container.querySelector('.admin-edit'))
   assert(container.textContent.includes('Nenhuma informação foi alterada'))
-  for (const [campo, valor] of Object.entries({ nomeCliente: 'Ana', telefone: '123', quantidadeBolos: '1.5', dataEntrega: '2000-01-01' })) await preencher(`#editar-${id}-${campo}`, valor)
+  for (const [campo, valor] of Object.entries({ nomeCliente: 'Ana', telefone: '123', dataEntrega: '2000-01-01', itens: [{ produto: 'bolo-cenoura', quantidade: '1.5' }] })) await preencher(`#editar-${id}-${campo}`, valor)
   await enviar(container.querySelector('.admin-edit'))
   assert.equal(chamadas, 0)
-  for (const campo of ['nomeCliente', 'telefone', 'quantidadeBolos', 'dataEntrega']) assert.equal(container.querySelector(`#editar-${id}-${campo}`).getAttribute('aria-invalid'), 'true')
+  for (const campo of ['nomeCliente', 'telefone', 'dataEntrega']) assert.equal(container.querySelector(`#editar-${id}-${campo}`).getAttribute('aria-invalid'), 'true')
   assert.equal(document.activeElement?.getAttribute('role'), 'alert')
-  assert.equal(repo.buscar(id).quantidadeBolos, 2)
+  assert.equal(repo.buscar(id).totalBolos, 2)
 })
 
 test('contato de pedido antigo é editado sem reenviar data ou quantidade', async () => {
@@ -269,18 +276,18 @@ test('contato de pedido antigo é editado sem reenviar data ou quantidade', asyn
 
 test('409 preserva rascunho sem salvar parcialmente; corrigir quantidade exclui a própria reserva', async () => {
   const id = repo.listar()[0].id
-  repo.criar({ ...dados, nomeCliente: 'Outro Cliente', quantidadeBolos: 3 }, () => new Date())
+  repo.criar({ ...dados, nomeCliente: 'Outro Cliente', itens: [{ produto: 'bolo-cenoura', quantidade: 3 }] }, () => new Date())
   await abrirEdicao()
   const antes = repo.buscar(id)
   await preencher(`#editar-${id}-nomeCliente`, 'Nome Aguardando Vaga')
-  await preencher(`#editar-${id}-quantidadeBolos`, '3')
+  await preencher(`#editar-${id}-itens-quantidade-0`, '3')
   await enviar(container.querySelector('.admin-edit'))
   await esperar(() => container.querySelector('.admin-edit [role="alert"]'))
   assert(container.textContent.includes('ultrapassa a disponibilidade'))
   assert.equal(container.querySelector(`#editar-${id}-nomeCliente`).value, 'Nome Aguardando Vaga')
-  assert.equal(container.querySelector(`#editar-${id}-quantidadeBolos`).value, '3')
+  assert.equal(container.querySelector(`#editar-${id}-itens-quantidade-0`).value, '3')
   assert.deepEqual(repo.buscar(id), antes)
-  await preencher(`#editar-${id}-quantidadeBolos`, '1')
+  await preencher(`#editar-${id}-itens-quantidade-0`, '1')
   await enviar(container.querySelector('.admin-edit'))
   await esperar(() => !container.querySelector('.admin-edit'))
   assert.equal(repo.buscar(id).nomeCliente, 'Nome Aguardando Vaga')
@@ -318,4 +325,25 @@ test('edição que deixa de corresponder ao filtro devolve foco ao título da li
   assert.equal(container.querySelectorAll('.admin-card').length, 0)
   assert.equal(document.activeElement?.id, 'pedidos-titulo')
   assert.equal(repo.buscar(id).status, 'entregue')
+})
+
+test('administradora adiciona, remove e recompõe 2 X + 1 Y ↔ 3 X sem mudar o ID', async () => {
+  const id = await abrirEdicao()
+  await clicar(botao('Adicionar sabor'))
+  await enviar(container.querySelector('.admin-edit'))
+  await esperar(() => !container.querySelector('.admin-edit'))
+  assert.deepEqual(repo.buscar(id).itens, [{ produto: 'bolo-cenoura', quantidade: 2 }, { produto: 'bolo-chocolate', quantidade: 1 }])
+  await clicar(botao('Editar pedido'))
+  await clicar(container.querySelector('[aria-label="Remover sabor 2"]'))
+  await preencher(`#editar-${id}-itens-quantidade-0`, '3')
+  await enviar(container.querySelector('.admin-edit'))
+  await esperar(() => !container.querySelector('.admin-edit'))
+  assert.deepEqual(repo.buscar(id).itens, [{ produto: 'bolo-cenoura', quantidade: 3 }])
+  await clicar(botao('Editar pedido'))
+  await preencher(`#editar-${id}-itens-quantidade-0`, '2')
+  await clicar(botao('Adicionar sabor'))
+  await enviar(container.querySelector('.admin-edit'))
+  await esperar(() => !container.querySelector('.admin-edit'))
+  assert.equal(repo.buscar(id).totalBolos, 3)
+  assert.equal(repo.buscar(id).itens.length, 2)
 })

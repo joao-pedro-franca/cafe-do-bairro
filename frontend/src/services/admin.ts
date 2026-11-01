@@ -4,14 +4,14 @@ export interface PedidoAdmin {
   id: number
   nomeCliente: string
   telefone: string
-  produto: string
-  quantidadeBolos: number
+  itens: ItemEncomenda[]
+  totalBolos: number
   dataEntrega: string
   incluirPaoDeQueijo: boolean
   status: StatusEncomenda
 }
 export interface SessaoAdmin { csrfToken: string; expiraEm: string }
-export type AlteracoesPedido = Partial<Omit<PedidoAdmin, 'id'>>
+export type AlteracoesPedido = Partial<Omit<PedidoAdmin, 'id' | 'totalBolos'>>
 export class ErroAdmin extends Error {
   status: number | undefined
   constructor(mensagem: string, status?: number) { super(mensagem); this.status = status }
@@ -47,9 +47,9 @@ function validarSessao(valor: unknown): SessaoAdmin {
 function pedidoValido(valor: unknown): valor is PedidoAdmin {
   const pedido = valor as PedidoAdmin | null
   return Boolean(pedido && Number.isSafeInteger(pedido.id) && pedido.id > 0
-    && typeof pedido.nomeCliente === 'string' && typeof pedido.telefone === 'string' && typeof pedido.produto === 'string'
+    && typeof pedido.nomeCliente === 'string' && typeof pedido.telefone === 'string' && itensConfirmados(pedido.itens)
     && typeof pedido.dataEntrega === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(pedido.dataEntrega)
-    && Number.isSafeInteger(pedido.quantidadeBolos) && pedido.quantidadeBolos > 0
+    && pedido.totalBolos === totalBolos(pedido.itens)
     && typeof pedido.incluirPaoDeQueijo === 'boolean' && statusEncomenda.some((status) => status === pedido.status))
 }
 // O navegador envia o cookie HttpOnly; apenas o token CSRF fica na memória da página.
@@ -68,3 +68,5 @@ export const atualizarPedido = async (id: number, alteracoes: AlteracoesPedido, 
 }
 export const alterarStatus = (id: number, status: StatusEncomenda, csrf: string) => atualizarPedido(id, { status }, csrf)
 export const excluirPedido = (id: number, csrf: string) => solicitar<void>(`/encomendas/${id}`, 'DELETE', undefined, csrf)
+import { itensConfirmados, totalBolos } from '../utils/itens.ts'
+import type { ItemEncomenda } from '../utils/itens.ts'
