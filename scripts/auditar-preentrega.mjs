@@ -207,11 +207,13 @@ try {
     assert.equal(whatsapp.pathname, '/5573988255560')
     assert.equal(whatsapp.searchParams.get('text'), 'Olá! Gostaria de fazer uma encomenda no Café do Bairro.')
     assert.equal(await links.nth(1).getAttribute('href'), 'https://www.instagram.com/tecnojr/')
-    assert((await links.nth(1).textContent()).includes('Instagram da TecnoJr'))
-    for (const link of await links.all()) {
+    for (const [indice, link] of (await links.all()).entries()) {
+      const rotulo = ['WhatsApp', 'Instagram'][indice]
+      assert.equal(await link.innerText(), rotulo)
+      assert.equal(await link.getAttribute('aria-label'), `${rotulo} (abre em nova aba)`)
+      assert.equal(await link.locator('.contact-new-tab').count(), 0)
       assert.equal(await link.getAttribute('target'), '_blank')
       assert.equal(await link.getAttribute('rel'), 'noopener noreferrer')
-      assert((await link.textContent()).includes('(nova aba)'))
     }
   }
   const destinos = []
