@@ -17,7 +17,8 @@ export function linkInstagram(contato: { url: string | null; confirmado: boolean
   try {
     const url = new URL(contato.url)
     if (url.protocol !== 'https:' || !['instagram.com', 'www.instagram.com'].includes(url.hostname)
-      || url.username || url.password || !/^\/[a-zA-Z0-9._]+\/?$/.test(url.pathname)) return null
+      || url.username || url.password || url.port || url.search || url.hash || !/^\/[a-zA-Z0-9._]+\/?$/.test(url.pathname)
+      || ['accounts', 'explore', 'direct', 'p', 'reel', 'reels', 'stories', 'oauth', 'challenge'].includes(url.pathname.replaceAll('/', '').toLowerCase())) return null
     return url.href
   } catch { return null }
 }

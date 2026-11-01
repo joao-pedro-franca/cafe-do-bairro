@@ -22,7 +22,7 @@ test('WhatsApp autorizado normaliza DDI/DDD e codifica a mensagem sem enviar req
 
 test('Instagram não confirmado, inválido ou fora do domínio oficial não gera link', () => {
   assert.equal(linkInstagram({ url: 'https://www.instagram.com/perfil_de_teste/', confirmado: false }), null)
-  for (const url of [null, '', 'javascript:alert(1)', 'http://instagram.com/perfil/', 'https://instagram.com.exemplo.org/perfil/', 'https://usuario:senha@instagram.com/perfil/', 'https://instagram.com/']) {
+  for (const url of [null, '', 'javascript:alert(1)', 'http://instagram.com/perfil/', 'https://instagram.com.exemplo.org/perfil/', 'https://usuario:senha@instagram.com/perfil/', 'https://instagram.com/', 'https://instagram.com:8443/perfil/', 'https://instagram.com/perfil/?redirect=https://example.com', 'https://instagram.com/perfil/#dados', 'https://instagram.com/accounts/', 'https://instagram.com/p/']) {
     assert.equal(linkInstagram({ url, confirmado: true }), null)
   }
 })

@@ -2,6 +2,9 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { once } from 'node:events'
+import { criarApp } from '../backend/src/app.ts'
+import { abrirEncomendas } from '../backend/src/database/encomendas.ts'
 
 const front = createRequire(new URL('../frontend/package.json', import.meta.url))
 const audit = createRequire(new URL('../.audit-tools/package.json', import.meta.url))
@@ -9,19 +12,23 @@ const { createServer } = await import(pathToFileURL(front.resolve('vite')).href)
 const { default: playwright } = await import(pathToFileURL(audit.resolve('playwright')).href)
 const { AxeBuilder } = await import(pathToFileURL(audit.resolve('@axe-core/playwright')).href)
 const antes = process.argv.includes('--antes')
-const saida = new URL(`../docs/tons-terrosos/${antes ? 'antes/' : 'depois/'}`, import.meta.url)
-let vite, browser
+const comercial = process.argv.includes('--comercial')
+const saida = new URL(comercial ? '../docs/apresentacao-comercial/regressao-visual/' : `../docs/tons-terrosos/${antes ? 'antes/' : 'depois/'}`, import.meta.url)
+const repo = abrirEncomendas(':memory:')
+let vite, browser, api
 const resultados = [], erros = []
 try {
   await mkdir(saida, { recursive: true })
-  vite = await createServer({ root: fileURLToPath(new URL('../frontend', import.meta.url)), server: { host: '127.0.0.1', port: 0, hmr: false, watch: null }, logLevel: 'silent' })
+  api = criarApp(repo).listen(0, '127.0.0.1')
+  await once(api, 'listening')
+  vite = await createServer({ root: fileURLToPath(new URL('../frontend', import.meta.url)), server: { host: '127.0.0.1', port: 0, hmr: false, watch: null, proxy: { '/api': { target: `http://127.0.0.1:${api.address().port}` } } }, logLevel: 'silent' })
   await vite.listen()
   browser = await playwright.chromium.launch({ headless: true, ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) })
   const contexto = await browser.newContext()
   const page = await contexto.newPage()
   page.on('pageerror', (erro) => erros.push(erro.message))
   const nome = (arquivo) => fileURLToPath(new URL(arquivo, saida))
-  const capturar = (arquivo) => page.screenshot({ path: nome(arquivo), type: 'jpeg', quality: 88, animations: 'disabled' })
+  const capturar = (arquivo) => process.argv.includes('--sem-capturas') ? Promise.resolve() : page.screenshot({ path: nome(arquivo), type: 'jpeg', quality: 88, animations: 'disabled' })
   for (const largura of [360, 390, 768, 1280]) {
     await page.setViewportSize({ width: largura, height: 1000 })
     await page.goto(`http://127.0.0.1:${vite.httpServer.address().port}`, { waitUntil: 'networkidle' })
@@ -32,7 +39,8 @@ try {
       hero: el.querySelector('.hero-figure img').getAttribute('src'),
       grades: ['.hero-layout', '.product-grid', '.info-grid', '.footer-main'].map((s) => ({ seletor: s, colunas: getComputedStyle(el.querySelector(s)).gridTemplateColumns.split(' ').length })),
     }))
-    if (!antes) {
+    // Esta etapa altera textos/fotografias por solicitação; o snapshot antigo só vale para a etapa de paleta.
+    if (!antes && !comercial) {
       const anterior = JSON.parse(await readFile(new URL(`../docs/tons-terrosos/antes/conteudo-${largura}.json`, import.meta.url)))
       assert.deepEqual(conteudo, anterior, 'Conteúdo, imagem do hero ou estrutura da grade mudou')
     }
@@ -47,7 +55,7 @@ try {
     assert.deepEqual(landing.violations.map(({ id }) => id), [])
     await page.getByRole('button', { name: 'Quero encomendar', exact: true }).click()
     await page.locator('.order-form').scrollIntoViewIfNeeded()
-    await page.locator('.order-form').screenshot({ path: nome(`6-formulario-${largura}.jpg`), type: 'jpeg', quality: 88, animations: 'disabled' })
+    if (!process.argv.includes('--sem-capturas')) await page.locator('.order-form').screenshot({ path: nome(`6-formulario-${largura}.jpg`), type: 'jpeg', quality: 88, animations: 'disabled' })
     const formulario = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
     assert.deepEqual(formulario.violations.map(({ id }) => id), [])
     assert(await page.getByLabel('Data desejada').isEnabled())
@@ -61,4 +69,6 @@ try {
 } finally {
   await browser?.close()
   await vite?.close()
+  if (api) await new Promise((r) => api.close(r))
+  repo.fechar()
 }

@@ -11,6 +11,7 @@
 .order-rules li { display: flex; align-items: center; gap: var(--space-2); font-size: .9rem; }
 .order-rules li > span { flex: none; font-size: 2rem; color: var(--coffee); }
 .orders-demo { max-width: 65ch; margin: 0 auto var(--space-3); font-size: .85rem; text-align: center; color: var(--coffee); }
+.order-disclosure { margin-block: 1rem; padding: .8rem 1rem; border-left: 3px solid var(--coffee); border-radius: .3rem; background: #efdfc5; color: var(--chocolate); font-size: .8rem; line-height: 1.6; }
 .orders-toggle { width: 100%; margin-inline: auto; cursor: pointer; }
 .order-drawer { display: grid; grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows .32s ease, visibility .32s step-end; }
 .order-drawer.is-open { grid-template-rows: 1fr; visibility: visible; transition: grid-template-rows .32s ease, visibility 0s; }

@@ -4,18 +4,24 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { CATALOGO } from '../backend/src/catalogo.ts'
 import { precificarItens, resumirValores } from '../backend/src/precificacao.ts'
+import { once } from 'node:events'
+import { criarApp } from '../backend/src/app.ts'
+import { abrirEncomendas } from '../backend/src/database/encomendas.ts'
 
 const front = createRequire(new URL('../frontend/package.json', import.meta.url))
 const audit = createRequire(new URL('../.audit-tools/package.json', import.meta.url))
 const { createServer } = await import(pathToFileURL(front.resolve('vite')).href)
 const { default: playwright } = await import(pathToFileURL(audit.resolve('playwright')).href)
 const { AxeBuilder } = await import(pathToFileURL(audit.resolve('@axe-core/playwright')).href)
-const saida = new URL(process.argv.includes('--precos') ? '../docs/precificacao/prazos/' : '../docs/prazos/', import.meta.url)
+const saida = new URL(process.argv.includes('--comercial') ? '../docs/apresentacao-comercial/regressao-prazos/' : process.argv.includes('--precos') ? '../docs/precificacao/prazos/' : '../docs/prazos/', import.meta.url)
 const resultados = []
-let vite, browser
+const repo = abrirEncomendas(':memory:')
+let vite, browser, api
 try {
   await mkdir(saida, { recursive: true })
-  vite = await createServer({ root: fileURLToPath(new URL('../frontend', import.meta.url)), server: { host: '127.0.0.1', port: 0, hmr: false, watch: null }, logLevel: 'silent' })
+  api = criarApp(repo).listen(0, '127.0.0.1')
+  await once(api, 'listening')
+  vite = await createServer({ root: fileURLToPath(new URL('../frontend', import.meta.url)), server: { host: '127.0.0.1', port: 0, hmr: false, watch: null, proxy: { '/api': { target: `http://127.0.0.1:${api.address().port}` } } }, logLevel: 'silent' })
   await vite.listen()
   browser = await playwright.chromium.launch({ headless: true, ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) })
   // O computador está em Tóquio; o calendário do painel deve continuar na Bahia.
@@ -24,10 +30,12 @@ try {
   page.on('pageerror', (erro) => console.error(erro.message))
   await page.clock.install({ time: new Date('2027-01-01T02:59:50Z') })
   await page.route('**/api/admin/sessao', (route) => route.fulfill({ json: { csrfToken: 'a'.repeat(64), expiraEm: '2027-01-01T10:00:00Z' } }))
+  await page.route('**/api/admin/produtos', (route) => route.fulfill({ json: repo.listarProdutos() }))
+  await page.route('**/api/produtos', (route) => route.fulfill({ json: repo.listarProdutos() }))
   await page.route('**/api/encomendas', (route) => route.fulfill({ json: ['2026-12-30', '2026-12-31', '2027-01-01', '2027-01-02', '2027-01-30', '2027-01-31'].map((dataEntrega, i) => ({
     id: i + 1, nomeCliente: 'Cliente de Demonstração', telefone: '73999999999', dataEntrega,
     ...resumirValores(precificarItens([{ produto: 'bolo-cenoura', quantidade: 1 }, { produto: 'bolo-coco', quantidade: 1 }], CATALOGO), 0),
-    totalBolos: 2, status: i === 3 ? 'entregue' : 'recebida', incluirPaoDeQueijo: false,
+    totalBolos: 2, quantidadeProducao: 2, quantidadeItens: 2, status: i === 3 ? 'entregue' : 'recebida', incluirPaoDeQueijo: false,
   })) }))
   await page.goto(`http://127.0.0.1:${vite.httpServer.address().port}/admin`)
   await page.locator('.admin-card').first().waitFor().catch(async (erro) => { console.error(await page.locator('body').innerText()); throw erro })
@@ -42,7 +50,7 @@ try {
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
     const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
     assert.deepEqual(violations.map(({ id }) => id), [])
-    await page.screenshot({ path: fileURLToPath(new URL(`filtros-${largura}.png`, saida)), fullPage: true })
+    if (!process.argv.includes('--sem-capturas')) await page.screenshot({ path: fileURLToPath(new URL(`filtros-${largura}.png`, saida)), fullPage: true })
     resultados.push({ largura, overflowHorizontal: false, violacoesAxe: 0 })
   }
   await prazo.selectOption('1')
@@ -63,4 +71,6 @@ try {
 } finally {
   await browser?.close()
   await vite?.close()
+  if (api) await new Promise((r) => api.close(r))
+  repo.fechar()
 }

@@ -2,16 +2,22 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { mkdir, writeFile } from 'node:fs/promises'
+import { once } from 'node:events'
+import { criarApp } from '../backend/src/app.ts'
+import { abrirEncomendas } from '../backend/src/database/encomendas.ts'
 
 const front = createRequire(new URL('../frontend/package.json', import.meta.url))
 const audit = createRequire(new URL('../.audit-tools/package.json', import.meta.url))
 const { createServer } = await import(pathToFileURL(front.resolve('vite')).href)
 const { default: playwright } = await import(pathToFileURL(audit.resolve('playwright')).href)
 const diagnostico = process.argv.includes('--diagnostico')
-let vite, browser
+const repo = abrirEncomendas(':memory:')
+let vite, browser, api
 const resultados = []
 try {
-  vite = await createServer({ root: fileURLToPath(new URL('../frontend', import.meta.url)), server: { host: '127.0.0.1', port: 0, hmr: false, watch: null }, logLevel: 'silent' })
+  api = criarApp(repo).listen(0, '127.0.0.1')
+  await once(api, 'listening')
+  vite = await createServer({ root: fileURLToPath(new URL('../frontend', import.meta.url)), server: { host: '127.0.0.1', port: 0, hmr: false, watch: null, proxy: { '/api': { target: `http://127.0.0.1:${api.address().port}` } } }, logLevel: 'silent' })
   await vite.listen()
   browser = await playwright.chromium.launch({ headless: true, ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) })
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
@@ -98,8 +104,10 @@ try {
   }
   const visual = process.argv.includes('--visual')
   const terrosos = process.argv.includes('--terrosos')
+  const comercial = process.argv.includes('--comercial')
+  if (comercial) await mkdir(new URL('../docs/apresentacao-comercial/', import.meta.url), { recursive: true })
   await mkdir(new URL(terrosos ? '../docs/tons-terrosos/' : visual ? '../docs/refinamento-visual/' : '../docs/v1.1/', import.meta.url), { recursive: true })
   if (process.argv.includes('--itens')) await mkdir(new URL('../docs/multissabores/', import.meta.url), { recursive: true })
-  await writeFile(new URL(terrosos ? '../docs/tons-terrosos/rolagem.json' : visual ? '../docs/refinamento-visual/rolagem.json' : diagnostico ? '../docs/v1.1/rolagem-450ms.json' : process.argv.includes('--itens') ? '../docs/multissabores/rolagem.json' : '../docs/v1.1/rolagem-1200ms.json', import.meta.url), JSON.stringify(resultados, null, 2))
+  await writeFile(new URL(comercial ? '../docs/apresentacao-comercial/rolagem.json' : terrosos ? '../docs/tons-terrosos/rolagem.json' : visual ? '../docs/refinamento-visual/rolagem.json' : diagnostico ? '../docs/v1.1/rolagem-450ms.json' : process.argv.includes('--itens') ? '../docs/multissabores/rolagem.json' : '../docs/v1.1/rolagem-1200ms.json', import.meta.url), JSON.stringify(resultados, null, 2))
   console.log(JSON.stringify(resultados.map(({ amostras, ...resumo }) => ({ ...resumo, quadros: amostras?.length })), null, 2))
-} finally { await browser?.close(); await vite?.close() }
+} finally { await browser?.close(); await vite?.close(); if (api) await new Promise((r) => api.close(r)); repo.fechar() }

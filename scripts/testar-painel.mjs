@@ -21,7 +21,7 @@ const integrado = process.argv.includes('--integrado')
 const testarPrecos = process.argv.includes('--precos')
 const testarItens = process.argv.includes('--itens') || testarPrecos
 const testarEdicao = process.argv.includes('--edicao') || testarItens
-const saida = new URL(process.argv.includes('--sazonais') ? '../docs/produtos-sazonais/regressao-painel/' : testarPrecos ? '../docs/precificacao/' : testarItens ? '../docs/multissabores/' : testarEdicao ? '../docs/v1.1/painel/' : integrado ? '../docs/auditoria-final/' : '../docs/painel/', import.meta.url)
+const saida = new URL(process.argv.includes('--comercial') ? '../docs/apresentacao-comercial/regressao-painel/' : process.argv.includes('--sazonais') ? '../docs/produtos-sazonais/regressao-painel/' : testarPrecos ? '../docs/precificacao/' : testarItens ? '../docs/multissabores/' : testarEdicao ? '../docs/v1.1/painel/' : integrado ? '../docs/auditoria-final/' : '../docs/painel/', import.meta.url)
 await mkdir(saida, { recursive: true })
 const temporaria = await mkdtemp(join(tmpdir(), 'cafe-painel-auditoria-'))
 const arquivo = join(temporaria, 'auditoria.sqlite')

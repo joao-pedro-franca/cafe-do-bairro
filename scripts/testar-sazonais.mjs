@@ -15,7 +15,7 @@ const front = createRequire(new URL('../frontend/package.json', import.meta.url)
 const { default: playwright } = await import(pathToFileURL(audit.resolve('playwright')).href)
 const { AxeBuilder } = await import(pathToFileURL(audit.resolve('@axe-core/playwright')).href)
 const { createServer } = await import(pathToFileURL(front.resolve('vite')).href)
-const saida = fileURLToPath(new URL('../docs/produtos-sazonais/', import.meta.url))
+const saida = fileURLToPath(new URL(process.argv.includes('--comercial') ? '../docs/apresentacao-comercial/regressao-sazonais/' : '../docs/produtos-sazonais/', import.meta.url))
 await mkdir(saida, { recursive: true })
 const temporaria = await mkdtemp(join(tmpdir(), 'cafe-sazonais-'))
 const arquivo = join(temporaria, 'auditoria.sqlite')
@@ -31,7 +31,7 @@ async function conferir(page, nome, seletor) {
     const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()
     resultado.acessibilidade.push({ estado: `${nome}-${largura}`, violacoes: axe.violations.map((v) => ({ id: v.id, alvos: v.nodes.map((n) => n.target) })) })
     assert.equal(axe.violations.length, 0, JSON.stringify(resultado.acessibilidade.at(-1)))
-    await page.locator(seletor).screenshot({ path: join(saida, `${nome}-${largura}.jpg`), type: 'jpeg', quality: 86, animations: 'disabled' })
+    if (!process.argv.includes('--sem-capturas')) await page.locator(seletor).screenshot({ path: join(saida, `${nome}-${largura}.jpg`), type: 'jpeg', quality: 86, animations: 'disabled' })
     resultado.larguras.push({ estado: nome, largura, transbordamento: false })
   }
 }

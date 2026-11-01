@@ -1,0 +1,299 @@
+[
+  {
+    "id": "bolo-cenoura",
+    "titulo": "Bolo de Cenoura (diagonal), 08-12-2020.jpg",
+    "fonte": "Wikimedia Commons",
+    "pagina": "https://commons.wikimedia.org/wiki/File:Bolo_de_Cenoura_(diagonal),_08-12-2020.jpg",
+    "original": "https://upload.wikimedia.org/wikipedia/commons/5/5c/Bolo_de_Cenoura_%28diagonal%29%2C_08-12-2020.jpg",
+    "copiaObtida": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5c/Bolo_de_Cenoura_%28diagonal%29%2C_08-12-2020.jpg/960px-Bolo_de_Cenoura_%28diagonal%29%2C_08-12-2020.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "autor": "Pedro Toniazzo Terres",
+    "licenca": "CC BY-SA 4.0",
+    "licencaUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "alt": "Bolo de cenoura com cobertura de chocolate e uma fatia cortada.",
+    "foco": [
+      0.5,
+      0.5
+    ],
+    "obtidaEm": "2026-11-01",
+    "dimensoesFonte": [
+      960,
+      646
+    ],
+    "alteracoes": "Recorte em 4:3, orientação EXIF aplicada, redimensionamento e conversão para WebP. Sem geração por IA.",
+    "arquivo": "/images/produtos/bolo-cenoura.webp",
+    "arquivoPequeno": "/images/produtos/bolo-cenoura-480.webp",
+    "sha256Webp": "0e3e1b42b3b5aa82d9f86e96d46244570affdcf12a43e27875c0a97a807eb8dc",
+    "bytesWebp": 75670,
+    "produto": "Bolo de cenoura"
+  },
+  {
+    "id": "bolo-chocolate",
+    "titulo": "Chocolate Cake with a Decadent Ganache.jpg",
+    "fonte": "Wikimedia Commons",
+    "pagina": "https://commons.wikimedia.org/wiki/File:Chocolate_Cake_with_a_Decadent_Ganache.jpg",
+    "original": "https://upload.wikimedia.org/wikipedia/commons/e/eb/Chocolate_Cake_with_a_Decadent_Ganache.jpg",
+    "copiaObtida": "https://upload.wikimedia.org/wikipedia/commons/e/eb/Chocolate_Cake_with_a_Decadent_Ganache.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+    "autor": "روتانا",
+    "licenca": "CC BY 4.0",
+    "licencaUrl": "https://creativecommons.org/licenses/by/4.0",
+    "alt": "Bolo de chocolate com cobertura cremosa e uma fatia à frente.",
+    "foco": [
+      0.5,
+      0.43
+    ],
+    "obtidaEm": "2026-11-01",
+    "dimensoesFonte": [
+      900,
+      986
+    ],
+    "alteracoes": "Recorte em 4:3, orientação EXIF aplicada, redimensionamento e conversão para WebP. Sem geração por IA.",
+    "arquivo": "/images/produtos/bolo-chocolate.webp",
+    "arquivoPequeno": "/images/produtos/bolo-chocolate-480.webp",
+    "sha256Webp": "730c1c938e2436f8d46cb774cff2a693e4a8c7f3d0634b59d00ec1fe0ea04eb9",
+    "bytesWebp": 121110,
+    "produto": "Bolo de chocolate"
+  },
+  {
+    "id": "bolo-milho",
+    "titulo": "Bolo de milho caseiro.jpg",
+    "fonte": "Wikimedia Commons",
+    "pagina": "https://commons.wikimedia.org/wiki/File:Bolo_de_milho_caseiro.jpg",
+    "original": "https://upload.wikimedia.org/wikipedia/commons/a/af/Bolo_de_milho_caseiro.jpg",
+    "copiaObtida": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/af/Bolo_de_milho_caseiro.jpg/960px-Bolo_de_milho_caseiro.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "autor": "Alebasi24",
+    "licenca": "CC BY-SA 4.0",
+    "licencaUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "alt": "Fatia de bolo de milho dourado em um prato.",
+    "foco": [
+      0.5,
+      0.4
+    ],
+    "obtidaEm": "2026-11-01",
+    "dimensoesFonte": [
+      960,
+      929
+    ],
+    "alteracoes": "Recorte em 4:3, orientação EXIF aplicada, redimensionamento e conversão para WebP. Sem geração por IA.",
+    "arquivo": "/images/produtos/bolo-milho.webp",
+    "arquivoPequeno": "/images/produtos/bolo-milho-480.webp",
+    "sha256Webp": "40111e83bde3ea38b43b7e76f6158c32e264acfaeea4b9a8798d35545bf87907",
+    "bytesWebp": 76388,
+    "produto": "Bolo de milho"
+  },
+  {
+    "id": "bolo-fuba",
+    "titulo": "Bolo de Fubá.jpg",
+    "fonte": "Wikimedia Commons",
+    "pagina": "https://commons.wikimedia.org/wiki/File:Bolo_de_Fub%C3%A1.jpg",
+    "original": "https://upload.wikimedia.org/wikipedia/commons/c/c8/Bolo_de_Fub%C3%A1.jpg",
+    "copiaObtida": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c8/Bolo_de_Fub%C3%A1.jpg/960px-Bolo_de_Fub%C3%A1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "autor": "Wilfredor",
+    "licenca": "CC0",
+    "licencaUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "alt": "Bolo de fubá redondo sobre uma mesa de madeira.",
+    "foco": [
+      0.5,
+      0.5
+    ],
+    "obtidaEm": "2026-11-01",
+    "dimensoesFonte": [
+      960,
+      672
+    ],
+    "alteracoes": "Recorte em 4:3, orientação EXIF aplicada, redimensionamento e conversão para WebP. Sem geração por IA.",
+    "arquivo": "/images/produtos/bolo-fuba.webp",
+    "arquivoPequeno": "/images/produtos/bolo-fuba-480.webp",
+    "sha256Webp": "3320154d817d86b64dfe6dca10e5ad271e321843ed9218ad44e8d8931773bf19",
+    "bytesWebp": 77246,
+    "produto": "Bolo de fubá"
+  },
+  {
+    "id": "bolo-laranja",
+    "titulo": "Bolo de laranja com cobertura de açúcar.jpg",
+    "fonte": "Wikimedia Commons",
+    "pagina": "https://commons.wikimedia.org/wiki/File:Bolo_de_laranja_com_cobertura_de_a%C3%A7%C3%BAcar.jpg",
+    "original": "https://upload.wikimedia.org/wikipedia/commons/a/a4/Bolo_de_laranja_com_cobertura_de_a%C3%A7%C3%BAcar.jpg",
+    "copiaObtida": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a4/Bolo_de_laranja_com_cobertura_de_a%C3%A7%C3%BAcar.jpg/960px-Bolo_de_laranja_com_cobertura_de_a%C3%A7%C3%BAcar.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "autor": "Sintegrity",
+    "licenca": "CC BY-SA 4.0",
+    "licencaUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "alt": "Bolo de laranja em formato de anel, com cobertura clara e uma fatia cortada.",
+    "foco": [
+      0.5,
+      0.65
+    ],
+    "obtidaEm": "2026-11-01",
+    "dimensoesFonte": [
+      960,
+      1280
+    ],
+    "alteracoes": "Recorte em 4:3, orientação EXIF aplicada, redimensionamento e conversão para WebP. Sem geração por IA.",
+    "arquivo": "/images/produtos/bolo-laranja.webp",
+    "arquivoPequeno": "/images/produtos/bolo-laranja-480.webp",
+    "sha256Webp": "b7946b50080289be21ce1b51dbdfaf52e68b2c0b65db2c3d99b180878cb989ac",
+    "bytesWebp": 77606,
+    "produto": "Bolo de laranja"
+  },
+  {
+    "id": "cafe-leite",
+    "titulo": "Café au lait.jpg",
+    "fonte": "Wikimedia Commons",
+    "pagina": "https://commons.wikimedia.org/wiki/File:Caf%C3%A9_au_lait.jpg",
+    "original": "https://upload.wikimedia.org/wikipedia/commons/9/9c/Caf%C3%A9_au_lait.jpg",
+    "copiaObtida": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9c/Caf%C3%A9_au_lait.jpg/960px-Caf%C3%A9_au_lait.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "autor": "Tim Boyd from Brooklyn",
+    "licenca": "CC BY 2.0",
+    "licencaUrl": "https://creativecommons.org/licenses/by/2.0",
+    "alt": "Café com leite em xícara branca sobre um pires.",
+    "foco": [
+      0.5,
+      0.5
+    ],
+    "obtidaEm": "2026-11-01",
+    "dimensoesFonte": [
+      960,
+      720
+    ],
+    "alteracoes": "Recorte em 4:3, orientação EXIF aplicada, redimensionamento e conversão para WebP. Sem geração por IA.",
+    "arquivo": "/images/produtos/cafe-leite.webp",
+    "arquivoPequeno": "/images/produtos/cafe-leite-480.webp",
+    "sha256Webp": "782613c83b8b2c351c8f26de66c74d1aab917681e4db54b412675b6304c8ff4b",
+    "bytesWebp": 24174,
+    "produto": "Café com leite"
+  },
+  {
+    "id": "pao-queijo",
+    "titulo": "Pão de Queijo - cheese bread.jpg",
+    "fonte": "Wikimedia Commons",
+    "pagina": "https://commons.wikimedia.org/wiki/File:P%C3%A3o_de_Queijo_-_cheese_bread.jpg",
+    "original": "https://upload.wikimedia.org/wikipedia/commons/3/39/P%C3%A3o_de_Queijo_-_cheese_bread.jpg",
+    "copiaObtida": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/39/P%C3%A3o_de_Queijo_-_cheese_bread.jpg/960px-P%C3%A3o_de_Queijo_-_cheese_bread.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "autor": "Jonathan Wilkins",
+    "licenca": "CC BY-SA 3.0",
+    "licencaUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "alt": "Pães de queijo dourados em uma travessa sobre a mesa.",
+    "foco": [
+      0.25,
+      0.5
+    ],
+    "obtidaEm": "2026-11-01",
+    "dimensoesFonte": [
+      960,
+      640
+    ],
+    "alteracoes": "Recorte em 4:3, orientação EXIF aplicada, redimensionamento e conversão para WebP. Sem geração por IA.",
+    "arquivo": "/images/produtos/pao-queijo.webp",
+    "arquivoPequeno": "/images/produtos/pao-queijo-480.webp",
+    "sha256Webp": "f4d68557bb9c84955570d2ac6abaa3a9173efd8c529f95813183f775a0805f60",
+    "bytesWebp": 91066,
+    "produto": "Pão de queijo"
+  },
+  {
+    "id": "panetone",
+    "titulo": "Home made panettone by Nicola (5300955223).jpg",
+    "fonte": "Wikimedia Commons",
+    "pagina": "https://commons.wikimedia.org/wiki/File:Home_made_panettone_by_Nicola_(5300955223).jpg",
+    "original": "https://upload.wikimedia.org/wikipedia/commons/9/94/Home_made_panettone_by_Nicola_%285300955223%29.jpg",
+    "copiaObtida": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/94/Home_made_panettone_by_Nicola_%285300955223%29.jpg/960px-Home_made_panettone_by_Nicola_%285300955223%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "autor": "N i c o l a from Fiumicino (Rome), Italy",
+    "licenca": "CC BY 2.0",
+    "licencaUrl": "https://creativecommons.org/licenses/by/2.0",
+    "alt": "Panetone com uma fatia cortada, mostrando a massa com frutas.",
+    "foco": [
+      0.55,
+      0.5
+    ],
+    "obtidaEm": "2026-11-01",
+    "dimensoesFonte": [
+      960,
+      540
+    ],
+    "alteracoes": "Recorte em 4:3, orientação EXIF aplicada, redimensionamento e conversão para WebP. Sem geração por IA.",
+    "arquivo": "/images/produtos/panetone.webp",
+    "arquivoPequeno": "/images/produtos/panetone-480.webp",
+    "sha256Webp": "723f1a7a16082e793010754fd1c78b3a78fa6968f57019ba31831ef5c3a70119",
+    "bytesWebp": 72166,
+    "produto": "Panetone"
+  },
+  {
+    "id": "bolo-natal",
+    "titulo": "Fruitcake.jpg",
+    "fonte": "Wikimedia Commons",
+    "pagina": "https://commons.wikimedia.org/wiki/File:Fruitcake.jpg",
+    "original": "https://upload.wikimedia.org/wikipedia/commons/7/71/Fruitcake.jpg",
+    "copiaObtida": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/71/Fruitcake.jpg/960px-Fruitcake.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+    "autor": "Jonathunder",
+    "licenca": "CC BY-SA 3.0",
+    "licencaUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "alt": "Bolo de frutas com frutas cristalizadas e fatias sobre uma tábua.",
+    "foco": [
+      0.5,
+      0.5
+    ],
+    "obtidaEm": "2026-11-01",
+    "dimensoesFonte": [
+      960,
+      768
+    ],
+    "alteracoes": "Recorte em 4:3, orientação EXIF aplicada, redimensionamento e conversão para WebP. Sem geração por IA.",
+    "arquivo": "/images/produtos/bolo-natal.webp",
+    "arquivoPequeno": "/images/produtos/bolo-natal-480.webp",
+    "sha256Webp": "5f87fa8cc2b0da742643d795efa671b434303b2d6e57dc10787e772c2ad4cb1f",
+    "bytesWebp": 192198,
+    "produto": "Bolo de Natal"
+  },
+  {
+    "id": "bolo-coco",
+    "titulo": "Baked pastry — White coconut cake with natural light",
+    "fonte": "Unsplash",
+    "pagina": "https://unsplash.com/photos/baked-pastry-5lKSHTKnarQ",
+    "original": "https://images.unsplash.com/photo-1564329298022-58a5dbaa68ed",
+    "autor": "Bruno Oliveira",
+    "licenca": "Unsplash License",
+    "licencaUrl": "https://unsplash.com/license",
+    "alt": "Fatia de bolo de coco em prato escuro, com o restante do bolo ao fundo.",
+    "foco": [
+      0.5,
+      0.58
+    ],
+    "obtidaEm": "2026-11-01",
+    "dimensoesFonte": [
+      1600,
+      2400
+    ],
+    "alteracoes": "Recorte em 4:3, orientação EXIF aplicada, redimensionamento e conversão para WebP. Sem geração por IA.",
+    "arquivo": "/images/produtos/bolo-coco.webp",
+    "arquivoPequeno": "/images/produtos/bolo-coco-480.webp",
+    "sha256Webp": "d762f144c832dba2500c876c4731431c470f0e37144e69c9162550311578c8ae",
+    "bytesWebp": 44722,
+    "produto": "Bolo de coco",
+    "copiaObtida": "https://images.unsplash.com/photo-1564329298022-58a5dbaa68ed?auto=format&fit=max&w=1600&q=90"
+  },
+  {
+    "id": "cafe-coado",
+    "titulo": "A Cup of Coffee on a Wooden Table",
+    "fonte": "Pexels",
+    "pagina": "https://www.pexels.com/photo/a-cup-of-coffee-on-a-wooden-table-12821518/",
+    "original": "https://images.pexels.com/photos/12821518/pexels-photo-12821518.jpeg",
+    "autor": "Olena Bohovyk",
+    "licenca": "Pexels License",
+    "licencaUrl": "https://www.pexels.com/license/",
+    "alt": "Café preto em xícara com pires sobre uma mesa de madeira.",
+    "foco": [
+      0.5,
+      0.4
+    ],
+    "obtidaEm": "2026-11-01",
+    "dimensoesFonte": [
+      1600,
+      2400
+    ],
+    "alteracoes": "Recorte em 4:3, orientação EXIF aplicada, redimensionamento e conversão para WebP. Sem geração por IA.",
+    "arquivo": "/images/produtos/cafe-coado.webp",
+    "arquivoPequeno": "/images/produtos/cafe-coado-480.webp",
+    "sha256Webp": "d10595a20a5e744cea00d4eaca61411382a2cb2150f9ab014c0a97875d68b655",
+    "bytesWebp": 26794,
+    "produto": "Café coado",
+    "copiaObtida": "https://images.pexels.com/photos/12821518/pexels-photo-12821518.jpeg?auto=compress&cs=tinysrgb&w=1600"
+  }
+]

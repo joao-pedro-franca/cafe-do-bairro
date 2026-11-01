@@ -1,0 +1,157 @@
+{
+  "larguras": [
+    {
+      "estado": "admin-disponibilidade",
+      "largura": 360,
+      "transbordamento": false
+    },
+    {
+      "estado": "admin-disponibilidade",
+      "largura": 390,
+      "transbordamento": false
+    },
+    {
+      "estado": "admin-disponibilidade",
+      "largura": 768,
+      "transbordamento": false
+    },
+    {
+      "estado": "admin-disponibilidade",
+      "largura": 1280,
+      "transbordamento": false
+    },
+    {
+      "estado": "formulario-misto",
+      "largura": 360,
+      "transbordamento": false
+    },
+    {
+      "estado": "formulario-misto",
+      "largura": 390,
+      "transbordamento": false
+    },
+    {
+      "estado": "formulario-misto",
+      "largura": 768,
+      "transbordamento": false
+    },
+    {
+      "estado": "formulario-misto",
+      "largura": 1280,
+      "transbordamento": false
+    },
+    {
+      "estado": "confirmacao-mista",
+      "largura": 360,
+      "transbordamento": false
+    },
+    {
+      "estado": "confirmacao-mista",
+      "largura": 390,
+      "transbordamento": false
+    },
+    {
+      "estado": "confirmacao-mista",
+      "largura": 768,
+      "transbordamento": false
+    },
+    {
+      "estado": "confirmacao-mista",
+      "largura": 1280,
+      "transbordamento": false
+    },
+    {
+      "estado": "pedido-preservado",
+      "largura": 360,
+      "transbordamento": false
+    },
+    {
+      "estado": "pedido-preservado",
+      "largura": 390,
+      "transbordamento": false
+    },
+    {
+      "estado": "pedido-preservado",
+      "largura": 768,
+      "transbordamento": false
+    },
+    {
+      "estado": "pedido-preservado",
+      "largura": 1280,
+      "transbordamento": false
+    }
+  ],
+  "acessibilidade": [
+    {
+      "estado": "admin-disponibilidade-360",
+      "violacoes": []
+    },
+    {
+      "estado": "admin-disponibilidade-390",
+      "violacoes": []
+    },
+    {
+      "estado": "admin-disponibilidade-768",
+      "violacoes": []
+    },
+    {
+      "estado": "admin-disponibilidade-1280",
+      "violacoes": []
+    },
+    {
+      "estado": "formulario-misto-360",
+      "violacoes": []
+    },
+    {
+      "estado": "formulario-misto-390",
+      "violacoes": []
+    },
+    {
+      "estado": "formulario-misto-768",
+      "violacoes": []
+    },
+    {
+      "estado": "formulario-misto-1280",
+      "violacoes": []
+    },
+    {
+      "estado": "confirmacao-mista-360",
+      "violacoes": []
+    },
+    {
+      "estado": "confirmacao-mista-390",
+      "violacoes": []
+    },
+    {
+      "estado": "confirmacao-mista-768",
+      "violacoes": []
+    },
+    {
+      "estado": "confirmacao-mista-1280",
+      "violacoes": []
+    },
+    {
+      "estado": "pedido-preservado-360",
+      "violacoes": []
+    },
+    {
+      "estado": "pedido-preservado-390",
+      "violacoes": []
+    },
+    {
+      "estado": "pedido-preservado-768",
+      "violacoes": []
+    },
+    {
+      "estado": "pedido-preservado-1280",
+      "violacoes": []
+    }
+  ],
+  "passos": [
+    "Sessão real salva panetone em dezembro, bolo de Natal no ano todo e café coado habilitado; quatro larguras sem transbordamento e sem violações axe.",
+    "Cliente confirma panetone + duas xícaras + duas dúzias por R$105,00; novembro bloqueia panetone sem removê-lo; produção=1, unidades de venda=5, adicional=0.",
+    "Produto desativado mantém pedido, preço e edição de contato/status; nova compra recebe409; alteração anônima401 e sessão sem CSRF403.",
+    "Pedidos sem bolos aceitos; reabertura do SQLite preserva todas as configurações, itens e preços."
+  ],
+  "errosPagina": []
+}

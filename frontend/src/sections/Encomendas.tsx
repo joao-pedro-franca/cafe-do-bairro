@@ -139,16 +139,17 @@ export function Encomendas() {
           <li><span aria-hidden="true">♡</span><p>Até <strong>cinco unidades de bolos/panetones por dia</strong>. Cafés e dúzias não consomem esse grupo.</p></li>
           <li><span aria-hidden="true">⌂</span><p>Pagamento <strong>na retirada</strong>.</p></li>
         </ul>
-        <p className="orders-demo" id="orders-demo">Protótipo com dados comerciais fictícios. A consulta não reserva bolos: a reserva acontece somente após a confirmação do pedido.</p>
+        <p className="orders-demo" id="orders-demo">A consulta não reserva produtos. Sua encomenda é registrada após a confirmação.</p>
         <button ref={botaoRef} className="button button-primary orders-toggle" type="button" aria-expanded={aberto} aria-controls="gaveta-encomenda" onClick={alternar}>
           {aberto ? 'Fechar formulário' : 'Quero encomendar'} <span aria-hidden="true">{aberto ? '−' : '+'}</span>
         </button>
         {/* Manter a gaveta montada preserva o rascunho; inert impede foco quando fechada. */}
         <div id="gaveta-encomenda" className={`order-drawer${aberto ? ' is-open' : ''}`} inert={!aberto} aria-hidden={!aberto}>
           <div className="order-drawer-inner">
-            <form className="order-form" noValidate onSubmit={confirmar} aria-labelledby="form-title" aria-describedby="orders-demo">
+            <form className="order-form" noValidate onSubmit={confirmar} aria-labelledby="form-title" aria-describedby={`orders-demo${cafeConfig.demonstracao ? ' orders-disclosure' : ''}`}>
               <h3 id="form-title" ref={tituloRef} tabIndex={-1}>Vamos começar pela data?</h3>
-              <p className="form-intro">Escolha o dia para consultar os produtos disponíveis. Use dados fictícios para testar.</p>
+              <p className="form-intro">Escolha o dia e descubra os sabores disponíveis para a sua encomenda.</p>
+              {cafeConfig.demonstracao && <p className="order-disclosure" id="orders-disclosure" role="note">{cafeConfig.avisoEncomendas}</p>}
               {camposComErro.length > 0 && <div className="form-errors" ref={errosRef} tabIndex={-1} role="alert">
                 <p><strong>Vamos conferir alguns campos?</strong></p>
                 <ul>{camposComErro.map((campo) => <li key={campo}><a href={`#pedido-${campo}`}>{rotulos[campo]}: {erros[campo]}</a></li>)}</ul>

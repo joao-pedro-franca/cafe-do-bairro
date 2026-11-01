@@ -1,4 +1,4 @@
-import { ProductIllustration } from '../components/ProductIllustration'
+import { ProductPhoto } from '../components/ProductPhoto'
 import { cafeConfig } from '../data/cafeConfig'
 import type { Produto } from '../data/cafeConfig'
 import '../styles/cardapio.css'
@@ -23,7 +23,6 @@ export function Cardapio() {
         <header className="menu-heading">
           <h2 id="cardapio-title">{cardapio.titulo} <span aria-hidden="true">♡</span></h2>
           <p>{cardapio.subtitulo}</p>
-          <p className="menu-demo-note">{cardapio.aviso}</p>
           <p className="handwritten-note">Um pedacinho de carinho<br />em cada receita <span aria-hidden="true">♡</span></p>
         </header>
         {disponibilidade.falhou && <p className="menu-demo-note" role="status">Não conseguimos atualizar a disponibilidade. <button type="button" className="button" onClick={disponibilidade.atualizar}>Consultar cardápio novamente</button></p>}
@@ -38,7 +37,7 @@ export function Cardapio() {
                 <li key={produto.id}>
                   <article className="product-card" aria-labelledby={`produto-${produto.id}`}>
                     <div className="product-image">
-                      {produto.imagem ? <img src={produto.imagem} alt={produto.nome} width="320" height="180" loading="lazy" /> : <ProductIllustration tipo={produto.ilustracao} />}
+                      <ProductPhoto produto={produto} />
                     </div>
                     <div className="product-content">
                       {produto.sazonalidade && <p className="seasonal-label">Receita natalina</p>}

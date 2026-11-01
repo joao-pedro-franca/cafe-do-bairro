@@ -25,7 +25,8 @@ export function Footer() {
           </div>
         </div>
         <div className="footer-bottom">
-          <p>{cafeConfig.nome} · Protótipo com dados fictícios.</p>
+          <p>{cafeConfig.nome} · Feito com carinho.</p>
+          <a href="/creditos-imagens.html">Créditos das fotografias</a>
           <a className="admin-link" href="/admin">Área administrativa</a>
         </div>
       </div>

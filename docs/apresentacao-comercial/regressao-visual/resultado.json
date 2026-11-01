@@ -1,0 +1,33 @@
+{
+  "resultados": [
+    {
+      "largura": 360,
+      "documento": 360,
+      "precosSemCorte": true,
+      "violacoesLanding": 0,
+      "violacoesFormulario": 0
+    },
+    {
+      "largura": 390,
+      "documento": 390,
+      "precosSemCorte": true,
+      "violacoesLanding": 0,
+      "violacoesFormulario": 0
+    },
+    {
+      "largura": 768,
+      "documento": 768,
+      "precosSemCorte": true,
+      "violacoesLanding": 0,
+      "violacoesFormulario": 0
+    },
+    {
+      "largura": 1280,
+      "documento": 1280,
+      "precosSemCorte": true,
+      "violacoesLanding": 0,
+      "violacoesFormulario": 0
+    }
+  ],
+  "erros": []
+}

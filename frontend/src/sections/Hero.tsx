@@ -11,15 +11,14 @@ export function Hero() {
           <p className="hero-description">{cafeConfig.apresentacao}</p>
           <p className="hero-invitation">{cafeConfig.convite}</p>
           <dl className="cafe-info">
-            <div><dt><span aria-hidden="true">◷</span> Nosso horário</dt><dd>{cafeConfig.horario.dias}<br />{cafeConfig.horario.horas}</dd></div>
-            <div><dt><span aria-hidden="true">⌂</span> Nossa casa</dt><dd>{cafeConfig.endereco.rua}<br />{cafeConfig.endereco.localidade}</dd></div>
+            <div><dt><span aria-hidden="true">◷</span> Nosso horário</dt><dd>{cafeConfig.horario.confirmado && cafeConfig.horario.dias && cafeConfig.horario.horas ? <>{cafeConfig.horario.dias}<br />{cafeConfig.horario.horas}</> : cafeConfig.horario.pendente}</dd></div>
+            <div><dt><span aria-hidden="true">⌂</span> Nossa casa</dt><dd>{cafeConfig.endereco.confirmado && cafeConfig.endereco.rua && cafeConfig.endereco.localidade ? <>{cafeConfig.endereco.rua}<br />{cafeConfig.endereco.localidade}</> : cafeConfig.endereco.pendente}</dd></div>
           </dl>
           <ContactLinks />
           <div className="hero-actions">
             <a className="button button-primary" href="#cardapio">Conheça nosso cardápio <span aria-hidden="true">↓</span></a>
             <a className="button button-secondary" href="#encomendas">Faça sua encomenda <span aria-hidden="true">↓</span></a>
           </div>
-          <p className="demo-note">Uma prévia da nossa casa · informações fictícias para demonstração.</p>
         </div>
         <figure className="hero-figure">
           <img src={cafeConfig.hero.imagem} srcSet={`${cafeConfig.hero.imagemPequena} 768w, ${cafeConfig.hero.imagem} 1536w`} sizes="100vw" alt={cafeConfig.hero.descricaoImagem} width="1536" height="1024" fetchPriority="high" />

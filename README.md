@@ -4,6 +4,16 @@ Projeto para o desafio técnico da TecnoJr. Os requisitos estão em [BRIEF.md](B
 
 ## Etapa atual
 
+### Apresentação comercial
+
+Na branch `feature/apresentacao-comercial`, a landing preserva o visual de casa de vó e apresenta os 11 produtos com **fotografias reais licenciadas**, em WebP local e duas resoluções. O hero permanece com a imagem anterior e sua identificação de IA. Hero, cardápio, informações, rodapé e metadados da página receberam textos comerciais; o aviso honesto de demonstração fica junto do formulário que coleta dados e registra pedidos.
+
+Identidade, título/descrição da página, horários, endereço e contatos são configurados em `frontend/src/data/cafeConfig.ts`. **Horários, endereço, WhatsApp e Instagram reais ainda não foram fornecidos**: não são publicados exemplos como se fossem oficiais. Os controles com ícones de marca mostram **Em breve**, sem links externos falsos, até que os canais estejam autorizados. A condição demonstrativa continua ativa (`demonstracao: true`); pedidos não representam uma cafeteria operacional.
+
+Veja [arquivos, decisões, configuração, testes e capturas](docs/apresentacao-comercial/README.md) e os [créditos individuais das fotografias](docs/creditos-imagens.md). Preços continuam somente em `backend/src/catalogo.ts`; disponibilidade continua no SQLite. API, banco, regras de produção, precificação e autenticação não foram modificados nesta etapa.
+
+**Trocar fotos:** substitua `<id>.webp` e `<id>-480.webp` em `frontend/public/images/produtos/`, mantendo os nomes. Alternativamente, ajuste `imagem`, `imagemPequena` e `imagemAlt` do produto em `backend/src/produtos.ts`; `imagemPequena` pode ser removida quando houver apenas uma resolução. Atualize a fonte/licença no manifesto e nos créditos públicos. O script opcional `python scripts/preparar-fotografias.py CAMINHO_DAS_COPIAS` (Pillow) otimiza cópias locais previamente autorizadas, aplica os recortes e gera os créditos. O site não faz downloads de bancos de imagens durante a navegação.
+
 ### Disponibilidade de todos os produtos
 
 Na branch `feature/produtos-sazonais`, Dona Marta pode entrar em `/admin` e usar **Disponibilidade do cardápio**, abaixo dos pedidos. Cada cartão mostra nome, categoria, preço por unidade de venda e estado confirmado. Marque **Aceita encomendas**, escolha **O ano todo** ou **Apenas meses selecionados** e clique em **Salvar [produto]**. A confirmação aparece somente após a resposta válida do servidor; erros mantêm o rascunho. Não é necessário alterar código ou publicar novamente para mudar essas configurações.
@@ -68,7 +78,7 @@ Base React + TypeScript + Vite, com CSS tradicional, cabeçalho, hero, cardápio
 
 Veja [como iniciar e testar a API](backend/README.md), incluindo contrato, exemplos PowerShell, persistência e proteção administrativa. O back-end usa TypeScript por solicitação desta etapa, atualizando a recomendação inicial de JavaScript do brief; o brief original foi preservado.
 
-**Todos os dados comerciais são fictícios**, incluindo endereço, horários, produtos, preços e tamanhos. Nomes, descrições e tamanhos dos produtos ficam em `backend/src/produtos.ts`; informações do café e contatos ficam em `frontend/src/data/cafeConfig.ts`; preços ficam em `backend/src/catalogo.ts`, em centavos. WhatsApp e Instagram aparecem em modo de demonstração, sem links para terceiros. O hero usa uma imagem ilustrativa criada com IA, identificada na legenda.
+**Os dados comerciais do desafio não comprovam uma empresa operacional.** Produtos, preços e tamanhos continuam como referências do projeto; endereço, horários e contatos reais seguem pendentes e vazios na configuração pública. Nomes, descrições, tamanhos e caminhos de fotos ficam em `backend/src/produtos.ts`; identidade e informações comerciais ficam em `frontend/src/data/cafeConfig.ts`; preços ficam em `backend/src/catalogo.ts`, em centavos. A identificação discreta de demonstração permanece junto ao formulário de pedidos. O hero criado com IA continua identificado; as 11 fotografias do cardápio são referências licenciadas, não fotos dos produtos de um estabelecimento real.
 
 ## Executar
 
@@ -164,7 +174,7 @@ npm.cmd install
 
 - `src/components/`: cabeçalho, marca e acessos de contato reutilizáveis.
 - `src/sections/Hero.tsx`: apresentação e dois CTAs com âncoras nativas.
-- `src/sections/Cardapio.tsx`: categorias e cartões do cardápio; `components/ProductIllustration.tsx` fornece desenhos provisórios enquanto não há fotos autorizadas.
+- `src/sections/Cardapio.tsx`: categorias e cartões do cardápio; `components/ProductPhoto.tsx` exibe fotografias locais com carregamento responsivo e `ProductIllustration.tsx` fornece o fallback se um arquivo falhar.
 - `src/sections/Encomendas.tsx`: abertura/fechamento, campos controlados, foco e mensagens de validação.
 - `src/sections/InformacoesContato.tsx`: endereço semântico, horário e canais lidos da configuração central.
 - `src/components/Footer.tsx`: marca, navegação, contatos e link discreto para a área administrativa.
@@ -185,7 +195,7 @@ npm.cmd install
 - `tests/encomendas-service.test.mjs`: contrato HTTP, erros de rede, respostas inválidas e códigos de status.
 - `tests/encomendas-integracao.test.mjs`: formulário React com DOM simulado (`happy-dom`, apenas em desenvolvimento), proxy Vite, API e SQLite reais.
 - `vite.config.ts`: proxy local `/api` → `http://127.0.0.1:3001`, sem alterar CORS, hosts permitidos ou validação TLS.
-- `src/data/cafeConfig.ts`: fonte única dos dados comerciais ilustrativos.
+- `src/data/cafeConfig.ts`: identidade, metadados, informações comerciais, contatos autorizados e identificação do ambiente de demonstração.
 - `src/components/ItensPedido.tsx`, `src/utils/itens.ts` e `src/styles/itens.css`: seleção compartilhada de sabores, total e resumo confirmado.
 - `src/styles/`: tokens visuais e CSS mobile-first, sem bibliotecas de UI.
 - `public/images/`: hero WebP responsivo e ornamentos SVG em `decor/`, sem dependência de imagens externas; a ilustração SVG anterior permanece disponível.
@@ -194,13 +204,14 @@ A navegação fica visível no celular, sem menu expansível nesta etapa. HTML s
 
 ### Informações, contato e rodapé
 
-A seção `#contato` substitui o placeholder e apresenta horário, endereço e canais. Usa `<address>`, títulos e listas descritivas, com ícones decorativos e aviso de dados fictícios. No celular os blocos ficam empilhados; telas maiores passam a duas ou três colunas. O rodapé mantém a marca com xícara, navegação pelas âncoras e os mesmos acessos de contato. Foco visível e alvos de pelo menos 44 px são mantidos nos controles.
+A seção `#contato` apresenta horários/endereço quando confirmados e os canais disponíveis. Sem dados reais, mostra informações em atualização. No celular os blocos ficam empilhados; telas maiores passam a duas ou três colunas. O rodapé mantém a marca com xícara, navegação pelas âncoras, contatos e créditos das fotografias. Foco visível e alvos de pelo menos 44 px são mantidos nos controles.
 
 `ContactLinks` é compartilhado pelo hero, contato e rodapé. Para liberar canais oficiais, edite **somente `frontend/src/data/cafeConfig.ts`**:
 
-- WhatsApp: preencha `contato.whatsapp.numero` com o número autorizado incluindo DDI `55`, DDD e número; atualize `exibicao` e `mensagem`, e só então marque `confirmado: true`. O destino usa `https://wa.me/` com mensagem codificada. Número ausente, formato inválido ou `confirmado: false` mantém a interface de demonstração, sem link telefônico externo.
-- Instagram: preencha `contato.instagram.url` com a URL HTTPS do perfil oficial em `instagram.com` ou `www.instagram.com`, atualize `exibicao` e marque `confirmado: true`. Sem esses dados, permanece em demonstração, sem inventar um perfil.
-- Atualize também `endereco` e `horario` com os dados reais antes de um uso público; os avisos de protótipo devem ser revistos quando todo o conteúdo estiver confirmado.
+- WhatsApp: preencha `contato.whatsapp.numero` com o número explicitamente autorizado, incluindo DDI `55`, DDD e número brasileiro; personalize `contato.whatsapp.mensagem` e só então marque `contato.whatsapp.confirmado: true`. O destino usa `https://wa.me/` com mensagem codificada. Número ausente/inválido ou não confirmado mantém **Em breve**, sem link externo.
+- Instagram: preencha `contato.instagram.url` com o perfil HTTPS autorizado em `instagram.com` ou `www.instagram.com` e marque `contato.instagram.confirmado: true`. Destinos com credenciais, porta alternativa, query/hash ou caminhos reservados são recusados. Sem perfil autorizado, permanece **Em breve**.
+- Horários: preencha `horario.dias`, `horario.horas` e marque `horario.confirmado: true`. Endereço: preencha `endereco.rua`, `endereco.localidade` e marque `endereco.confirmado: true`. Ambos precisam dos dados completos antes de aparecer no hero e nas informações. Os textos de ausência ficam em `pendente` na mesma configuração.
+- Mantenha `demonstracao: true` enquanto os pedidos não representarem um negócio operacional. Só desative a identificação depois de confirmar o uso real e revisar todos os dados comerciais com o responsável; a opção altera a apresentação, não o registro no SQLite.
 
 Links oficiais abrem em nova aba, com indicação no texto e `rel="noopener noreferrer"`, preservando a página do café. Abrir uma conversa não registra nem sincroniza encomendas: a seção orienta reservar pelo formulário. Nenhum dado de formulário é incluído na mensagem de WhatsApp.
 
@@ -217,7 +228,7 @@ As três categorias e os 11 produtos ficam em `backend/src/produtos.ts`, consumi
 
 O brief original foi preservado como histórico. As descrições, tamanhos e preços continuam ilustrativos. O cardápio apresenta os produtos; o registro acontece no formulário de encomendas.
 
-A apresentação usa listas de cartões, papel claro, bordas discretas e tipografia serifada inspirados no mockup. No celular, os produtos ficam empilhados para permitir leitura sem controles de carrossel. As imagens são desenhos SVG provisórios, não fotografias dos produtos.
+A apresentação usa listas de cartões, papel claro, bordas discretas e tipografia serifada inspirados no mockup. No celular, os produtos ficam empilhados para permitir leitura sem carrossel. As fotografias reais licenciadas têm recortes 4:3 e são acompanhadas de créditos; o SVG anterior permanece como fallback.
 
 ### Formulário de encomendas integrado
 
@@ -276,7 +287,7 @@ O proxy segue a opção oficial [`server.proxy` do Vite](https://vite.dev/config
 ### Conferir contato e rodapé
 
 1. Siga o link **Contato** do cabeçalho ou rodapé e confira o destino `#contato`, o endereço e o horário da configuração.
-2. Com a configuração fictícia atual, abra os controles **WhatsApp · demo** e **Instagram · demo**: devem explicar a demonstração, sem abrir site externo. Confira usando Tab e Enter/Espaço.
+2. Sem contatos autorizados, abra **WhatsApp — Em breve** e **Instagram — Em breve**: devem explicar a indisponibilidade, sem abrir site externo. Confira usando Tab e Enter/Espaço. Os testes de links habilitados usam destinos interceptados, sem acessar contas de terceiros.
 3. No rodapé, confira os links de navegação e **Área administrativa**. Em `/admin`, sem sessão, deve aparecer o login e **Voltar para o café**; nenhum pedido deve ser exibido.
 4. Revise em 360, 390, 768 e 1280 px, sem rolagem horizontal e com leitura confortável. Os testes de contato não enviam requisições a WhatsApp ou Instagram.
 

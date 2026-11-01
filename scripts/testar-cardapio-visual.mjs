@@ -3,6 +3,9 @@ import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { cafeConfig } from '../frontend/src/data/cafeConfig.ts'
+import { once } from 'node:events'
+import { criarApp } from '../backend/src/app.ts'
+import { abrirEncomendas } from '../backend/src/database/encomendas.ts'
 
 const front = createRequire(new URL('../frontend/package.json', import.meta.url))
 const audit = createRequire(new URL('../.audit-tools/package.json', import.meta.url))
@@ -10,14 +13,17 @@ const { createServer } = await import(pathToFileURL(front.resolve('vite')).href)
 const { default: playwright } = await import(pathToFileURL(audit.resolve('playwright')).href)
 const { AxeBuilder } = await import(pathToFileURL(audit.resolve('@axe-core/playwright')).href)
 const antes = process.argv.includes('--antes')
-const saida = new URL(`../docs/cardapio-madeira/${antes ? 'antes/' : 'depois/'}`, import.meta.url)
+const saida = new URL(process.argv.includes('--comercial') ? '../docs/apresentacao-comercial/regressao-cardapio/' : `../docs/cardapio-madeira/${antes ? 'antes/' : 'depois/'}`, import.meta.url)
 const produtos = cafeConfig.produtos.filter((produto) => produto.exibirNoCardapio)
 const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 const resultados = []
-let vite, browser
+const repo = abrirEncomendas(':memory:')
+let vite, browser, api
 try {
   await mkdir(saida, { recursive: true })
-  vite = await createServer({ root: fileURLToPath(new URL('../frontend', import.meta.url)), server: { host: '127.0.0.1', port: 0, hmr: false, watch: null }, logLevel: 'silent' })
+  api = criarApp(repo).listen(0, '127.0.0.1')
+  await once(api, 'listening')
+  vite = await createServer({ root: fileURLToPath(new URL('../frontend', import.meta.url)), server: { host: '127.0.0.1', port: 0, hmr: false, watch: null, proxy: { '/api': { target: `http://127.0.0.1:${api.address().port}` } } }, logLevel: 'silent' })
   await vite.listen()
   browser = await playwright.chromium.launch({ headless: true, ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) })
   const contexto = await browser.newContext()
@@ -44,10 +50,12 @@ try {
     const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
     assert.deepEqual(violations.map(({ id }) => id), [])
     await cardapio.evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }))
-    await page.screenshot({ path: fileURLToPath(new URL(`cardapio-${largura}.png`, saida)), animations: 'disabled' })
-    await cardapio.locator('.menu-category').first().screenshot({ path: fileURLToPath(new URL(`bolos-${largura}.png`, saida)), animations: 'disabled' })
+    if (!process.argv.includes('--sem-capturas')) {
+      await page.screenshot({ path: fileURLToPath(new URL(`cardapio-${largura}.png`, saida)), animations: 'disabled' })
+      await cardapio.locator('.menu-category').first().screenshot({ path: fileURLToPath(new URL(`bolos-${largura}.png`, saida)), animations: 'disabled' })
+    }
     await cardapio.locator('.menu-order-action').evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }))
-    await page.screenshot({ path: fileURLToPath(new URL(`transicao-${largura}.png`, saida)), animations: 'disabled' })
+    if (!process.argv.includes('--sem-capturas')) await page.screenshot({ path: fileURLToPath(new URL(`transicao-${largura}.png`, saida)), animations: 'disabled' })
     resultados.push({ largura, produtos: produtos.length, categorias: cafeConfig.cardapio.categorias.length, violacoesAxe: 0, ...geometria })
   }
   assert.deepEqual(erros, [])
@@ -56,4 +64,6 @@ try {
 } finally {
   await browser?.close()
   await vite?.close()
+  if (api) await new Promise((r) => api.close(r))
+  repo.fechar()
 }

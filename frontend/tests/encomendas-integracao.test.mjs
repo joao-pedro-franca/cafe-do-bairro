@@ -81,7 +81,8 @@ async function preencher(campo, valor) {
 }
 async function preencherTudo() {
   await preencher('dataEntrega', dados.dataEntrega)
-  await esperar(() => container.querySelector('.availability-summary'))
+  // O formulário depende das duas consultas independentes: saldo e catálogo.
+  await esperar(() => container.querySelector('.availability-summary') && !container.querySelector('.order-details').hidden && container.querySelector('[name="incluirPaoDeQueijo"]'))
   for (const [campo, valor] of Object.entries(dados)) if (!['dataEntrega', 'itens'].includes(campo)) await preencher(campo, valor)
   await preencher('itens[0].produto', dados.itens[0].produto)
   await preencher('itens[0].quantidade', dados.itens[0].quantidade)
@@ -216,7 +217,7 @@ test('o proxy não libera leituras administrativas da API', async () => {
 test('três bolos reservados deixam dois disponíveis e os botões respeitam esse limite', async () => {
   repo.criar({ ...dados, itens: [{ produto: 'bolo-cenoura', quantidade: 3 }] }, () => new Date())
   await preencher('dataEntrega', dados.dataEntrega)
-  await esperar(() => container.querySelector('.availability-summary'))
+  await esperar(() => container.querySelector('.availability-summary') && !container.querySelector('.order-details').hidden)
   assert.deepEqual([...container.querySelectorAll('.availability-summary dd')].map((item) => item.textContent), ['5 unidades', '3', '2'])
   assert(!container.querySelector('.order-details').hidden)
   await preencher('itens[0].produto', 'bolo-cenoura')
@@ -235,7 +236,7 @@ test('três bolos reservados deixam dois disponíveis e os botões respeitam ess
 test('dia lotado permite dúzias; outra data libera produção de bolos', async () => {
   repo.criar({ ...dados, itens: [{ produto: 'bolo-cenoura', quantidade: 5 }] }, () => new Date())
   await preencher('dataEntrega', dados.dataEntrega)
-  await esperar(() => container.querySelector('.availability-full'))
+  await esperar(() => container.querySelector('.availability-full') && !container.querySelector('.order-details').hidden)
   assert(!container.querySelector('.order-details').hidden)
   assert(container.querySelector('[name="itens[0].produto"] option[value="bolo-cenoura"]').disabled)
   assert(!container.querySelector('[name="itens[0].produto"] option[value="pao-queijo"]').disabled)
