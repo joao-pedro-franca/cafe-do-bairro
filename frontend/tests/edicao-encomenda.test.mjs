@@ -23,3 +23,10 @@ test('pedido antigo mantém data ao editar contato/status; mudar quantidade exig
   assert(validarEdicao(antigo, { ...dados, itens: [{ produto: 'bolo-cenoura', quantidade: 1 }] }, agora).dataEntrega)
   assert.deepEqual(validarEdicao(antigo, { ...dados, dataEntrega: '2026-11-02', itens: [{ produto: 'bolo-cenoura', quantidade: 1 }] }, agora), {})
 })
+
+test('composição de mesmo total em pedido antigo é permitida e apenas itens são enviados', () => {
+  const antigo = { ...pedido, dataEntrega: '2000-01-01', totalBolos: 3, itens: [{ produto: 'bolo-cenoura', quantidade: 3 }] }
+  const novos = { ...campos, dataEntrega: antigo.dataEntrega, itens: [{ produto: 'bolo-cenoura', quantidade: 2 }, { produto: 'bolo-chocolate', quantidade: 1 }] }
+  assert.deepEqual(validarEdicao(antigo, novos, agora), {})
+  assert.deepEqual(alteracoesPedido(antigo, novos), { itens: novos.itens })
+})

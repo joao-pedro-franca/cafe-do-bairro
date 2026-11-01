@@ -67,3 +67,15 @@ test('resposta de disponibilidade inconsistente ou de outra data é recusada', a
     await assert.rejects(consultarDisponibilidade(dados.dataEntrega))
   }
 })
+
+test('resumo público só é confirmado com itens válidos e total coerente na resposta', async (t) => {
+  const chamada = t.mock.method(globalThis, 'fetch')
+  for (const corpo of [
+    { id: 1, status: 'recebida', itens: dados.itens, totalBolos: 4 },
+    { id: 1, status: 'recebida', itens: [], totalBolos: 0 },
+    { id: 1, status: 'recebida', itens: [dados.itens[0], dados.itens[0]], totalBolos: 2 },
+  ]) {
+    chamada.mock.mockImplementation(async () => Response.json(corpo, { status: 201 }))
+    await assert.rejects(criarEncomenda(dados), /Não foi possível obter a confirmação/)
+  }
+})

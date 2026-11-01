@@ -46,7 +46,7 @@ export function dataMinima(agora: Date) {
   return new Date(Date.UTC(parte('year'), parte('month') - 1, parte('day') + 1)).toISOString().slice(0, 10)
 }
 
-export function validarData(valor: unknown, agora: Date): asserts valor is string {
+export function validarData(valor: unknown, agora: Date, exigirFuturo = true): asserts valor is string {
   if (typeof valor !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
     throw new ApiError(400, 'Informe a data de entrega no formato YYYY-MM-DD.')
   }
@@ -54,7 +54,7 @@ export function validarData(valor: unknown, agora: Date): asserts valor is strin
   if (Number.isNaN(data.getTime()) || data.toISOString().slice(0, 10) !== valor) {
     throw new ApiError(400, 'Informe uma data de entrega válida.')
   }
-  if (valor < dataMinima(agora)) {
+  if (exigirFuturo && valor < dataMinima(agora)) {
     throw new ApiError(400, 'A encomenda precisa ser para amanhã ou depois, no horário da Bahia.')
   }
 }
@@ -84,7 +84,8 @@ export function validarEntrada(entrada: unknown, parcial: boolean, agora: Date):
     resultado.telefone = corpo.telefone.replace(/\D/g, '')
   }
   if (!parcial || Object.hasOwn(corpo, 'dataEntrega')) {
-    validarData(corpo.dataEntrega, agora)
+    // No PATCH, a transação compara com a reserva anterior antes de exigir data futura.
+    validarData(corpo.dataEntrega, agora, !parcial)
     resultado.dataEntrega = corpo.dataEntrega
   }
   if (Object.hasOwn(corpo, 'incluirPaoDeQueijo')) {

@@ -2,7 +2,7 @@
 
 API REST local em Node.js, Express, TypeScript e SQLite. O formulário público já envia pedidos por `POST /api/encomendas` usando o proxy de desenvolvimento do Vite; a confirmação aparece somente após `201`. A API usa TypeScript por solicitação do projeto, no lugar da recomendação inicial de JavaScript no brief.
 
-**Mudança confirmada nesta etapa:** a produção diária é de **cinco bolos**, não cinco registros. A soma de `quantidadeBolos` em todos os pedidos de uma data determina a capacidade ocupada. Essa orientação substitui a contagem original do brief, preservado como histórico.
+**Mudança confirmada nesta etapa:** a produção diária é de **cinco bolos**, não cinco registros. A soma das quantidades de todos os itens de todos os pedidos da data determina a capacidade ocupada. `totalBolos` é calculado na resposta, nunca recebido como entrada. Essa orientação substitui a contagem original do brief, preservado como histórico.
 
 Para rodar site e API juntos e configurar o login por sessão, veja o [README principal](../README.md#habilitar-o-painel-administrativo). O envio público não precisa de credenciais. O painel usa usuário/hash de senha no ambiente e cookie de sessão; os exemplos Bearer abaixo continuam disponíveis para testar o CRUD pelo PowerShell. O token nunca vai para o front-end.
 
@@ -85,22 +85,26 @@ Exemplo de corpo do POST (a data precisa ser futura ao executar):
 {
   "nomeCliente": "Cliente de Teste",
   "telefone": "(73) 99999-9999",
-  "produto": "bolo-cenoura",
+  "itens": [
+    { "produto": "bolo-cenoura", "quantidade": 2 },
+    { "produto": "bolo-chocolate", "quantidade": 1 }
+  ],
   "dataEntrega": "2099-12-25",
-  "incluirPaoDeQueijo": true,
-  "quantidadeBolos": 2
+  "incluirPaoDeQueijo": true
 }
 ```
 
-São os mesmos campos do estado do formulário atual. `produto` recebe um **ID**, conforme o `<select>` do front-end, em vez do nome ilustrativo usado no exemplo original do brief. IDs permitidos: `bolo-cenoura`, `bolo-chocolate`, `bolo-milho`, `bolo-fuba`, `bolo-laranja`, `bolo-coco`. Cafés, Natal e pão de queijo como produto independente são recusados.
+O POST exige `itens`, lista com pelo menos um sabor. Cada item contém apenas `produto` (ID) e `quantidade` (inteiro positivo seguro, sem conversão de strings). IDs: `bolo-cenoura`, `bolo-chocolate`, `bolo-milho`, `bolo-fuba`, `bolo-laranja`, `bolo-coco`. Produtos inválidos, lista vazia e sabores repetidos recebem `400`. São permitidos até seis sabores distintos na estrutura; um total de seis bolos recebe `409` por ultrapassar a capacidade de cinco, mesmo em data livre.
 
-`quantidadeBolos` é obrigatório no POST e deve ser um número inteiro positivo seguro, sem conversão de strings. Zero, negativos e frações retornam `400`; uma quantidade positiva que ultrapassa o saldo retorna `409`. A quantidade corresponde ao mesmo sabor selecionado em `produto`. Clientes anteriores precisam passar a enviar esse campo; o valor padrão de um bolo é destinado à migração dos registros existentes.
+A resposta acrescenta `id`, `status` e `totalBolos`, calculado pela soma dos itens. Não há coluna de total no banco. `produto` e `quantidadeBolos` na raiz deixaram de fazer parte do contrato; `totalBolos` também não é aceito na entrada. Publique frontend e backend juntos e pare escritores antigos antes da migração.
 
 `incluirPaoDeQueijo` é booleano; omitido no POST, vira `false`. `true` significa **uma dúzia junto com os bolos**, independentemente da quantidade de bolos. O acompanhamento não ocupa nenhuma parte da capacidade de bolos. Não há quantidade de dúzias, pedido independente do acompanhamento ou carrinho.
 
 O POST define `id` e `status` no servidor e rejeita esses campos na entrada. A resposta contém os dados registrados, `id`, `status: "recebida"` e o adicional como booleano. O telefone é normalizado para dígitos (mantendo o DDI `55` quando informado, com ou sem `+`). Esse valor normalizado também é aceito em atualizações. O cabeçalho `Location` aponta para a consulta administrativa do novo ID.
 
-PATCH aceita qualquer combinação dos mesmos campos e `status`: `recebida`, `em preparo` ou `entregue`. Campos omitidos são preservados; corpo vazio, campos desconhecidos e valores de tipo incorreto são recusados. Uma mudança somente de status/contato pode ser feita em pedido antigo, sem alterar sua data. Se enviar `dataEntrega`, ela precisa ser amanhã ou depois. Trocar a data ou a quantidade revalida a data futura e o saldo dentro da transação, excluindo a quantidade anterior desse mesmo ID da soma. Assim, aumentar não conta o próprio pedido duas vezes; reduzir libera a diferença. Falhar preserva todo o registro anterior.
+PATCH aceita os mesmos campos modificáveis e `status`: `recebida`, `em preparo`, `entregue`. `itens` substitui a lista completa em uma operação, nunca parcialmente. Exemplo: `{ "itens": [{ "produto": "bolo-cenoura", "quantidade": 3 }] }`. Não há endpoint separado por sabor. O ID e o total não são editáveis. Campos omitidos são preservados; corpo vazio e campos desconhecidos recebem `400`.
+
+Apenas alterar contato, composição de mesmo total, adicional ou status continua permitido em pedido antigo. Quando o total ou a data efetivamente muda, a transação valida amanhã ou depois em America/Bahia e a nova capacidade, excluindo a reserva anterior do próprio pedido. A validação de formato/calendário é sempre aplicada se uma data for enviada. Erro `409` ou qualquer falha na substituição reverte metadados e todos os itens, preservando o ID e o registro anterior. A exclusão remove os itens por cascata e libera todo o total.
 
 ### Consulta pública de disponibilidade
 
@@ -144,10 +148,9 @@ $headers = @{ Authorization = "Bearer $tokenLocal" }
 $corpo = @{
   nomeCliente = 'Cliente de Teste'
   telefone = '(73) 99999-9999'
-  produto = 'bolo-cenoura'
+  itens = @(@{ produto = 'bolo-cenoura'; quantidade = 2 }, @{ produto = 'bolo-chocolate'; quantidade = 1 })
   dataEntrega = (Get-Date).AddDays(2).ToString('yyyy-MM-dd')
   incluirPaoDeQueijo = $true
-  quantidadeBolos = 2
 } | ConvertTo-Json
 
 # Consultar antes de criar: não exige token e não reserva capacidade.
@@ -176,11 +179,21 @@ Use somente dados fictícios nesta fase. Uma encomenda criada pela API já fica 
 
 `src/database/encomendas.ts` cria a tabela e o índice por data na primeira abertura. Os dados persistem em arquivo ao reiniciar; os testes usam bancos isolados e temporários. Arquivos SQLite e `backend/data/` ficam fora do Git.
 
-Na próxima inicialização, a migração verifica as colunas sob `BEGIN IMMEDIATE`. Se `quantidadeBolos` ainda não existir, executa `ALTER TABLE ... ADD COLUMN quantidadeBolos INTEGER NOT NULL DEFAULT 1 CHECK(quantidadeBolos > 0)`. Cada registro antigo passa a representar um bolo, mantendo ID, nome, telefone, sabor, data, status e acompanhamento. Não é necessário apagar nem recriar o banco. Reabrir uma base já migrada não muda as quantidades existentes. Pare versões antigas da API antes de iniciar a versão nova, para que todos os escritores usem a regra atualizada.
+A migração relacional roda sob `BEGIN IMMEDIATE`: cria `encomenda_itens`, copia cada produto/quantidade antigos para um item, remove somente as colunas antigas e confirma tudo junto. A linha de encomenda e seu ID não são apagados/recriados. Nome, telefone, data, status, adicional, quantidade e sequência de IDs são preservados. Bases anteriores sem quantidade representam um bolo por registro. Reabrir a base não repete a cópia porque as colunas legadas já foram removidas; uma falha reverte inclusive o esquema.
+
+`encomenda_itens` usa chave estrangeira com `ON DELETE CASCADE`, quantidade positiva, ordem e chave primária composta por pedido/produto. O catálogo permitido é validado tanto na API quanto por CHECK no SQLite. `PRAGMA foreign_keys=ON` é ativado em cada conexão da aplicação. O total é calculado dos itens: não há segunda fonte persistida a sincronizar.
+
+**Antes de iniciar esta versão com dados de desenvolvimento que precisam ser preservados, faça backup.** Pare todos os processos que usam o arquivo. Com todas as conexões fechadas, copie a base:
+
+```powershell
+Copy-Item -LiteralPath './data/cafe.sqlite' -Destination './data/cafe-antes-itens.sqlite'
+```
+
+Ajuste os caminhos caso use `DATABASE_PATH`. Não copie um banco em gravação como se fosse backup consistente. Os testes automatizados e os roteiros de navegador usam arquivos temporários; a migração desta etapa não foi testada na base local real. Confira a cópia antes de iniciar e mantenha-a fora do Git. Um produto legado fora do catálogo provoca falha e rollback, em vez de descartar o pedido; investigue os dados em uma cópia.
 
 Uma **transação** agrupa operações: tudo é concluído com `COMMIT`, ou é desfeito com `ROLLBACK`. `BEGIN IMMEDIATE` obtém o direito de escrita antes da contagem de vagas. Outro processo que usa o mesmo arquivo precisa esperar; quando consegue escrever, conta novamente. Assim, contar e inserir/mover não ficam separados por uma janela em que dois pedidos possam pegar a mesma vaga. Isso acompanha o modelo de escrita única por vez do [SQLite](https://www.sqlite.org/lang_transaction.html).
 
-Todos os status entram em `SUM(quantidadeBolos)` por data, inclusive `entregue`. A soma é consultada dentro de `BEGIN IMMEDIATE` antes de inserir ou alterar data/quantidade; o resultado mais a quantidade solicitada deve ser no máximo 5. Alterar status não aumenta o consumo. Excluir libera todos os bolos do registro. WAL permite leituras durante escritas; `busy_timeout` aguarda até cinco segundos por bloqueios. Banco ainda ocupado responde `503`, sem simular reserva.
+Todos os status entram em `SUM(encomenda_itens.quantidade)` por data, inclusive `entregue`. A soma é consultada dentro de `BEGIN IMMEDIATE` antes de inserir ou alterar data/quantidade; o resultado mais a quantidade solicitada deve ser no máximo 5. Alterar status não aumenta o consumo. Excluir libera todos os bolos do registro. WAL permite leituras durante escritas; `busy_timeout` aguarda até cinco segundos por bloqueios. Banco ainda ocupado responde `503`, sem simular reserva.
 
 As datas são strings `YYYY-MM-DD`, dias do calendário da Bahia. `Intl.DateTimeFormat` identifica o dia atual em `America/Bahia`, sem depender do fuso do servidor. Amanhã ou depois é válido; não é necessário esperar 24 horas exatas. A data é validada novamente dentro da transação depois de obter o bloqueio.
 
@@ -209,13 +222,13 @@ npm.cmd run typecheck
 npm.cmd run build
 ```
 
-Os testes cobrem CRUD, adicional, status inicial, soma das quantidades em todos os status, disponibilidade pública sem dados pessoais, dia lotado, mudanças combinadas de data/quantidade com rollback, redução/exclusão liberando bolos, persistência, migração de base antiga e reabertura, campos inválidos, SQL parametrizado, proteção administrativa, JSON/erros, fuso e reutilização do telefone normalizado em PATCH. Quatro cenários usam processos independentes no mesmo SQLite: última vaga por POST/PATCH, dois pedidos de três bolos e aumentos simultâneos de quantidade. Um teste compara IDs e fuso com `frontend/src/data/cafeConfig.ts`; o servidor não importa o front-end em execução. `tests/admin.test.ts` acrescenta hash, login, cookie HttpOnly/Secure, sessão e renovação, expiração, logout, negação anônima, CSRF/origens, alteração/exclusão autenticadas, limite de tentativas e manutenção do Bearer.
+Os testes cobrem CRUD, adicional, status inicial, soma das quantidades em todos os status, disponibilidade pública sem dados pessoais, dia lotado, mudanças combinadas de data/quantidade com rollback, redução/exclusão liberando bolos, persistência, migração de base antiga e reabertura, campos inválidos, SQL parametrizado, proteção administrativa, JSON/erros, fuso e reutilização do telefone normalizado em PATCH. Cinco cenários usam processos independentes no mesmo SQLite: última vaga por POST/PATCH, dois pedidos de três bolos e aumentos simultâneos de quantidade. Um teste compara IDs e fuso com `frontend/src/data/cafeConfig.ts`; o servidor não importa o front-end em execução. `tests/admin.test.ts` acrescenta hash, login, cookie HttpOnly/Secure, sessão e renovação, expiração, logout, negação anônima, CSRF/origens, alteração/exclusão autenticadas, limite de tentativas e manutenção do Bearer.
 
 ## Limites desta etapa
 
 O servidor escuta só em loopback (`127.0.0.1`), não libera CORS e protege operações administrativas com sessão ou Bearer. A criação é pública por projeto; sua resposta pertence a quem acabou de enviar o pedido. Segredos nunca vão no cliente público. Não há cadastro público, recuperação automática de senha, múltiplos perfis ou notificações. Na V1.1, o painel também edita todos os campos modificáveis por meio do PATCH existente, além de listagem, filtros, status e exclusão. O ID permanece somente de leitura.
 
-A edição do painel envia apenas as diferenças: uma alteração de telefone/status não reenvia data antiga. Alterar quantidade em pedido antigo exige uma data futura. O servidor continua responsável pela validação definitiva e pela transação: o próprio ID é excluído da soma antes de testar a nova quantidade, e `409` preserva o registro inteiro. Não houve alteração no esquema SQLite nem nas rotas de autenticação. Um teste adicional por sessão verifica edição completa, transferência de capacidade, exclusão da própria reserva na soma e rollback de todos os campos no conflito. Consulte o [relatório V1.1](../docs/v1.1/README.md).
+A edição do painel envia apenas as diferenças: uma alteração de telefone/status não reenvia data antiga. Alterar o total de bolos em pedido antigo exige uma data futura; trocar somente os sabores mantendo o total continua permitido. O servidor continua responsável pela validação definitiva e pela transação: o próprio ID é excluído da soma antes de testar a nova quantidade, e `409` preserva o registro inteiro. A migração relacional está descrita acima; as rotas de autenticação permanecem as mesmas. Um teste adicional por sessão verifica edição completa, transferência de capacidade, exclusão da própria reserva na soma e rollback de todos os campos no conflito. Consulte o [relatório de múltiplos sabores](../docs/multissabores/README.md).
 
 Antes de publicar, configure usuário/hash fortes no ambiente, origem HTTPS exata e proxy `/api` na mesma origem; mantenha acesso administrativo restrito e backup do banco. CORS não substitui autenticação. Não publique o arquivo SQLite como arquivo estático. Nesta etapa não foi feita implantação, e nomes e telefones não têm endpoint público de listagem/consulta.
 

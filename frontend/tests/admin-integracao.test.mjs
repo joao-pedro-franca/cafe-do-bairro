@@ -239,9 +239,12 @@ test('cancelar edição descarta rascunho sem PATCH e devolve foco ao cartão', 
   let chamadas = 0
   interceptar = async (_url, opcoes) => { if (opcoes.method === 'PATCH') chamadas++ }
   await preencher(`#editar-${id}-nomeCliente`, 'Rascunho Cancelado')
+  await clicar(botao('Adicionar sabor'))
+  await clicar(container.querySelector('[aria-label="Remover sabor 1"]'))
   await clicar(botao('Cancelar'))
   assert.equal(chamadas, 0)
   assert.equal(repo.buscar(id).nomeCliente, dados.nomeCliente)
+  assert.deepEqual(repo.buscar(id).itens, dados.itens)
   assert.equal(document.activeElement?.id, `editar-botao-${id}`)
   await clicar(botao('Editar pedido'))
   assert.equal(container.querySelector(`#editar-${id}-nomeCliente`).value, dados.nomeCliente)

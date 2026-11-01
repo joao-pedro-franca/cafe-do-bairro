@@ -80,3 +80,17 @@ test('trocas de data concorrentes também disputam uma única vaga com rollback 
   assert.equal(todos.filter((item) => item.dataEntrega === pedido.dataEntrega).length, 5)
   assert.equal(todos.filter((item) => item.dataEntrega === '2026-11-03').length, 1)
 })
+
+test('última vaga de um dia com sabores mistos é reservada por somente um dos dois processos', { timeout: 15000 }, async (t) => {
+  const arquivo = join(await pastaTemporaria(t), 'mistos.sqlite')
+  const a = await processo(t, arquivo)
+  const b = await processo(t, arquivo)
+  await requisicao(a, 'POST', '', { ...pedido, itens: [{ produto: 'bolo-cenoura', quantidade: 2 }, { produto: 'bolo-chocolate', quantidade: 2 }] })
+  const respostas = await Promise.all([
+    requisicao(a, 'POST', '', { ...pedido, itens: [{ produto: 'bolo-coco', quantidade: 1 }] }),
+    requisicao(b, 'POST', '', { ...pedido, itens: [{ produto: 'bolo-milho', quantidade: 1 }] }),
+  ])
+  assert.deepEqual(respostas.map((resposta) => resposta.status).sort(), [201, 409])
+  const lista = (await requisicao(a, 'GET')).dados as { totalBolos: number }[]
+  assert.equal(lista.reduce((soma, item) => soma + item.totalBolos, 0), 5)
+})

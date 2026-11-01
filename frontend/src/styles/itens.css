@@ -3,6 +3,7 @@
 .order-item { display: grid; gap: 1rem; padding: 1rem; margin-bottom: 1rem; border: 1px dashed var(--coffee); border-radius: var(--radius); min-width: 0; }
 .order-item > div { min-width: 0; }
 .order-item label { display: block; font-weight: 700; margin-bottom: .4rem; }
+.order-item .field-hint { font-size: .85rem; color: var(--coffee); margin-top: .4rem; }
 .order-item :is(select, input) { width: 100%; min-width: 0; min-height: 48px; padding: .65rem; font: inherit; border: 1px solid var(--coffee); border-radius: .4rem; background: #fffaf2; color: var(--chocolate); }
 .order-items .quantity-stepper { display: flex; gap: .5rem; min-width: 0; }
 .order-items .quantity-stepper input { text-align: center; flex: 1; width: 0; }

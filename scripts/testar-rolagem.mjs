@@ -55,7 +55,7 @@ try {
         const inicio = medicao.amostras[0].y
         for (const item of nosTempos.slice(0, 4)) assert(Math.abs(item.y - inicio) > 2 && Math.abs(item.y - medicao.final) > 2, 'Salto detectado em ' + item.ms + 'ms')
         assert(new Set(medicao.amostras.map((item) => item.y)).size > 30)
-        for (let i = 1; i < medicao.amostras.length; i++) assert((medicao.amostras[i].y - medicao.amostras[i - 1].y) * Math.sign(medicao.final - inicio) >= 0, 'Salto para trás')
+        for (let i = 1; i < medicao.amostras.length; i++) assert((medicao.amostras[i].y - medicao.amostras[i - 1].y) * Math.sign(medicao.final - inicio) >= 0, JSON.stringify({ seletor, anterior: medicao.amostras[i - 1], atual: medicao.amostras[i], inicio, final: medicao.final }))
       }
     }
   }
@@ -97,6 +97,7 @@ try {
     resultados.push({ movimentoReduzidoDuranteAnimacao: true, final, historicoVoltarAvancar: true })
   }
   await mkdir(new URL('../docs/v1.1/', import.meta.url), { recursive: true })
-  await writeFile(new URL(diagnostico ? '../docs/v1.1/rolagem-450ms.json' : '../docs/v1.1/rolagem-1200ms.json', import.meta.url), JSON.stringify(resultados, null, 2))
+  if (process.argv.includes('--itens')) await mkdir(new URL('../docs/multissabores/', import.meta.url), { recursive: true })
+  await writeFile(new URL(diagnostico ? '../docs/v1.1/rolagem-450ms.json' : process.argv.includes('--itens') ? '../docs/multissabores/rolagem.json' : '../docs/v1.1/rolagem-1200ms.json', import.meta.url), JSON.stringify(resultados, null, 2))
   console.log(JSON.stringify(resultados.map(({ amostras, ...resumo }) => ({ ...resumo, quadros: amostras?.length })), null, 2))
 } finally { await browser?.close(); await vite?.close() }

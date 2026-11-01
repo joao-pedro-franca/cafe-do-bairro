@@ -4,7 +4,17 @@ Projeto para o desafio técnico da TecnoJr. Os requisitos estão em [BRIEF.md](B
 
 ## Etapa atual
 
-### V1.1 — navegação entre seções
+### Encomendas com múltiplos sabores
+
+Uma encomenda agora contém `itens: [{ produto, quantidade }]`. Cliente e administradora podem adicionar e remover sabores, ajustar cada quantidade e visualizar o total. Somente os seis bolos caseiros são aceitos, sem linhas duplicadas. O total é calculado dos itens; o adicional continua sendo uma única dúzia opcional por pedido.
+
+O painel substitui a composição inteira pelo PATCH existente, sem editar o ID. Cancelar descarta o rascunho. Conflitos `409` não salvam nada e preservam os dados digitados. Trocar sabores sem mudar total/data continua permitido em pedidos antigos. A autenticação, CSRF, origem, rolagem de 1,2 segundo e demais fluxos foram preservados.
+
+**Banco existente:** pare a API e faça backup antes de iniciar esta versão com dados reais de desenvolvimento. A migração converte cada pedido antigo em um item, sem alterar IDs/metadados, e remove as colunas antigas para manter uma única fonte de verdade. Os testes usam bancos temporários. Frontend e backend devem ser atualizados juntos porque o contrato antigo de produto/quantidade na raiz não é mais aceito.
+
+Veja os [novos contratos e o backup da API](backend/README.md#persistência-capacidade-e-concorrência) e o [relatório, testes, capturas e roteiro desta etapa](docs/multissabores/README.md).
+
+### Base V1.1 preservada — navegação entre seções
 
 Os links continuam sendo âncoras HTML, com hash, histórico e navegação pelo teclado. A correção atual intercepta somente os destinos Início, Cardápio, Encomendas e Contato antes do salto nativo e controla a rolagem com `requestAnimationFrame` por aproximadamente **1,2 segundo**, desacelerando ao chegar ao destino.
 
@@ -14,19 +24,19 @@ O diagnóstico e o teste de navegador ficam em `scripts/testar-rolagem.mjs` e `d
 
 ### V1.1 — edição de encomendas
 
-No painel, **Editar pedido** abre um formulário dentro do cartão, preenchido com nome, telefone, sabor, quantidade, data, dúzia opcional e status. O ID não é editável. **Salvar alterações** usa o PATCH existente, enviando somente diferenças; **Cancelar** descarta o rascunho sem enviar nada. A edição rápida de status e a exclusão confirmada continuam disponíveis.
+No painel, **Editar pedido** abre um formulário dentro do cartão, preenchido com nome, telefone, lista de sabores/quantidades, data, dúzia opcional e status. O ID não é editável. **Salvar alterações** usa o PATCH existente, enviando somente diferenças; **Cancelar** descarta o rascunho sem enviar nada. A edição rápida de status e a exclusão confirmada continuam disponíveis.
 
 O cartão só muda após a resposta válida do servidor. Durante o envio, os controles ficam bloqueados. Um `409` mantém o formulário preenchido e informa que nada foi salvo; ajuste quantidade/data e salve novamente. Se a conexão falhar, o resultado pode ser incerto: confira o pedido em outra aba antes de repetir. Não há repetição automática de PATCH. O rascunho fica só na memória e é descartado ao cancelar, sair ou recarregar.
 
-Contato, sabor, adicional e status de pedidos antigos podem mudar sem reenviar a data. Alterar data ou quantidade exige amanhã ou depois no fuso da Bahia; a capacidade de cinco bolos continua validada atomicamente no servidor, descontando a reserva do próprio pedido. A dúzia não consome bolos. Os filtros e a atualização da lista ficam pausados enquanto há edição para evitar perder o rascunho. Ao fechar, o foco volta ao botão de editar ou ao título da lista caso o pedido saia do filtro.
+Contato, sabor, adicional e status de pedidos antigos podem mudar sem reenviar a data. Alterar data ou quantidade total exige amanhã ou depois no fuso da Bahia; a capacidade de cinco bolos continua validada atomicamente no servidor, descontando a reserva do próprio pedido. A dúzia não consome bolos. Os filtros e a atualização da lista ficam pausados enquanto há edição para evitar perder o rascunho. Ao fechar, o foco volta ao botão de editar ou ao título da lista caso o pedido saia do filtro.
 
-Veja o [relatório da V1.1, testes e capturas](docs/v1.1/README.md). Para testar a versão atual, **50 testes do frontend e 31 do backend** passaram, além de lint, typecheck e builds disponíveis. O navegador verificou a edição em 360, 390, 768 e 1280 px. O relatório da auditoria V1.0 permanece como histórico.
+Veja o [relatório da V1.1 anterior](docs/v1.1/README.md) e os [resultados atuais de múltiplos sabores](docs/multissabores/README.md): **57 testes do frontend e 38 do backend** passaram, além de lint, typecheck e builds disponíveis. O navegador verificou o formulário e a edição em 360, 390, 768 e 1280 px. Os relatórios V1.0/V1.1 anteriores permanecem como histórico.
 
 ### Base preservada
 
 Base React + TypeScript + Vite, com CSS tradicional, cabeçalho, hero, cardápio, formulário expansível, informações/contato e rodapé. O formulário é integrado à API REST em `backend/`: a confirmação com número do pedido aparece somente após `201 Created`, com a data reservada e pagamento na retirada. A API implementa CRUD e regras de capacidade com SQLite. `/admin` tem login e painel de encomendas com sessão validada no servidor, filtros, edição completa, alteração rápida de status e exclusão confirmada.
 
-**Regra atual de capacidade:** por orientação desta etapa, são **cinco bolos por dia**, calculados pela soma de `quantidadeBolos`, em vez de cinco registros de encomenda. Essa decisão substitui a contagem descrita no brief original, que foi preservado como histórico. Pedidos antigos passam a representar um bolo cada, sem apagar ou recriar a base.
+**Regra atual de capacidade:** por orientação desta etapa, são **cinco bolos por dia**, calculados pela soma de `itens[].quantidade` em todos os pedidos da data, em vez de cinco registros de encomenda. Essa decisão substitui a contagem descrita no brief original, que foi preservado como histórico. Pedidos antigos são convertidos em um item com seu produto e quantidade anteriores; bases sem quantidade usam um bolo. A base e os IDs são preservados.
 
 Veja [como iniciar e testar a API](backend/README.md), incluindo contrato, exemplos PowerShell, persistência e proteção administrativa. O back-end usa TypeScript por solicitação desta etapa, atualizando a recomendação inicial de JavaScript do brief; o brief original foi preservado.
 
@@ -148,6 +158,7 @@ npm.cmd install
 - `tests/encomendas-integracao.test.mjs`: formulário React com DOM simulado (`happy-dom`, apenas em desenvolvimento), proxy Vite, API e SQLite reais.
 - `vite.config.ts`: proxy local `/api` → `http://127.0.0.1:3001`, sem alterar CORS, hosts permitidos ou validação TLS.
 - `src/data/cafeConfig.ts`: fonte única dos dados comerciais ilustrativos.
+- `src/components/ItensPedido.tsx`, `src/utils/itens.ts` e `src/styles/itens.css`: seleção compartilhada de sabores, total e resumo confirmado.
 - `src/styles/`: tokens visuais e CSS mobile-first, sem bibliotecas de UI.
 - `public/images/`: ilustração provisória, sem dependência de imagem externa.
 
@@ -186,17 +197,17 @@ Os links do Hero, da navegação e o novo CTA do cardápio levam a `#encomendas`
 
 O formulário exige nome e sobrenome, telefone brasileiro com DDD (fixo ou celular, +55 opcional), um dos seis bolos principais e uma data a partir de amanhã no fuso configurado em `cafeConfig.ts`. O telefone válido ganha formatação ao sair do campo. A data mínima é atualizada ao abrir, ao focar a data, periodicamente enquanto a gaveta está aberta e novamente ao confirmar, para evitar aceitar hoje depois da virada do dia. Não depende do fuso do dispositivo nem interpreta o dia digitado como instante UTC.
 
-Depois de selecionar um bolo, aparece a opção de adicionar uma dúzia de pão de queijo, com preço vindo da configuração. Não há quantidade, carrinho ou pedido independente desse acompanhamento. Cafés e itens natalinos não aparecem no seletor.
+Junto dos itens, aparece a opção de adicionar uma dúzia de pão de queijo, com preço vindo da configuração. Não há quantidade, carrinho ou pedido independente desse acompanhamento. Cafés e itens natalinos não aparecem no seletor.
 
 O formulário começa **somente pela data**. Uma data válida dispara `GET /api/disponibilidade?data=YYYY-MM-DD`. A tela apresenta capacidade total, bolos já reservados e bolos disponíveis. Enquanto consulta, mostra carregamento; se falhar, permite tentar novamente. Dia lotado mostra uma mensagem para escolher outra data. A consulta não ocupa capacidade nem garante reserva.
 
-Com saldo, aparecem bolo, quantidade, nome e telefone. Os botões de aumentar/diminuir e o campo numérico permitem escolher de 1 até o saldo consultado. Um registro contém **um sabor e sua quantidade de bolos**, sem carrinho de sabores. O adicional continua sendo uma única dúzia por pedido, independentemente da quantidade de bolos, sem consumir capacidade de produção de bolos.
+Com saldo, aparecem bolo, quantidade, nome e telefone. Os botões de aumentar/diminuir e o campo numérico permitem escolher de 1 até o saldo consultado. Um registro contém **vários sabores únicos e suas quantidades individuais**, com total calculado automaticamente. O adicional continua sendo uma única dúzia por pedido, independentemente da quantidade de bolos, sem consumir capacidade de produção de bolos.
 
-**Confirmar encomenda** valida os campos localmente e envia `nomeCliente`, `telefone`, `produto`, `dataEntrega`, `quantidadeBolos` e `incluirPaoDeQueijo` ao `POST /api/encomendas`, sem `id`, `status` ou credenciais administrativas. Campos e envio ficam bloqueados enquanto aparece **Enviando encomenda…**. Uma trava imediata com `useRef` impede dois envios antes de a atualização visual do React terminar; a gaveta pode ser fechada/reaberta durante a espera.
+**Confirmar encomenda** valida os campos localmente e envia `nomeCliente`, `telefone`, `itens`, `dataEntrega` e `incluirPaoDeQueijo` ao `POST /api/encomendas`, sem `id`, `status` ou credenciais administrativas. Campos e envio ficam bloqueados enquanto aparece **Enviando encomenda…**. Uma trava imediata com `useRef` impede dois envios antes de a atualização visual do React terminar; a gaveta pode ser fechada/reaberta durante a espera.
 
 Somente uma resposta `201`, com ID positivo e status `recebida`, permite mostrar **Encomenda nº … confirmada**, reserva da data e pagamento na retirada. Depois disso, o mesmo formulário não reenvia o pedido. **Fazer outra encomenda** limpa os campos e libera explicitamente uma nova solicitação. Fechar e reabrir preserva os dados e o resultado.
 
-O servidor soma novamente os bolos dentro da transação ao confirmar. Se o saldo cair durante o preenchimento e faltar capacidade, responde `409`. A tela consulta o saldo de novo, mantendo sabor, quantidade, contato e adicional. Se a quantidade escolhida ficou maior que o saldo, ela é indicada como inválida, sem redução silenciosa; o cliente pode diminuí-la ou escolher outro dia. Dia lotado oculta os demais campos, mas preserva seus valores para quando outra data for selecionada. Depois de um `201`, uma nova consulta atualiza o saldo exibido; se essa consulta falhar, o pedido continua confirmado.
+O servidor soma novamente os bolos dentro da transação ao confirmar. Se o saldo cair durante o preenchimento e faltar capacidade, responde `409`. A tela consulta o saldo de novo, mantendo todos os itens, contato e adicional. Se a quantidade escolhida ficou maior que o saldo, ela é indicada como inválida, sem redução silenciosa; o cliente pode diminuí-la ou escolher outro dia. Dia lotado oculta os demais campos, mas preserva seus valores para quando outra data for selecionada. Depois de um `201`, uma nova consulta atualiza o saldo exibido; se essa consulta falhar, o pedido continua confirmado.
 
 Um `400` mostra a validação do servidor. Falhas de rede, timeout de 20 segundos, respostas inesperadas e erros do servidor não viram confirmação. Como a conexão pode falhar depois da gravação, a interface avisa que o pedido pode ter sido recebido e pede conferir com o café antes de reenviar. Não há retry automático de POST nem idempotência entre recarregamentos/dispositivos nesta etapa. Consultas GET são canceladas ao trocar de data, e respostas antigas não substituem o saldo atual.
 

@@ -1,0 +1,270 @@
+{
+  "larguras": [
+    {
+      "estado": "00-formulario-itens",
+      "largura": 360,
+      "scrollWidth": 360
+    },
+    {
+      "estado": "00-formulario-itens",
+      "largura": 390,
+      "scrollWidth": 390
+    },
+    {
+      "estado": "00-formulario-itens",
+      "largura": 768,
+      "scrollWidth": 768
+    },
+    {
+      "estado": "00-formulario-itens",
+      "largura": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "estado": "01-cliente-confirmado",
+      "largura": 390,
+      "scrollWidth": 390
+    },
+    {
+      "estado": "login",
+      "largura": 360,
+      "scrollWidth": 360
+    },
+    {
+      "estado": "login",
+      "largura": 390,
+      "scrollWidth": 390
+    },
+    {
+      "estado": "login",
+      "largura": 768,
+      "scrollWidth": 768
+    },
+    {
+      "estado": "login",
+      "largura": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "estado": "pedidos",
+      "largura": 360,
+      "scrollWidth": 360
+    },
+    {
+      "estado": "pedidos",
+      "largura": 390,
+      "scrollWidth": 390
+    },
+    {
+      "estado": "pedidos",
+      "largura": 768,
+      "scrollWidth": 768
+    },
+    {
+      "estado": "pedidos",
+      "largura": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "estado": "02-status-persistido",
+      "largura": 390,
+      "scrollWidth": 390
+    },
+    {
+      "estado": "confirmacao-exclusao",
+      "largura": 390,
+      "scrollWidth": 390
+    },
+    {
+      "estado": "03-exclusao-concluida",
+      "largura": 390,
+      "scrollWidth": 390
+    },
+    {
+      "estado": "03b-saldo-liberado",
+      "largura": 390,
+      "scrollWidth": 390
+    },
+    {
+      "estado": "04-logout",
+      "largura": 390,
+      "scrollWidth": 390
+    },
+    {
+      "estado": "05-cliente-apos-logout",
+      "largura": 390,
+      "scrollWidth": 390
+    },
+    {
+      "estado": "06-editar-pedido",
+      "largura": 360,
+      "scrollWidth": 360
+    },
+    {
+      "estado": "06-editar-pedido",
+      "largura": 390,
+      "scrollWidth": 390
+    },
+    {
+      "estado": "06-editar-pedido",
+      "largura": 768,
+      "scrollWidth": 768
+    },
+    {
+      "estado": "06-editar-pedido",
+      "largura": 1280,
+      "scrollWidth": 1280
+    },
+    {
+      "estado": "07-edicao-conflito",
+      "largura": 390,
+      "scrollWidth": 390
+    }
+  ],
+  "acessibilidade": [
+    {
+      "estado": "00-formulario-itens-360",
+      "violacoes": []
+    },
+    {
+      "estado": "00-formulario-itens-390",
+      "violacoes": []
+    },
+    {
+      "estado": "00-formulario-itens-768",
+      "violacoes": []
+    },
+    {
+      "estado": "00-formulario-itens-1280",
+      "violacoes": []
+    },
+    {
+      "estado": "01-cliente-confirmado-390",
+      "violacoes": []
+    },
+    {
+      "estado": "login-360",
+      "violacoes": []
+    },
+    {
+      "estado": "login-390",
+      "violacoes": []
+    },
+    {
+      "estado": "login-768",
+      "violacoes": []
+    },
+    {
+      "estado": "login-1280",
+      "violacoes": []
+    },
+    {
+      "estado": "pedidos-360",
+      "violacoes": []
+    },
+    {
+      "estado": "pedidos-390",
+      "violacoes": []
+    },
+    {
+      "estado": "pedidos-768",
+      "violacoes": []
+    },
+    {
+      "estado": "pedidos-1280",
+      "violacoes": []
+    },
+    {
+      "estado": "02-status-persistido-390",
+      "violacoes": []
+    },
+    {
+      "estado": "confirmacao-exclusao-390",
+      "violacoes": []
+    },
+    {
+      "estado": "03-exclusao-concluida-390",
+      "violacoes": []
+    },
+    {
+      "estado": "03b-saldo-liberado-390",
+      "violacoes": []
+    },
+    {
+      "estado": "04-logout-390",
+      "violacoes": []
+    },
+    {
+      "estado": "05-cliente-apos-logout-390",
+      "violacoes": []
+    },
+    {
+      "estado": "06-editar-pedido-360",
+      "violacoes": []
+    },
+    {
+      "estado": "06-editar-pedido-390",
+      "violacoes": []
+    },
+    {
+      "estado": "06-editar-pedido-768",
+      "violacoes": []
+    },
+    {
+      "estado": "06-editar-pedido-1280",
+      "violacoes": []
+    },
+    {
+      "estado": "07-edicao-conflito-390",
+      "violacoes": []
+    }
+  ],
+  "errosPagina": [],
+  "errosHttp": [
+    {
+      "caminho": "/api/admin/sessao",
+      "status": 401
+    },
+    {
+      "caminho": "/api/admin/sessao",
+      "status": 401
+    },
+    {
+      "caminho": "/api/admin/sessao",
+      "status": 401
+    },
+    {
+      "caminho": "/api/admin/sessao",
+      "status": 401
+    },
+    {
+      "caminho": "/api/encomendas/2",
+      "status": 409
+    }
+  ],
+  "console": [
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+    "Failed to load resource: the server responded with a status of 409 (Conflict)"
+  ],
+  "falhasRede": [],
+  "focoStatus": [
+    {
+      "tag": "SELECT",
+      "id": "status-1"
+    }
+  ],
+  "passos": [
+    "Cliente anônimo confirma dois bolos pelo formulário (201); SQLite reserva dois e saldo cai de cinco para três",
+    "GET/lista, GET/ID, PATCH e DELETE anônimos negados com 401, sem dados pessoais",
+    "Administradora entra e encontra o mesmo ID, contato, sabor, quantidade e adicional criados no formulário",
+    "Em preparo e entregue não liberam bolos; status e saldo persistem após reiniciar API e reabrir SQLite",
+    "Cancelar exclusão preserva pedido; confirmação exclui dois bolos e saldo sobe de dois para quatro",
+    "Logout limpa a tela e bloqueia listagem e alterações com o cookie anterior",
+    "Após logout, cliente sem autenticação cria outro bolo; saldo público reflete três disponíveis",
+    "Edição de todos os campos, cancelamento sem gravar, foco, persistência SQLite, transferência de capacidade e 409 com rascunho preservado aprovados",
+    "Cookie HttpOnly, sessão após reload, filtros e ausência de credenciais no armazenamento do navegador verificados"
+  ]
+}

@@ -38,8 +38,22 @@ test('substituição atômica: 2 X + 1 Y ↔ 3 X; datas antigas permitem composi
     assert.deepEqual((await api.request('GET', '/1')).dados.itens, itens)
   }
   api.mudarRelogio('2026-11-10T12:00:00Z')
-  assert.equal((await api.request('PATCH', '/1', { itens: misto })).status, 200)
+  assert.equal((await api.request('PATCH', '/1', { itens: misto, dataEntrega: pedido.dataEntrega })).status, 200)
   assert.equal((await api.request('PATCH', '/1', { itens: [{ produto: 'bolo-coco', quantidade: 2 }] })).status, 400)
+})
+
+test('falha na migração reverte o esquema e mantém a encomenda antiga intacta', async (t) => {
+  const arquivo = join(await pastaTemporaria(t), 'legado-invalido.sqlite')
+  const db = new DatabaseSync(arquivo)
+  db.exec("CREATE TABLE encomendas (id INTEGER PRIMARY KEY AUTOINCREMENT, nomeCliente TEXT NOT NULL, telefone TEXT NOT NULL, produto TEXT NOT NULL, dataEntrega TEXT NOT NULL, status TEXT NOT NULL, incluirPaoDeQueijo INTEGER NOT NULL DEFAULT 0) STRICT")
+  db.exec("INSERT INTO encomendas VALUES (12, 'Cliente Antigo', '73999999999', 'produto-desconhecido', '2026-11-02', 'recebida', 0)")
+  db.close()
+  assert.throws(() => abrirEncomendas(arquivo))
+  const reaberto = new DatabaseSync(arquivo)
+  try {
+    assert.equal((reaberto.prepare('SELECT produto FROM encomendas WHERE id = 12').get() as { produto: string }).produto, 'produto-desconhecido')
+    assert.equal(reaberto.prepare("SELECT name FROM sqlite_master WHERE name = 'encomenda_itens'").get(), undefined)
+  } finally { reaberto.close() }
 })
 
 test('conflito de itens/data reverte composição e todos os demais campos; transferência desconta reserva anterior', async (t) => {

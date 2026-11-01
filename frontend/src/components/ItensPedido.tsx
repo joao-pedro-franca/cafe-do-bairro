@@ -3,6 +3,12 @@ import { sabores, totalBolos } from '../utils/itens'
 import type { ItemEncomenda } from '../utils/itens'
 import '../styles/itens.css'
 
+const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+function descricaoSabor(produto: string) {
+  const sabor = sabores.find((item) => item.id === produto)
+  return sabor ? `${moeda.format(sabor.preco)} por bolo · ${sabor.tamanho}` : 'Selecione um sabor para ver preço e tamanho.'
+}
+
 export function ResumoItens({ itens }: { itens: readonly ItemEncomenda[] }) {
   return <ul className="items-summary">{itens.map((item) => <li key={item.produto}>{item.quantidade} × {sabores.find((sabor) => sabor.id === item.produto)?.nome ?? item.produto}</li>)}</ul>
 }
@@ -16,7 +22,9 @@ export function ItensPedido({ itens, alterar, limite, prefixo, erro, administrat
   const foco = useRef<number | null>(null)
   useEffect(() => {
     if (foco.current !== null) {
-      document.getElementById(`${prefixo}-sabor-${foco.current}`)?.focus()
+      if (foco.current >= 0) document.getElementById(`${prefixo}-sabor-${foco.current}`)?.focus()
+      else if (adicionar.current && !adicionar.current.disabled) adicionar.current.focus()
+      else document.getElementById(prefixo)?.focus()
       foco.current = null
     }
   }, [itens, prefixo])
@@ -31,6 +39,7 @@ export function ItensPedido({ itens, alterar, limite, prefixo, erro, administrat
           <option value="">Selecione um bolo</option>
           {sabores.map((sabor) => <option key={sabor.id} value={sabor.id} disabled={itens.some((outro, i) => i !== indice && outro.produto === sabor.id)}>{sabor.nome}</option>)}
         </select>
+        <p className="field-hint">{descricaoSabor(item.produto)}</p>
       </div>
       <div><label htmlFor={`${prefixo}-quantidade-${indice}`}>Quantidade do sabor {indice + 1}</label>
         <div className="quantity-stepper">
@@ -39,7 +48,7 @@ export function ItensPedido({ itens, alterar, limite, prefixo, erro, administrat
           <button type="button" aria-label={`Aumentar quantidade do sabor ${indice + 1}`} disabled={!Number.isFinite(total) || total >= limite} onClick={() => mudar(indice, 'quantidade', item.quantidade + 1)}>+</button>
         </div>
       </div>
-      <button className="button button-secondary item-remove" type="button" aria-label={`Remover sabor ${indice + 1}`} onClick={() => { alterar(itens.filter((_, i) => i !== indice)); adicionar.current?.focus() }}>Remover sabor</button>
+      <button className="button button-secondary item-remove" type="button" aria-label={`Remover sabor ${indice + 1}`} onClick={() => { foco.current = -1; alterar(itens.filter((_, i) => i !== indice)) }}>Remover sabor</button>
     </div>)}
     <button ref={adicionar} className="button button-secondary item-add" type="button" disabled={itens.length >= sabores.length || !Number.isFinite(total) || total >= limite} onClick={() => {
       const proximo = sabores.find((sabor) => !itens.some((item) => item.produto === sabor.id))

@@ -60,3 +60,11 @@ test('quantidade deve ser inteira positiva e caber na disponibilidade consultada
   assert(validarEncomenda({ ...dadosValidos, itens: [{ produto: 'bolo-cenoura', quantidade: 3 }] }, cafeConfig.produtos, '2026-11-01', 2).itens)
   assert.deepEqual(validarEncomenda({ ...dadosValidos, itens: [{ produto: 'bolo-cenoura', quantidade: 2 }] }, cafeConfig.produtos, '2026-11-01', 2), {})
 })
+
+test('composição soma sabores, recusa vazio/duplicado e respeita o saldo compartilhado', () => {
+  const itens = [{ produto: 'bolo-cenoura', quantidade: 2 }, { produto: 'bolo-chocolate', quantidade: 1 }]
+  assert.deepEqual(validar({ itens }), {})
+  assert(validar({ itens: [] }).itens)
+  assert(validar({ itens: [itens[0], itens[0]] }).itens)
+  assert(validarEncomenda({ ...dadosValidos, itens }, cafeConfig.produtos, '2026-11-01', 2).itens)
+})
