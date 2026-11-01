@@ -4,7 +4,7 @@ import { statusEncomenda } from '../services/admin.ts'
 import type { AlteracoesPedido, PedidoAdmin } from '../services/admin.ts'
 import { totalBolos } from './itens.ts'
 
-export type CamposPedido = Omit<PedidoAdmin, 'id' | 'totalBolos'>
+export type CamposPedido = Required<AlteracoesPedido>
 
 export function alteracoesPedido(anterior: PedidoAdmin, campos: CamposPedido): AlteracoesPedido {
   const normalizados: CamposPedido = {
@@ -13,7 +13,7 @@ export function alteracoesPedido(anterior: PedidoAdmin, campos: CamposPedido): A
     nomeCliente: campos.nomeCliente.trim().replace(/\s+/g, ' '),
     telefone: campos.telefone.replace(/\D/g, ''),
   }
-  const assinatura = (itens: CamposPedido['itens']) => JSON.stringify([...itens].sort((a, b) => a.produto.localeCompare(b.produto)))
+  const assinatura = (itens: CamposPedido['itens']) => JSON.stringify(itens.map(({ produto, quantidade }) => ({ produto, quantidade })).sort((a, b) => a.produto.localeCompare(b.produto)))
   return Object.fromEntries(Object.entries(normalizados).filter(([campo, valor]) => campo === 'itens'
     ? assinatura(normalizados.itens) !== assinatura(anterior.itens)
     : valor !== anterior[campo as keyof CamposPedido])) as AlteracoesPedido

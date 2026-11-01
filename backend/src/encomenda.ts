@@ -1,5 +1,6 @@
 import { FUSO_HORARIO, PRODUTOS_ENCOMENDAVEIS, STATUS } from './config.ts'
 import { ApiError } from './errors.ts'
+import type { Financeiro } from './precificacao.ts'
 
 export interface ItemEncomenda { produto: string; quantidade: number }
 export const totalBolos = (itens: readonly ItemEncomenda[]) => itens.reduce((total, item) => total + item.quantidade, 0)
@@ -30,7 +31,8 @@ export interface DadosEncomenda {
   dataEntrega: string
   incluirPaoDeQueijo: boolean
 }
-export interface Encomenda extends DadosEncomenda {
+export interface Encomenda extends DadosEncomenda, Financeiro {
+  itens: Financeiro['itens']
   totalBolos: number
   id: number
   status: typeof STATUS[number]

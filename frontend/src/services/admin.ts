@@ -1,17 +1,16 @@
 export const statusEncomenda = ['recebida', 'em preparo', 'entregue'] as const
 export type StatusEncomenda = typeof statusEncomenda[number]
-export interface PedidoAdmin {
+export interface PedidoAdmin extends Financeiro {
   id: number
   nomeCliente: string
   telefone: string
-  itens: ItemEncomenda[]
   totalBolos: number
   dataEntrega: string
   incluirPaoDeQueijo: boolean
   status: StatusEncomenda
 }
 export interface SessaoAdmin { csrfToken: string; expiraEm: string }
-export type AlteracoesPedido = Partial<Omit<PedidoAdmin, 'id' | 'totalBolos'>>
+export type AlteracoesPedido = Partial<Pick<PedidoAdmin, 'nomeCliente' | 'telefone' | 'dataEntrega' | 'incluirPaoDeQueijo' | 'status'> & { itens: ItemEncomenda[] }>
 export class ErroAdmin extends Error {
   status: number | undefined
   constructor(mensagem: string, status?: number) { super(mensagem); this.status = status }
@@ -49,7 +48,7 @@ function pedidoValido(valor: unknown): valor is PedidoAdmin {
   return Boolean(pedido && Number.isSafeInteger(pedido.id) && pedido.id > 0
     && typeof pedido.nomeCliente === 'string' && typeof pedido.telefone === 'string' && itensConfirmados(pedido.itens)
     && typeof pedido.dataEntrega === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(pedido.dataEntrega)
-    && pedido.totalBolos === totalBolos(pedido.itens)
+    && pedido.totalBolos === totalBolos(pedido.itens) && financeiroValido(pedido)
     && typeof pedido.incluirPaoDeQueijo === 'boolean' && statusEncomenda.some((status) => status === pedido.status))
 }
 // O navegador envia o cookie HttpOnly; apenas o token CSRF fica na memória da página.
@@ -70,3 +69,5 @@ export const alterarStatus = (id: number, status: StatusEncomenda, csrf: string)
 export const excluirPedido = (id: number, csrf: string) => solicitar<void>(`/encomendas/${id}`, 'DELETE', undefined, csrf)
 import { itensConfirmados, totalBolos } from '../utils/itens.ts'
 import type { ItemEncomenda } from '../utils/itens.ts'
+import { financeiroValido } from '../utils/precificacao.ts'
+import type { Financeiro } from '../utils/precificacao.ts'

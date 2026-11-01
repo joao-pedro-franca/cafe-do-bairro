@@ -2,13 +2,15 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { mkdir, writeFile } from 'node:fs/promises'
+import { CATALOGO } from '../backend/src/catalogo.ts'
+import { precificarItens, resumirValores } from '../backend/src/precificacao.ts'
 
 const front = createRequire(new URL('../frontend/package.json', import.meta.url))
 const audit = createRequire(new URL('../.audit-tools/package.json', import.meta.url))
 const { createServer } = await import(pathToFileURL(front.resolve('vite')).href)
 const { default: playwright } = await import(pathToFileURL(audit.resolve('playwright')).href)
 const { AxeBuilder } = await import(pathToFileURL(audit.resolve('@axe-core/playwright')).href)
-const saida = new URL('../docs/prazos/', import.meta.url)
+const saida = new URL(process.argv.includes('--precos') ? '../docs/precificacao/prazos/' : '../docs/prazos/', import.meta.url)
 const resultados = []
 let vite, browser
 try {
@@ -19,15 +21,16 @@ try {
   // O computador está em Tóquio; o calendário do painel deve continuar na Bahia.
   const context = await browser.newContext({ timezoneId: 'Asia/Tokyo' })
   const page = await context.newPage()
+  page.on('pageerror', (erro) => console.error(erro.message))
   await page.clock.install({ time: new Date('2027-01-01T02:59:50Z') })
   await page.route('**/api/admin/sessao', (route) => route.fulfill({ json: { csrfToken: 'a'.repeat(64), expiraEm: '2027-01-01T10:00:00Z' } }))
   await page.route('**/api/encomendas', (route) => route.fulfill({ json: ['2026-12-30', '2026-12-31', '2027-01-01', '2027-01-02', '2027-01-30', '2027-01-31'].map((dataEntrega, i) => ({
     id: i + 1, nomeCliente: 'Cliente de Demonstração', telefone: '73999999999', dataEntrega,
-    itens: [{ produto: 'bolo-cenoura', quantidade: 1 }, { produto: 'bolo-coco', quantidade: 1 }],
+    ...resumirValores(precificarItens([{ produto: 'bolo-cenoura', quantidade: 1 }, { produto: 'bolo-coco', quantidade: 1 }], CATALOGO), 0),
     totalBolos: 2, status: i === 3 ? 'entregue' : 'recebida', incluirPaoDeQueijo: false,
   })) }))
   await page.goto(`http://127.0.0.1:${vite.httpServer.address().port}/admin`)
-  await page.locator('.admin-card').first().waitFor()
+  await page.locator('.admin-card').first().waitFor().catch(async (erro) => { console.error(await page.locator('body').innerText()); throw erro })
   const prazo = page.getByLabel('Ver pedidos dentro dos próximos:', { exact: true })
   for (const [valor, quantidade] of [['1', 1], ['2', 2], ['7', 2], ['30', 3], ['30+', 1], ['', 6]]) {
     await prazo.selectOption(valor)

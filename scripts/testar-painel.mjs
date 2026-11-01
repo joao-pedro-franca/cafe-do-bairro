@@ -18,9 +18,10 @@ const { default: playwright } = await import(pathToFileURL(audit.resolve('playwr
 const { AxeBuilder } = await import(pathToFileURL(audit.resolve('@axe-core/playwright')).href)
 const { createServer } = await import(pathToFileURL(front.resolve('vite')).href)
 const integrado = process.argv.includes('--integrado')
-const testarItens = process.argv.includes('--itens')
+const testarPrecos = process.argv.includes('--precos')
+const testarItens = process.argv.includes('--itens') || testarPrecos
 const testarEdicao = process.argv.includes('--edicao') || testarItens
-const saida = new URL(testarItens ? '../docs/multissabores/' : testarEdicao ? '../docs/v1.1/painel/' : integrado ? '../docs/auditoria-final/' : '../docs/painel/', import.meta.url)
+const saida = new URL(testarPrecos ? '../docs/precificacao/' : testarItens ? '../docs/multissabores/' : testarEdicao ? '../docs/v1.1/painel/' : integrado ? '../docs/auditoria-final/' : '../docs/painel/', import.meta.url)
 await mkdir(saida, { recursive: true })
 const temporaria = await mkdtemp(join(tmpdir(), 'cafe-painel-auditoria-'))
 const arquivo = join(temporaria, 'auditoria.sqlite')
@@ -37,9 +38,11 @@ function observar(page) {
 }
 async function verificar(page, nome, largura) {
   await page.setViewportSize({ width: largura, height: 900 })
-  const caminho = fileURLToPath(new URL(`${nome}-${largura}.png`, saida))
-  if (nome === '00-formulario-itens') await page.locator('.order-form').screenshot({ path: caminho, animations: 'disabled' })
-  else await page.screenshot({ path: caminho, fullPage: true, animations: 'disabled' })
+  const caminho = fileURLToPath(new URL(`${nome}-${largura}.${testarPrecos ? 'jpg' : 'png'}`, saida))
+  const opcoes = { path: caminho, animations: 'disabled', ...(testarPrecos ? { type: 'jpeg', quality: 88 } : {}) }
+  if (nome === '00-formulario-itens') await page.locator('.order-form').screenshot(opcoes)
+  else if (nome === 'financeiro-publico') await page.locator('.form-result').screenshot(opcoes)
+  else await page.screenshot({ ...opcoes, fullPage: true })
   const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
   assert.equal(scrollWidth, largura)
   resultado.larguras.push({ estado: nome, largura, scrollWidth })
@@ -81,8 +84,13 @@ try {
     const criado = await resposta
     assert.equal(criado.status(), 201)
     const pedido = await criado.json()
+    if (testarPrecos) assert.equal(pedido.totalCentavos, quantidade > 1 ? 10000 : 6000)
     if (testarItens && quantidade > 1) assert.equal(pedido.itens.length, 2)
     await cliente.getByText(`Encomenda nº ${pedido.id} confirmada!`, { exact: true }).waitFor()
+    if (testarPrecos && quantidade > 1) {
+      assert.equal((await cliente.locator('.form-result .financial-total dd').textContent()).replace(/\s/g, ' '), 'R$ 100,00')
+      for (const largura of [360, 390, 768, 1280]) await verificar(cliente, 'financeiro-publico', largura)
+    }
     assert(await cliente.getByText(/pagamento será realizado na retirada/).count())
     await cliente.waitForFunction((esperado) => document.querySelector('.availability-summary > div:last-child dd')?.textContent === String(esperado), 5 - repo.disponibilidade(data).quantidadeReservada)
     return pedido
@@ -190,12 +198,14 @@ try {
     await page.getByLabel('Senha', { exact: true }).fill(senha)
     await page.getByRole('button', { name: 'Entrar', exact: true }).click()
     const editavel = repo.listar().find((item) => item.itens.some((i) => i.produto === 'bolo-coco'))
+    const originalFinanceiro = repo.buscar(editavel.id)
     const editar = () => page.getByRole('button', { name: `Editar pedido nº ${editavel.id}`, exact: true }).click()
     await editar()
     assert.equal(await page.locator(':focus').getAttribute('id'), `editar-titulo-${editavel.id}`)
     await page.locator('.admin-edit').getByLabel('Nome completo', { exact: true }).fill('Rascunho Cancelado')
     await page.getByRole('button', { name: 'Cancelar', exact: true }).click()
     assert.equal(repo.buscar(editavel.id).nomeCliente, editavel.nomeCliente)
+    if (testarPrecos) assert.deepEqual(repo.buscar(editavel.id), originalFinanceiro)
     assert.equal(await page.locator(':focus').getAttribute('id'), `editar-botao-${editavel.id}`)
     await editar()
     const novaData = new Date(`${data}T12:00:00Z`)
@@ -215,10 +225,16 @@ try {
       assert.equal(await form.getByLabel('Sabor 2', { exact: true }).inputValue(), 'bolo-cenoura')
     }
     for (const largura of [360, 390, 768, 1280]) await verificar(page, '06-editar-pedido', largura)
+    if (testarPrecos) {
+      assert.equal((await form.locator('.financial-total dd').textContent()).replace(/\s/g, ' '), 'R$ 130,00')
+      assert.equal((await form.locator('.financial-previous dd').textContent()).replace(/\s/g, ' '), 'R$ 38,00')
+      assert.deepEqual(repo.buscar(editavel.id), originalFinanceiro)
+    }
     await page.getByRole('button', { name: 'Salvar alterações', exact: true }).click()
     await page.getByText(`Pedido nº ${editavel.id} atualizado com sucesso.`, { exact: true }).waitFor()
     const atualizado = repo.buscar(editavel.id)
     assert.equal(atualizado.totalBolos, 3)
+    if (testarPrecos) assert.equal(atualizado.totalCentavos, 13000)
     assert.equal(atualizado.dataEntrega, dia)
     assert.equal(atualizado.nomeCliente, 'Cliente Revisado')
     assert.equal(atualizado.itens[0].produto, 'bolo-laranja')

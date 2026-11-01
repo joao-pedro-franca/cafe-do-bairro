@@ -4,7 +4,8 @@ import { cafeConfig } from '../data/cafeConfig'
 import { useDisponibilidade } from '../hooks/useDisponibilidade'
 import { criarEncomenda, ErroEncomenda } from '../services/encomendas'
 import { dataMinimaEncomenda, erroDataEntrega, formatarTelefone, validarEncomenda } from '../utils/encomenda'
-import { ItensPedido, ResumoItens } from '../components/ItensPedido'
+import { ItensPedido } from '../components/ItensPedido'
+import { ResumoFinanceiro } from '../components/ResumoFinanceiro'
 import { totalBolos } from '../utils/itens'
 import type { PedidoConfirmado } from '../services/encomendas'
 import type { CampoEncomenda, DadosEncomenda, ErrosEncomenda } from '../utils/encomenda'
@@ -207,7 +208,7 @@ export function Encomendas() {
               </div>
               <div className="form-result" role="status" aria-live="polite">
                 {enviando && <p>Enviando sua encomenda. Aguarde a confirmação.</p>}
-                {pedidoConfirmado !== null && <div><p><strong>Encomenda nº {pedidoConfirmado.id} confirmada!</strong> Reservamos {pedidoConfirmado.totalBolos} bolo(s) para a data escolhida. O pagamento será realizado na retirada.</p><ResumoItens itens={pedidoConfirmado.itens} /></div>}
+                {pedidoConfirmado !== null && <div><p><strong>Encomenda nº {pedidoConfirmado.id} confirmada!</strong> Reservamos {pedidoConfirmado.totalBolos} bolo(s) para a data escolhida. O pagamento será realizado na retirada.</p><ResumoFinanceiro resumo={pedidoConfirmado} /></div>}
               </div>
               {erroApi && <p className="form-api-error" role="alert">{erroApi}</p>}
               <p className="field-hint">Fechar mantém seu preenchimento. Recarregar apaga o rascunho, mas não cancela encomendas já confirmadas.</p>

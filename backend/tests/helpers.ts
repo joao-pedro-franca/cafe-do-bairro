@@ -5,6 +5,15 @@ import { join } from 'node:path'
 import type { TestContext } from 'node:test'
 import { criarApp } from '../src/app.ts'
 import { abrirEncomendas } from '../src/database/encomendas.ts'
+import { CATALOGO } from '../src/catalogo.ts'
+import type { CatalogoPrecos } from '../src/catalogo.ts'
+import { precificarItens, resumirValores } from '../src/precificacao.ts'
+import type { ItemEncomenda } from '../src/encomenda.ts'
+
+// Completa fixtures antigas de contrato; os testes de preço usam valores esperados literais.
+export function comPrecos<T extends { itens: ItemEncomenda[]; incluirPaoDeQueijo: boolean }>(valor: T, inicializados = false) {
+  return { ...valor, ...resumirValores(precificarItens(valor.itens, CATALOGO), valor.incluirPaoDeQueijo ? CATALOGO.paoDeQueijoCentavos : 0, inicializados) }
+}
 
 // Credencial fictícia e exclusiva dos testes; o servidor não tem token padrão.
 export const TOKEN_TESTE = 'token-ficticio-exclusivo-dos-testes-12345'
@@ -26,9 +35,9 @@ export async function pastaTemporaria(t: TestContext) {
   return pasta
 }
 
-export async function apiTeste(t: TestContext, opcoes: { arquivo?: string; adminToken?: string | null } = {}) {
+export async function apiTeste(t: TestContext, opcoes: { arquivo?: string; adminToken?: string | null; catalogo?: CatalogoPrecos } = {}) {
   let agora = new Date('2026-10-31T12:00:00Z')
-  const repo = abrirEncomendas(opcoes.arquivo ?? ':memory:')
+  const repo = abrirEncomendas(opcoes.arquivo ?? ':memory:', opcoes.catalogo)
   const app = criarApp(repo, { agora: () => agora, adminToken: opcoes.adminToken === null ? undefined : opcoes.adminToken ?? TOKEN_TESTE })
   const servidor = app.listen(0, '127.0.0.1')
   await once(servidor, 'listening')

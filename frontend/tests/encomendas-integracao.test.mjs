@@ -7,6 +7,7 @@ import { createServer } from 'vite'
 import { act, createElement } from 'react'
 import { criarApp } from '../../backend/src/app.ts'
 import { abrirEncomendas } from '../../backend/src/database/encomendas.ts'
+import { comPrecos } from './fixtures/precos.mjs'
 
 const fetchOriginal = globalThis.fetch
 const janela = new Window({ url: 'http://127.0.0.1/' })
@@ -140,6 +141,8 @@ test('formulário → proxy Vite → API → SQLite: só confirma depois do 201 
   const pedidos = repo.listar()
   assert.equal(pedidos.length, 1)
   assert.equal(pedidos[0].incluirPaoDeQueijo, true)
+  assert.equal(pedidos[0].totalCentavos, 6000)
+  assert(container.querySelector('.form-result .financial-total').textContent.replace(/\s/g, ' ').includes('R$ 60,00'))
   assert(container.textContent.includes(`Encomenda nº ${pedidos[0].id} confirmada!`))
   assert(container.textContent.includes('pagamento será realizado na retirada'))
   await esperar(() => container.querySelector('.availability-summary dd:last-child') && !container.querySelector('.availability').getAttribute('aria-busy').includes('true'))
@@ -301,7 +304,7 @@ test('vários sabores, soma, remoção e resumo confirmado usam os itens retorna
   await clicar([...container.querySelectorAll('button')].find((b) => b.textContent === 'Adicionar sabor'))
   await enviar()
   await esperar(() => container.textContent.includes('confirmada!'))
-  assert.deepEqual(repo.listar()[0].itens, [{ produto: 'bolo-cenoura', quantidade: 2 }, { produto: 'bolo-chocolate', quantidade: 1 }])
+  assert.deepEqual(repo.listar()[0].itens, comPrecos({ itens: [{ produto: 'bolo-cenoura', quantidade: 2 }, { produto: 'bolo-chocolate', quantidade: 1 }] }).itens)
   assert.equal(repo.listar()[0].totalBolos, 3)
   assert(container.querySelector('.form-result').textContent.includes('2 × Bolo de cenoura'))
   assert(container.querySelector('.form-result').textContent.includes('1 × Bolo de chocolate'))

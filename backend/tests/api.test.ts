@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { join } from 'node:path'
-import { apiTeste, pastaTemporaria, pedido } from './helpers.ts'
+import { apiTeste, pastaTemporaria, pedido, comPrecos } from './helpers.ts'
 import { cafeConfig } from '../../frontend/src/data/cafeConfig.ts'
 import { dataMinima, validarEntrada } from '../src/encomenda.ts'
 import { PRODUTOS_ENCOMENDAVEIS, FUSO_HORARIO } from '../src/config.ts'
@@ -10,14 +10,14 @@ test('CRUD HTTP completo: cria recebida, lista, consulta, edita dados/status e r
   const api = await apiTeste(t)
   const criado = await api.request('POST', '', pedido, false)
   assert.equal(criado.status, 201)
-  assert.deepEqual(criado.dados, { ...pedido, telefone: '73999999999', id: 1, status: 'recebida', totalBolos: 1 })
+  assert.deepEqual(criado.dados, comPrecos({ ...pedido, telefone: '73999999999', id: 1, status: 'recebida', totalBolos: 1 }))
   assert.equal(criado.headers.get('location'), '/api/encomendas/1')
   assert.equal(criado.headers.get('cache-control'), 'no-store')
   assert.deepEqual((await api.request('GET')).dados, [criado.dados])
   assert.deepEqual((await api.request('GET', '/1')).dados, criado.dados)
   const alterado = await api.request('PATCH', '/1', { nomeCliente: 'Outra Cliente', telefone: '+55 (73) 3333-3333', dataEntrega: '2026-11-03', incluirPaoDeQueijo: false, status: 'em preparo', itens: [{ produto: 'bolo-coco', quantidade: 1 }] })
   assert.equal(alterado.status, 200)
-  assert.deepEqual(alterado.dados, { totalBolos: 1, id: 1, nomeCliente: 'Outra Cliente', telefone: '557333333333', dataEntrega: '2026-11-03', incluirPaoDeQueijo: false, status: 'em preparo', itens: [{ produto: 'bolo-coco', quantidade: 1 }] })
+  assert.deepEqual(alterado.dados, comPrecos({ totalBolos: 1, id: 1, nomeCliente: 'Outra Cliente', telefone: '557333333333', dataEntrega: '2026-11-03', incluirPaoDeQueijo: false, status: 'em preparo', itens: [{ produto: 'bolo-coco', quantidade: 1 }] }))
   assert.equal((await api.request('PATCH', '/1', { status: 'entregue' })).dados.status, 'entregue')
   assert.equal((await api.request('DELETE', '/1')).status, 204)
   assert.deepEqual((await api.request('GET')).dados, [])

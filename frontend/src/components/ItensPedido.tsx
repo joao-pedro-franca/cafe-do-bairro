@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { sabores, totalBolos } from '../utils/itens'
 import type { ItemEncomenda } from '../utils/itens'
+import type { ItemPrecificado } from '../utils/precificacao'
+import { reais } from '../utils/precificacao'
 import '../styles/itens.css'
 
 const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -13,8 +15,8 @@ export function ResumoItens({ itens }: { itens: readonly ItemEncomenda[] }) {
   return <ul className="items-summary">{itens.map((item) => <li key={item.produto}>{item.quantidade} × {sabores.find((sabor) => sabor.id === item.produto)?.nome ?? item.produto}</li>)}</ul>
 }
 
-export function ItensPedido({ itens, alterar, limite, prefixo, erro, administrativo = false }: {
-  itens: ItemEncomenda[]; alterar: (itens: ItemEncomenda[]) => void; limite: number; prefixo: string; erro?: string; administrativo?: boolean
+export function ItensPedido({ itens, alterar, limite, prefixo, erro, administrativo = false, registrados }: {
+  itens: ItemEncomenda[]; alterar: (itens: ItemEncomenda[]) => void; limite: number; prefixo: string; erro?: string; administrativo?: boolean; registrados?: readonly ItemPrecificado[]
 }) {
   const total = totalBolos(itens)
   const aviso = erro || (itens.some((item) => !Number.isSafeInteger(item.quantidade) || item.quantidade < 1) ? 'Cada sabor precisa de uma quantidade inteira, a partir de um bolo.' : undefined)
@@ -39,7 +41,7 @@ export function ItensPedido({ itens, alterar, limite, prefixo, erro, administrat
           <option value="">Selecione um bolo</option>
           {sabores.map((sabor) => <option key={sabor.id} value={sabor.id} disabled={itens.some((outro, i) => i !== indice && outro.produto === sabor.id)}>{sabor.nome}</option>)}
         </select>
-        <p className="field-hint">{descricaoSabor(item.produto)}</p>
+        <p className="field-hint">{registrados?.some((anterior) => anterior.produto === item.produto) ? `${reais(registrados.find((anterior) => anterior.produto === item.produto)!.precoUnitarioCentavos)} por bolo · preço registrado` : descricaoSabor(item.produto)}</p>
       </div>
       <div><label htmlFor={`${prefixo}-quantidade-${indice}`}>Quantidade do sabor {indice + 1}</label>
         <div className="quantity-stepper">

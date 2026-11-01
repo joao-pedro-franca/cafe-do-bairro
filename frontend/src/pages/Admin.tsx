@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { EditarPedido } from '../components/EditarPedido'
-import { ResumoItens } from '../components/ItensPedido'
+import { ResumoFinanceiro } from '../components/ResumoFinanceiro'
 import { CupIcon } from '../components/CupIcon'
 import { cafeConfig } from '../data/cafeConfig'
 import { formatarTelefone } from '../utils/encomenda'
@@ -25,10 +25,10 @@ function CartaoPedido({ pedido, ocupado, salvar, excluir, editar, editor }: {
     <dl>
       <div><dt>Telefone</dt><dd>{formatarTelefone(pedido.telefone)}</dd></div>
       <div><dt>Retirada</dt><dd><time dateTime={pedido.dataEntrega}>{dataLegivel(pedido.dataEntrega)}</time></dd></div>
-      <div><dt>Sabores</dt><dd><ResumoItens itens={pedido.itens} /></dd></div>
       <div><dt>Quantidade total</dt><dd>{pedido.totalBolos} {pedido.totalBolos === 1 ? 'bolo' : 'bolos'}</dd></div>
       <div><dt>Pão de queijo</dt><dd>{pedido.incluirPaoDeQueijo ? 'Sim, uma dúzia' : 'Sem acompanhamento'}</dd></div>
     </dl>
+    <ResumoFinanceiro resumo={pedido} />
     {editor || <><form onSubmit={(event) => { event.preventDefault(); salvar(pedido.id, status) }}>
       <label htmlFor={`status-${pedido.id}`}>Status do pedido nº {pedido.id}</label>
       <select id={`status-${pedido.id}`} value={status} disabled={ocupado} onChange={(event) => setStatus(event.target.value as StatusEncomenda)}>

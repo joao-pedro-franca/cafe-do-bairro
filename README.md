@@ -4,6 +4,12 @@ Projeto para o desafio técnico da TecnoJr. Os requisitos estão em [BRIEF.md](B
 
 ## Etapa atual
 
+### Precificação das encomendas
+
+Pedidos agora registram os preços unitários em centavos e exibem subtotais, acompanhamento e total a pagar na retirada. O painel mostra uma prévia financeira ao editar; o valor definitivo só muda após a resposta confirmada do servidor. A confirmação pública usa o mesmo resumo. A fonte única de preços é `backend/src/catalogo.ts`, também consumida pelo frontend. Veja [contrato, migração, histórico, arquivos e capturas](docs/precificacao/README.md).
+
+**Base existente:** antes de iniciar esta versão, pare a API e faça backup conforme o [roteiro da API](backend/README.md#persistência-capacidade-e-concorrência). A migração é transacional e idempotente. Pedidos anteriores sem preços recebem os valores do catálogo atual e uma identificação de inicialização; esses valores não comprovam o preço originalmente combinado. Publique frontend e backend juntos.
+
 ### Tons terrosos e detalhes botânicos
 
 A landing preserva o layout aprovado, a fotografia do hero e a madeira do cardápio, com maior presença de café, caramelo e café com leite em molduras, fundos e botões. O vaso de flores foi aprimorado e adaptado ao celular; ramos e utensílios locais enriquecem as margens sem ocupar os controles. Veja os [comparativos de todas as seções, arquivos e validações](docs/tons-terrosos/README.md).
@@ -48,7 +54,7 @@ Base React + TypeScript + Vite, com CSS tradicional, cabeçalho, hero, cardápio
 
 Veja [como iniciar e testar a API](backend/README.md), incluindo contrato, exemplos PowerShell, persistência e proteção administrativa. O back-end usa TypeScript por solicitação desta etapa, atualizando a recomendação inicial de JavaScript do brief; o brief original foi preservado.
 
-**Todos os dados comerciais são fictícios**, incluindo endereço, horários, produtos, preços e tamanhos. Edite `frontend/src/data/cafeConfig.ts` para substituí-los. WhatsApp e Instagram aparecem em modo de demonstração, sem links para terceiros. O hero usa uma imagem ilustrativa criada com IA, identificada na legenda, e não uma fotografia do estabelecimento real.
+**Todos os dados comerciais são fictícios**, incluindo endereço, horários, produtos, preços e tamanhos. Nomes, descrições, tamanhos e contatos ficam em `frontend/src/data/cafeConfig.ts`; os preços ficam somente em `backend/src/catalogo.ts`, em centavos. WhatsApp e Instagram aparecem em modo de demonstração, sem links para terceiros. O hero usa uma imagem ilustrativa criada com IA, identificada na legenda, e não uma fotografia do estabelecimento real.
 
 ## Executar
 

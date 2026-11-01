@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { DatabaseSync } from 'node:sqlite'
 import { join } from 'node:path'
-import { apiTeste, pastaTemporaria, pedido } from './helpers.ts'
+import { apiTeste, pastaTemporaria, pedido, comPrecos } from './helpers.ts'
 import { abrirEncomendas } from '../src/database/encomendas.ts'
 
 const misto = [{ produto: 'bolo-cenoura', quantidade: 2 }, { produto: 'bolo-chocolate', quantidade: 1 }]
@@ -10,7 +10,7 @@ test('vários sabores somam capacidade e total é somente calculado pelo servido
   const api = await apiTeste(t)
   const criado = await api.request('POST', '', { ...pedido, itens: misto }, false)
   assert.equal(criado.status, 201)
-  assert.deepEqual(criado.dados.itens, misto)
+  assert.deepEqual(criado.dados.itens, comPrecos({ itens: misto, incluirPaoDeQueijo: true }).itens)
   assert.equal(criado.dados.totalBolos, 3)
   assert(!('produto' in criado.dados) && !('quantidadeBolos' in criado.dados))
   assert.equal((await api.request('POST', '', { ...pedido, itens: [{ produto: 'bolo-milho', quantidade: 1 }, { produto: 'bolo-coco', quantidade: 1 }] })).status, 201)
@@ -35,7 +35,7 @@ test('substituição atômica: 2 X + 1 Y ↔ 3 X; datas antigas permitem composi
   const unico = [{ produto: 'bolo-cenoura', quantidade: 3 }]
   for (const itens of [unico, misto, [{ produto: 'bolo-coco', quantidade: 3 }]]) {
     assert.equal((await api.request('PATCH', '/1', { itens })).status, 200)
-    assert.deepEqual((await api.request('GET', '/1')).dados.itens, itens)
+    assert.deepEqual((await api.request('GET', '/1')).dados.itens, comPrecos({ itens, incluirPaoDeQueijo: true }).itens)
   }
   api.mudarRelogio('2026-11-10T12:00:00Z')
   assert.equal((await api.request('PATCH', '/1', { itens: misto, dataEntrega: pedido.dataEntrega })).status, 200)
@@ -75,7 +75,7 @@ test('migração relacional preserva tudo, remove fontes antigas, não duplica e
   antigo.close()
   for (let vez = 0; vez < 3; vez++) {
     const repo = abrirEncomendas(arquivo)
-    try { assert.deepEqual(repo.buscar(42), { id: 42, nomeCliente: 'Cliente Antigo', telefone: '73999999999', itens: [{ produto: 'bolo-coco', quantidade: 3 }], totalBolos: 3, dataEntrega: '2026-11-02', status: 'em preparo', incluirPaoDeQueijo: true }) } finally { repo.fechar() }
+    try { assert.deepEqual(repo.buscar(42), comPrecos({ id: 42, nomeCliente: 'Cliente Antigo', telefone: '73999999999', itens: [{ produto: 'bolo-coco', quantidade: 3 }], totalBolos: 3, dataEntrega: '2026-11-02', status: 'em preparo', incluirPaoDeQueijo: true }, true)) } finally { repo.fechar() }
   }
   const db = new DatabaseSync(arquivo)
   try {
@@ -83,9 +83,9 @@ test('migração relacional preserva tudo, remove fontes antigas, não duplica e
     const colunas = db.prepare('PRAGMA table_info(encomendas)').all() as { name: string }[]
     assert(!colunas.some((c) => ['produto', 'quantidadeBolos', 'totalBolos'].includes(c.name)))
     assert.equal((db.prepare('SELECT COUNT(*) as n FROM encomenda_itens').get() as { n: number }).n, 1)
-    assert.throws(() => db.exec("INSERT INTO encomenda_itens VALUES(999, 'bolo-coco', 1, 0)"))
-    assert.throws(() => db.exec("INSERT INTO encomenda_itens VALUES(42, 'bolo-coco', 1, 1)"))
-    assert.throws(() => db.exec("INSERT INTO encomenda_itens VALUES(42, 'bolo-milho', 0, 1)"))
+    assert.throws(() => db.exec("INSERT INTO encomenda_itens VALUES(999, 'bolo-coco', 1, 0, 3800)"))
+    assert.throws(() => db.exec("INSERT INTO encomenda_itens VALUES(42, 'bolo-coco', 1, 1, 3800)"))
+    assert.throws(() => db.exec("INSERT INTO encomenda_itens VALUES(42, 'bolo-milho', 0, 1, 3500)"))
     db.exec('DELETE FROM encomendas WHERE id = 42')
     assert.equal((db.prepare('SELECT COUNT(*) as n FROM encomenda_itens').get() as { n: number }).n, 0)
   } finally { db.close() }

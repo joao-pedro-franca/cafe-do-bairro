@@ -5,7 +5,7 @@ import { once } from 'node:events'
 import { criarApp } from '../src/app.ts'
 import { abrirEncomendas } from '../src/database/encomendas.ts'
 import { gerarHash, verificarSenha } from '../src/auth/senha.ts'
-import { pedido, TOKEN_TESTE } from './helpers.ts'
+import { pedido, TOKEN_TESTE, comPrecos } from './helpers.ts'
 
 const senha = 'senha-ficticia-apenas-testes'
 const senhaHash = await gerarHash(senha)
@@ -164,7 +164,7 @@ test('edição completa por sessão move bolos sem dupla contagem e conflito nã
   const headers = { Cookie: s.cookie, Origin: origem, 'X-CSRF-Token': s.csrf }
   const alteracoes = { nomeCliente: 'Cliente Revisado', telefone: '73988888888', dataEntrega: '2026-11-03', incluirPaoDeQueijo: false, status: 'em preparo', itens: [{ produto: 'bolo-coco', quantidade: 2 }] }
   assert.equal((await a.request(`/encomendas/${original.id}`, 'PATCH', alteracoes, headers)).status, 200)
-  assert.deepEqual(a.repo.buscar(original.id), { id: original.id, ...alteracoes, totalBolos: 2 })
+  assert.deepEqual(a.repo.buscar(original.id), comPrecos({ id: original.id, ...alteracoes, totalBolos: 2 }))
   assert.equal(a.repo.disponibilidade(pedido.dataEntrega).quantidadeDisponivel, 5)
   assert.equal(a.repo.disponibilidade('2026-11-03').quantidadeDisponivel, 0)
   const antes = a.repo.buscar(original.id)

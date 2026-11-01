@@ -1,7 +1,8 @@
 import type { DadosEncomenda } from '../utils/encomenda'
 import { itensConfirmados, totalBolos } from '../utils/itens.ts'
-import type { ItemEncomenda } from '../utils/itens'
-export interface PedidoConfirmado { id: number; status: 'recebida'; itens: ItemEncomenda[]; totalBolos: number }
+import { financeiroValido } from '../utils/precificacao.ts'
+import type { Financeiro } from '../utils/precificacao.ts'
+export interface PedidoConfirmado extends Financeiro { id: number; status: 'recebida'; totalBolos: number; incluirPaoDeQueijo: boolean }
 
 export class ErroEncomenda extends Error {
   status: number | undefined
@@ -24,7 +25,7 @@ export async function criarEncomenda(dados: DadosEncomenda): Promise<PedidoConfi
       signal: AbortSignal.timeout(20_000),
       body: JSON.stringify({
         nomeCliente: dados.nomeCliente.trim(), telefone: dados.telefone,
-        itens: dados.itens, dataEntrega: dados.dataEntrega,
+        itens: dados.itens.map(({ produto, quantidade }) => ({ produto, quantidade })), dataEntrega: dados.dataEntrega,
         incluirPaoDeQueijo: dados.incluirPaoDeQueijo,
       }),
     })
@@ -44,10 +45,12 @@ export async function criarEncomenda(dados: DadosEncomenda): Promise<PedidoConfi
   if (resposta.status !== 201 || !corpo || typeof corpo !== 'object' || !('id' in corpo)
     || typeof corpo.id !== 'number' || !Number.isSafeInteger(corpo.id) || corpo.id < 1
     || !('status' in corpo) || corpo.status !== 'recebida'
-    || !('itens' in corpo) || !itensConfirmados(corpo.itens) || !('totalBolos' in corpo) || corpo.totalBolos !== totalBolos(corpo.itens)) {
+    || !('itens' in corpo) || !itensConfirmados(corpo.itens) || !('totalBolos' in corpo) || corpo.totalBolos !== totalBolos(corpo.itens)
+    || !('incluirPaoDeQueijo' in corpo) || corpo.incluirPaoDeQueijo !== dados.incluirPaoDeQueijo || !financeiroValido(corpo)) {
     throw new ErroEncomenda(resultadoIncerto, resposta.status)
   }
-  return { id: corpo.id, status: 'recebida', itens: corpo.itens, totalBolos: corpo.totalBolos as number }
+  return { id: corpo.id, status: 'recebida', itens: corpo.itens, totalBolos: corpo.totalBolos as number, incluirPaoDeQueijo: corpo.incluirPaoDeQueijo as boolean,
+    subtotalBolosCentavos: corpo.subtotalBolosCentavos, valorPaoDeQueijoCentavos: corpo.valorPaoDeQueijoCentavos, totalCentavos: corpo.totalCentavos, precosInicializados: corpo.precosInicializados }
 }
 
 export interface Disponibilidade {

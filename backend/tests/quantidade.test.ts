@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { DatabaseSync } from 'node:sqlite'
 import { join } from 'node:path'
-import { apiTeste, pastaTemporaria, pedido } from './helpers.ts'
+import { apiTeste, pastaTemporaria, pedido, comPrecos } from './helpers.ts'
 
 async function saldo(base: string, data = pedido.dataEntrega) {
   const resposta = await fetch(`${new URL(base).origin}/api/disponibilidade?data=${data}`)
@@ -84,7 +84,7 @@ test('migração mantém IDs/dados/status/adicional antigos e atribui um bolo, i
     .run(17, pedido.nomeCliente, '73999999999', pedido.itens[0].produto, pedido.dataEntrega, 'em preparo', 1)
   antigo.close()
   const api = await apiTeste(t, { arquivo })
-  assert.deepEqual((await api.request('GET', '/17')).dados, { ...pedido, totalBolos: 1, id: 17, telefone: '73999999999', status: 'em preparo', itens: [{ produto: 'bolo-cenoura', quantidade: 1 }] })
+  assert.deepEqual((await api.request('GET', '/17')).dados, comPrecos({ ...pedido, totalBolos: 1, id: 17, telefone: '73999999999', status: 'em preparo', itens: [{ produto: 'bolo-cenoura', quantidade: 1 }] }, true))
   assert.equal((await saldo(api.base)).dados.quantidadeReservada, 1)
   assert.equal((await api.request('POST', '', { ...pedido, itens: [{ produto: 'bolo-cenoura', quantidade: 4 }] })).dados.id, 18)
   await api.fechar()
