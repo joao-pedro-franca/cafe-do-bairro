@@ -104,7 +104,7 @@ test('bolo e panetone disputam a última unidade de produção entre processos',
   const b = await processo(t, arquivo)
   assert.equal((await requisicao(a, 'POST', '', { ...pedido, itens: [{ produto: 'bolo-cenoura', quantidade: 4 }] })).status, 201)
   const respostas = await Promise.all([
-    requisicao(a, 'POST', '', { ...pedido, itens: [{ produto: 'panetone', quantidade: 1 }] }),
+    requisicao(a, 'POST', '', { ...pedido, incluirPaoDeQueijo: false, itens: [{ produto: 'panetone', quantidade: 1 }] }),
     requisicao(b, 'POST', '', { ...pedido, itens: [{ produto: 'bolo-milho', quantidade: 1 }] }),
   ])
   assert.deepEqual(respostas.map((r) => r.status).sort(), [201, 409])

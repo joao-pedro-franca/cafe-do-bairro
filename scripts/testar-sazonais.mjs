@@ -1,3 +1,5 @@
+import { resolve } from 'node:path'
+import { DatabaseSync } from 'node:sqlite'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -15,7 +17,7 @@ const front = createRequire(new URL('../frontend/package.json', import.meta.url)
 const { default: playwright } = await import(pathToFileURL(audit.resolve('playwright')).href)
 const { AxeBuilder } = await import(pathToFileURL(audit.resolve('@axe-core/playwright')).href)
 const { createServer } = await import(pathToFileURL(front.resolve('vite')).href)
-const saida = fileURLToPath(new URL(process.argv.includes('--comercial') ? '../docs/apresentacao-comercial/regressao-sazonais/' : '../docs/produtos-sazonais/', import.meta.url))
+const saida = resolve(process.argv.find((arg) => arg.startsWith('--saida='))?.slice(8) ?? 'docs/regras-encomendas-final/sazonais')
 await mkdir(saida, { recursive: true })
 const temporaria = await mkdtemp(join(tmpdir(), 'cafe-sazonais-'))
 const arquivo = join(temporaria, 'auditoria.sqlite')
@@ -38,7 +40,7 @@ async function conferir(page, nome, seletor) {
 try {
   api = criarApp(repo, { admin }).listen(0, '127.0.0.1')
   await once(api, 'listening')
-  vite = await createServer({ root: fileURLToPath(new URL('../frontend', import.meta.url)), server: { host: '127.0.0.1', port: 0, hmr: false, watch: null, proxy: { '/api': { target: `http://127.0.0.1:${api.address().port}` } } }, logLevel: 'silent' })
+  vite = await createServer({ cacheDir: join(temporaria, 'vite-cache'), root: fileURLToPath(new URL('../frontend', import.meta.url)), server: { host: '127.0.0.1', port: 0, hmr: false, watch: null, proxy: { '/api': { target: `http://127.0.0.1:${api.address().port}` } } }, logLevel: 'silent' })
   await vite.listen()
   admin.origem = `http://127.0.0.1:${vite.httpServer.address().port}`
   browser = await playwright.chromium.launch({ headless: true, ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) })
@@ -51,7 +53,7 @@ try {
   await page.getByLabel('Usuário', { exact: true }).fill(admin.usuario)
   await page.getByLabel('Senha', { exact: true }).fill(senha)
   await page.getByRole('button', { name: 'Entrar', exact: true }).click()
-  await page.locator('.product-settings-card').nth(10).waitFor()
+  await page.locator('.product-settings-card').nth(7).waitFor()
   const cartao = (nome) => page.locator('.product-settings-card').filter({ has: page.getByRole('heading', { name: nome, exact: true }) })
   const panetone = cartao('Panetone')
   await panetone.getByLabel('Aceita encomendas de Panetone', { exact: true }).check()
@@ -63,12 +65,11 @@ try {
   await natal.getByLabel('Meses de retirada de Bolo de Natal', { exact: true }).selectOption('ano')
   await natal.getByRole('button', { name: 'Salvar Bolo de Natal', exact: true }).click()
   await natal.getByRole('status').waitFor()
-  const cafe = cartao('Café coado')
-  await cafe.getByLabel('Aceita encomendas de Café coado', { exact: true }).check()
-  await cafe.getByRole('button', { name: 'Salvar Café coado', exact: true }).click()
-  await cafe.getByRole('status').waitFor()
+  assert.equal(await page.locator('.product-settings-card').count(), 8)
+  assert.equal(await cartao('Pão de queijo').count(), 0)
+  assert.equal(await cartao('Café coado').count(), 0)
   await conferir(page, 'admin-disponibilidade', '.admin-products')
-  resultado.passos.push('Sessão real salva panetone em dezembro, bolo de Natal no ano todo e café coado habilitado; quatro larguras sem transbordamento e sem violações axe.')
+  resultado.passos.push('Eight configurable products; cakes and panetone only; optional bread accompaniment accepted with Christmas cake.')
 
   await cliente.goto(admin.origem)
   await cliente.getByRole('button', { name: 'Quero encomendar', exact: true }).click()
@@ -77,12 +78,9 @@ try {
   await cliente.getByLabel('Nome completo').fill(dados.nomeCliente)
   await cliente.getByLabel('Telefone/WhatsApp').fill(dados.telefone)
   await cliente.getByRole('button', { name: 'Adicionar produto', exact: true }).click()
-  await cliente.getByLabel('Produto 2', { exact: true }).selectOption('cafe-coado')
-  await cliente.getByLabel('Quantidade do produto 2', { exact: true }).fill('2')
-  await cliente.getByRole('button', { name: 'Adicionar produto', exact: true }).click()
-  await cliente.getByLabel('Produto 3', { exact: true }).selectOption('pao-queijo')
-  await cliente.getByLabel('Quantidade do produto 3', { exact: true }).fill('2')
-  assert(await cliente.getByRole('checkbox').isDisabled())
+  await cliente.getByLabel('Produto 2', { exact: true }).selectOption('bolo-natal')
+  await cliente.locator('[name="incluirPaoDeQueijo"]').check()
+  for (const id of ['cafe-coado', 'cafe-leite', 'pao-queijo']) assert.equal(await cliente.locator(`select option[value="${id}"]`).count(), 0)
   await conferir(cliente, 'formulario-misto', '.order-form')
   await cliente.getByLabel('Data desejada').fill('2099-11-24')
   await cliente.getByText(/Há produtos selecionados/).waitFor()
@@ -92,12 +90,12 @@ try {
   await cliente.getByRole('button', { name: 'Confirmar encomenda', exact: true }).click()
   await cliente.getByText(/Encomenda nº \d+ confirmada!/).waitFor()
   const criado = repo.listar()[0]
-  assert.equal(criado.totalCentavos, 10500)
-  assert.equal(criado.quantidadeProducao, 1)
-  assert.equal(criado.quantidadeItens, 5)
-  assert.equal(criado.valorPaoDeQueijoCentavos, 0)
+  assert.equal(criado.totalCentavos, 12500)
+  assert.equal(criado.quantidadeProducao, 2)
+  assert.equal(criado.quantidadeItens, 3)
+  assert.equal(criado.valorPaoDeQueijoCentavos, 2500)
   await conferir(cliente, 'confirmacao-mista', '.form-result')
-  resultado.passos.push('Cliente confirma panetone + duas xícaras + duas dúzias por R$105,00; novembro bloqueia panetone sem removê-lo; produção=1, unidades de venda=5, adicional=0.')
+  resultado.passos.push('Panetone + Christmas cake + bread: R$125; two production units; month conflict preserves draft.')
 
   await page.getByRole('button', { name: 'Atualizar lista', exact: true }).click()
   await page.locator('.admin-card').waitFor()
@@ -110,7 +108,7 @@ try {
   assert(await panetone.getByLabel('Aceita encomendas de Panetone', { exact: true }).isDisabled())
   await page.getByRole('button', { name: 'Salvar alterações', exact: true }).click()
   await page.locator('.admin-edit').waitFor({ state: 'detached' })
-  assert.equal(repo.buscar(criado.id).totalCentavos, 10500)
+  assert.equal(repo.buscar(criado.id).totalCentavos, 12500)
   assert.equal(repo.buscar(criado.id).status, 'em preparo')
   assert.equal(repo.buscar(criado.id).telefone, '73988888888')
   await conferir(page, 'pedido-preservado', '.admin-card')
@@ -120,20 +118,41 @@ try {
   assert.equal(semCsrf.status(), 403)
   resultado.passos.push('Produto desativado mantém pedido, preço e edição de contato/status; nova compra recebe409; alteração anônima401 e sessão sem CSRF403.')
 
-  // API real: café sozinho e dúzias sozinhas, sem depender de haver bolos.
-  for (const [produto, quantidade, total] of [['cafe-coado', 20, 10000], ['pao-queijo', 2, 5000]]) {
-    const resposta = await publico.request.post(`${admin.origem}/api/encomendas`, { data: { ...dados, itens: [{ produto, quantidade }] } })
-    assert.equal(resposta.status(), 201)
-    const pedido = await resposta.json()
-    assert.equal(pedido.totalCentavos, total)
-    assert.equal(pedido.quantidadeProducao, 0)
+  for (const produto of ['cafe-coado', 'cafe-leite', 'pao-queijo']) {
+    const resposta = await publico.request.post(`${admin.origem}/api/encomendas`, { data: { ...dados, itens: [{ produto, quantidade: 1 }] } })
+    assert.equal(resposta.status(), 400)
   }
+  assert.equal((await publico.request.post(`${admin.origem}/api/encomendas`, { data: { ...dados, incluirPaoDeQueijo: true } })).status(), 400)
+
+  // Legado real no SQLite temporário: itens hoje proibidos e preços acordados.
+  const legadoDb = new DatabaseSync(arquivo)
+  const legadoId = Number(legadoDb.prepare(`INSERT INTO encomendas(nomeCliente, telefone, dataEntrega, incluirPaoDeQueijo, valorPaoDeQueijoCentavos)
+    VALUES ('Cliente Histórico', '73999999999', '2000-01-01', 1, 1800)`).run().lastInsertRowid)
+  legadoDb.prepare('INSERT INTO encomenda_itens VALUES (?, ?, ?, ?, ?)').run(legadoId, 'cafe-coado', 20, 0, 321)
+  legadoDb.prepare('INSERT INTO encomenda_itens VALUES (?, ?, ?, ?, ?)').run(legadoId, 'pao-queijo', 2, 1, 1234)
+  legadoDb.close()
+  const legadoAntes = repo.buscar(legadoId)
+  await page.getByRole('button', { name: 'Atualizar lista', exact: true }).click()
+  await page.getByRole('button', { name: `Editar pedido nº ${legadoId}`, exact: true }).click()
+  assert.equal(await page.getByLabel('Produto 1', { exact: true }).inputValue(), 'cafe-coado')
+  assert.equal(await page.getByLabel('Produto 2', { exact: true }).inputValue(), 'pao-queijo')
+  await page.getByLabel('Telefone/WhatsApp', { exact: true }).fill('(73) 98888-8888')
+  await page.getByLabel('Status', { exact: true }).selectOption('entregue')
+  await conferir(page, 'edicao-historica', '.admin-edit')
+  await page.getByRole('button', { name: 'Salvar alterações', exact: true }).click()
+  await page.locator('.admin-edit').waitFor({ state: 'detached' })
+  assert.deepEqual(repo.buscar(legadoId).itens, legadoAntes.itens)
+  assert.equal(repo.buscar(legadoId).totalCentavos, legadoAntes.totalCentavos)
+  assert.equal(repo.buscar(legadoId).status, 'entregue')
+  assert.equal(repo.buscar(legadoId).telefone, '73988888888')
+  resultado.passos.push('Pedido histórico com café e pão individual mantém itens, quantidades e preços após edição real de contato/status.')
+
   const snapshot = repo.listar()
   await new Promise((r) => api.close(r)); api = null
   repo.fechar(); repo = abrirEncomendas(arquivo)
   assert.deepEqual(repo.listar(), snapshot)
   assert.equal(repo.listarProdutos().find((p) => p.id === 'panetone').aceitaEncomendas, false)
-  resultado.passos.push('Pedidos sem bolos aceitos; reabertura do SQLite preserva todas as configurações, itens e preços.')
+  resultado.passos.push('Coffee/bread main items and accompaniment without cake rejected; SQLite reopen preserves settings and prices.')
   assert.equal(resultado.errosPagina.length, 0)
 } finally {
   await browser?.close()

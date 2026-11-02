@@ -9,8 +9,10 @@ import type { ProdutoDisponivel } from '../services/produtos'
 const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
 function Disponibilidade({ produto, config }: { produto: Produto; config?: ProdutoDisponivel }) {
+  if (produto.id === 'pao-queijo' && produto.encomenda.tipo === 'acompanhamento') return <p className="product-availability">Acompanhamento opcional de bolos: {produto.encomenda.tamanho}, {moeda.format(produto.encomenda.preco)} por pedido.</p>
+  if (produto.categoria === 'cafe-acompanhamentos') return <p className="product-availability">Disponível no local; não aceita encomendas.</p>
   if (!config) return <p className="product-availability">Consulte a disponibilidade no formulário de encomenda.</p>
-  return <p className="product-availability">{config.aceitaEncomendas ? `Aceita encomenda · retirada ${config.mesesPermitidos.length ? 'em ' + config.mesesPermitidos.map((m) => MESES[m - 1]).join(', ') : 'o ano todo'}.` : 'Não aceita encomendas no momento.'}{config.aceitaEncomendas && produto.encomenda.tipo === 'acompanhamento' && ` Para encomenda: ${config.unidade}, ${moeda.format(config.precoCentavos / 100)}.`}</p>
+  return <p className="product-availability">{config.aceitaEncomendas ? `Aceita encomenda · retirada ${config.mesesPermitidos.length ? 'em ' + config.mesesPermitidos.map((m) => MESES[m - 1]).join(', ') : 'o ano todo'}.` : 'Não aceita encomendas no momento.'}</p>
 }
 
 export function Cardapio() {

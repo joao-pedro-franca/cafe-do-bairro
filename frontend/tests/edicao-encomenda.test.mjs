@@ -30,3 +30,13 @@ test('composição de mesmo total em pedido antigo é permitida e apenas itens s
   assert.deepEqual(validarEdicao(antigo, novos, agora), {})
   assert.deepEqual(alteracoesPedido(antigo, novos), { itens: novos.itens })
 })
+
+test('contato/status preservam itens históricos proibidos; composição e data exigem regras atuais', () => {
+  const antigo = { ...pedido, dataEntrega: '2000-01-01', itens: [{ produto: 'cafe-coado', quantidade: 20 }, { produto: 'pao-queijo', quantidade: 2 }] }
+  const dados = { ...antigo, nomeCliente: 'Cliente Atualizado', status: 'entregue' }
+  assert.deepEqual(validarEdicao(antigo, dados, agora), {})
+  assert.deepEqual(alteracoesPedido(antigo, dados), { nomeCliente: 'Cliente Atualizado', status: 'entregue' })
+  assert(validarEdicao(antigo, { ...dados, dataEntrega: '2026-12-01' }, agora).itens)
+  assert(validarEdicao(antigo, { ...dados, itens: [...antigo.itens, { produto: 'bolo-cenoura', quantidade: 1 }] }, agora).itens)
+  assert(validarEdicao(pedido, { ...campos, itens: [{ produto: 'panetone', quantidade: 2 }] }, agora).itens)
+})

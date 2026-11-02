@@ -9,6 +9,7 @@ import { ResumoFinanceiro } from '../components/ResumoFinanceiro'
 import { unidadesProducao, unidadesItens } from '../utils/itens'
 import { useProdutos } from '../hooks/useProdutos'
 import { permitidoNaData } from '../services/produtos'
+import { unidadesBolos } from '../../../backend/src/produtos.ts'
 import type { PedidoConfirmado } from '../services/encomendas'
 import type { CampoEncomenda, DadosEncomenda, ErrosEncomenda } from '../utils/encomenda'
 import '../styles/encomendas.css'
@@ -39,9 +40,9 @@ export function Encomendas() {
   const podePreencher = Boolean(saldo && !cardapio.falhou && cardapio.produtos.length) || pedidoConfirmado !== null
   const total = unidadesProducao(dados.itens)
   const indisponiveis = dados.itens.filter((i) => i.produto && !permitidos.some((p) => p.id === i.produto))
-  const paoPermitido = permitidos.some((p) => p.id === 'pao-queijo')
+  const temBolo = unidadesBolos(dados.itens) > 0
   const paoNosItens = dados.itens.some((i) => i.produto === 'pao-queijo')
-  const erroDisponibilidade = pedidoConfirmado ? undefined : indisponiveis.length ? 'Há produtos selecionados que não aceitam encomendas para esse mês de retirada. Altere os produtos ou a data; nenhum item foi removido.' : dados.incluirPaoDeQueijo && !paoPermitido ? 'O pão de queijo não aceita encomenda para esse mês. Remova o acompanhamento ou altere a data.' : dados.incluirPaoDeQueijo && paoNosItens ? 'Escolha o pão de queijo nos itens ou como acompanhamento, sem duplicar a dúzia.' : undefined
+  const erroDisponibilidade = pedidoConfirmado ? undefined : indisponiveis.length ? 'Há produtos selecionados que não aceitam encomendas para esse mês de retirada. Altere os produtos ou a data; nenhum item foi removido.' : dados.incluirPaoDeQueijo && !temBolo ? 'O acompanhamento de pão de queijo exige pelo menos um bolo. Adicione um bolo ou desmarque o acompanhamento; seus dados foram mantidos.' : dados.incluirPaoDeQueijo && paoNosItens ? 'Escolha pão de queijo somente como acompanhamento.' : undefined
   const erroItens = erros.itens || erroDisponibilidade || (saldo && total > saldo.quantidadeDisponivel && pedidoConfirmado === null
     ? `Restam ${saldo.quantidadeDisponivel} unidade(s) de bolos/panetones. Ajuste os itens ou escolha outra data.` : undefined)
   const adicional = cafeConfig.produtos.find((produto) => produto.encomenda.tipo === 'acompanhamento' && !produto.sazonalidade)
@@ -136,7 +137,7 @@ export function Encomendas() {
         <p className="recipe-note">Do nosso forno para os seus momentos especiais. <span aria-hidden="true">♡</span></p>
         <ul className="order-rules">
           <li><span aria-hidden="true">◷</span><p>Peça com pelo menos <strong>um dia de antecedência</strong>.</p></li>
-          <li><span aria-hidden="true">♡</span><p>Até <strong>cinco unidades de bolos/panetones por dia</strong>. Cafés e dúzias não consomem esse grupo.</p></li>
+          <li><span aria-hidden="true">♡</span><p>Até <strong>cinco unidades de bolos/panetones por dia</strong>. O acompanhamento de pão de queijo não consome esse limite.</p></li>
           <li><span aria-hidden="true">⌂</span><p>Pagamento <strong>na retirada</strong>.</p></li>
         </ul>
         <p className="orders-demo" id="orders-demo">A consulta não reserva produtos. Sua encomenda é registrada após a confirmação.</p>
@@ -178,7 +179,7 @@ export function Encomendas() {
                     <div><dt>Ainda disponíveis</dt><dd>{saldo.quantidadeDisponivel}</dd></div>
                   </dl>
                   <p className="field-hint">Disponibilidade consultada agora; os bolos só ficam reservados quando sua encomenda é confirmada.</p>
-                  {saldo.quantidadeDisponivel === 0 && pedidoConfirmado === null && <p className="availability-full">Nosso forno já está cheio de carinho nesse dia. Escolha outra data para bolos e panetones; cafés e dúzias ainda podem ser encomendados se estiverem habilitados.</p>}
+                  {saldo.quantidadeDisponivel === 0 && pedidoConfirmado === null && <p className="availability-full">Nosso forno já está cheio de carinho nesse dia. Escolha outra data para encomendar bolos e panetones.</p>}
                 </>}
               </div>
               {cardapio.carregando && <p role="status">Consultando os produtos habilitados…</p>}
@@ -207,8 +208,8 @@ export function Encomendas() {
                       {erros.telefone && <p className="field-error" id="erro-telefone">{erros.telefone}</p>}
                     </div>
                   </div>
-                  {acompanhamento && adicional && (paoPermitido || dados.incluirPaoDeQueijo) && <label className="order-extra">
-                    <input type="checkbox" name="incluirPaoDeQueijo" checked={dados.incluirPaoDeQueijo} disabled={paoNosItens && !dados.incluirPaoDeQueijo} onChange={(e) => { setDados((atual) => ({ ...atual, incluirPaoDeQueijo: e.target.checked })); setErroApi('') }} />
+                  {acompanhamento && adicional && (temBolo || dados.incluirPaoDeQueijo) && <label className="order-extra">
+                    <input type="checkbox" name="incluirPaoDeQueijo" checked={dados.incluirPaoDeQueijo} disabled={(!temBolo || paoNosItens) && !dados.incluirPaoDeQueijo} onChange={(e) => { setDados((atual) => ({ ...atual, incluirPaoDeQueijo: e.target.checked })); setErros((atuais) => ({ ...atuais, itens: undefined })); setErroApi('') }} />
                     <span>Adicionar {adicional.nome.toLowerCase()} <small>{acompanhamento.tamanho} · + {moeda.format(acompanhamento.preco)} (uma dúzia por pedido, opcional, sem ocupar a capacidade de bolos)</small></span>
                   </label>}
                 </fieldset>

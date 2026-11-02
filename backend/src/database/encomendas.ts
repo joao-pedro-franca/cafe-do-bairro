@@ -9,7 +9,7 @@ import { CATALOGO } from '../catalogo.ts'
 import type { CatalogoPrecos } from '../catalogo.ts'
 import { centavosValidos, precificarItens, resumirValores } from '../precificacao.ts'
 import type { ItemPrecificado } from '../precificacao.ts'
-import { PRODUTOS, produtoPorId, unidadesItens, unidadesProducao } from '../produtos.ts'
+import { PRODUTOS, erroComposicao, produtoEncomendavel, produtoPorId, unidadesItens, unidadesProducao } from '../produtos.ts'
 import { configuracaoPadrao, permitidoNaData, produtoDisponivel, validarConfiguracao } from '../disponibilidadeProdutos.ts'
 import type { ConfiguracaoProduto } from '../disponibilidadeProdutos.ts'
 
@@ -158,8 +158,9 @@ export function abrirEncomendas(caminho: string, catalogo: CatalogoPrecos = CATA
     const config = configs.find((c) => c.id === id)
     if (!config || !permitidoNaData(config, data)) throw new ApiError(409, `${produtoPorId(id)?.nome ?? id} não aceita encomendas para esse mês de retirada. Confira os produtos e a data.`, 'PRODUTO_INDISPONIVEL')
   }
-  function conferirPao(itens: { produto: string }[], incluir: boolean) {
-    if (incluir && itens.some((i) => i.produto === 'pao-queijo')) throw new ApiError(400, 'Escolha pão de queijo nos itens ou como acompanhamento, sem duplicar a dúzia.')
+  function conferirComposicao(itens: { produto: string; quantidade: number }[], incluir: boolean) {
+    const erro = erroComposicao(itens, incluir)
+    if (erro) throw new ApiError(400, erro)
   }
   function precos(itens: { produto: string; quantidade: number }[], anteriores: ItemPrecificado[] = [], pao = 0) {
     try {
@@ -177,6 +178,7 @@ export function abrirEncomendas(caminho: string, catalogo: CatalogoPrecos = CATA
     },
     configurarProduto(id: string, valor: unknown) {
       if (!produtoPorId(id)) throw new ApiError(404, 'Produto não encontrado.')
+      if (!produtoEncomendavel(id)) throw new ApiError(400, 'Somente bolos e panetone possuem disponibilidade configurável.')
       const config = validarConfiguracao(valor)
       return transacao(() => {
         db.prepare('UPDATE produto_disponibilidade SET aceitaEncomendas = ?, mesesPermitidos = ? WHERE id = ?').run(Number(config.aceitaEncomendas), JSON.stringify(config.mesesPermitidos), id)
@@ -192,10 +194,9 @@ export function abrirEncomendas(caminho: string, catalogo: CatalogoPrecos = CATA
       return transacao(() => {
         const itens = validarItens(dados.itens)
         validarData(dados.dataEntrega, agora())
-        conferirPao(itens, dados.incluirPaoDeQueijo)
+        conferirComposicao(itens, dados.incluirPaoDeQueijo)
         const configs = configuracoes()
         for (const item of itens) exigirProduto(item.produto, dados.dataEntrega, configs)
-        if (dados.incluirPaoDeQueijo) exigirProduto('pao-queijo', dados.dataEntrega, configs)
         exigirVaga(dados.dataEntrega, unidadesProducao(itens))
         const registro = db.prepare('INSERT INTO encomendas(nomeCliente, telefone, dataEntrega, incluirPaoDeQueijo, valorPaoDeQueijoCentavos) VALUES (?, ?, ?, ?, ?)')
           .run(dados.nomeCliente, dados.telefone, dados.dataEntrega, Number(dados.incluirPaoDeQueijo), dados.incluirPaoDeQueijo ? catalogo.paoDeQueijoCentavos : 0)
@@ -210,15 +211,17 @@ export function abrirEncomendas(caminho: string, catalogo: CatalogoPrecos = CATA
         const atual = { ...anterior, ...alteracoes }
         const itens = alteracoes.itens === undefined ? anterior.itens.map(({ produto, quantidade }) => ({ produto, quantidade })) : validarItens(alteracoes.itens)
         const valorPaoDeQueijoCentavos = atual.incluirPaoDeQueijo ? (anterior.incluirPaoDeQueijo ? anterior.valorPaoDeQueijoCentavos : catalogo.paoDeQueijoCentavos) : 0
-        conferirPao(itens, atual.incluirPaoDeQueijo)
         const mudaData = atual.dataEntrega !== anterior.dataEntrega
+        const assinatura = (lista: { produto: string; quantidade: number }[]) => JSON.stringify(lista.map(({ produto, quantidade }) => ({ produto, quantidade })).sort((a, b) => a.produto.localeCompare(b.produto)))
+        // Contato/status (inclusive reenvio de itens idênticos) preservam o legado.
+        // Mudanças de composição, data ou acompanhamento seguem as regras atuais.
+        if (mudaData || assinatura(itens) !== assinatura(anterior.itens) || atual.incluirPaoDeQueijo !== anterior.incluirPaoDeQueijo) conferirComposicao(itens, atual.incluirPaoDeQueijo)
         // Leitura local à transação, somente quando há elegibilidade a revalidar.
         let configs: ConfiguracaoProduto[] | undefined
         for (const item of itens) {
           const antigo = anterior.itens.find((i) => i.produto === item.produto)
           if (mudaData || !antigo || item.quantidade > antigo.quantidade) exigirProduto(item.produto, atual.dataEntrega, configs ??= configuracoes())
         }
-        if (atual.incluirPaoDeQueijo && (mudaData || !anterior.incluirPaoDeQueijo)) exigirProduto('pao-queijo', atual.dataEntrega, configs ??= configuracoes())
         // Trocar composição sem mudar o total continua permitido em datas antigas.
         if (mudaData || unidadesItens(itens) !== unidadesItens(anterior.itens)) {
           validarData(atual.dataEntrega, agora())
