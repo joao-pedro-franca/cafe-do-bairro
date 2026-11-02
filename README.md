@@ -14,17 +14,21 @@ As necessidades de Dona Marta orientaram as decisões funcionais:
 
 | Necessidade | Resposta da aplicação |
 | --- | --- |
-| Organizar a produção | Cinco unidades de produção por dia, compartilhadas entre os pedidos. Bolos e, provisoriamente, panetones consomem esse grupo; cafés e dúzias de pão de queijo não consomem esse limite. |
+| Organizar a produção | Cinco unidades de produção por dia, compartilhadas entre bolos e panetones. O acompanhamento de pão de queijo não consome esse limite. |
 | Ter tempo para preparar | Retirada a partir de amanhã, considerando o calendário de `America/Bahia`, sem exigir 24 horas exatas. |
 | Evitar aprovação manual | Havendo disponibilidade, o pedido é registrado como `recebida` e sua capacidade fica reservada automaticamente. |
 | Manter o pagamento simples | Pagamento na retirada, sem checkout ou integração de pagamento online. |
-| Atender pedidos variados | Múltiplos sabores e produtos no mesmo pedido, com quantidades individuais; pão de queijo encomendado por dúzia. |
+| Atender pedidos variados | Seis bolos caseiros, bolo de Natal e panetone como itens individuais; pão de queijo exclusivamente como acompanhamento opcional de bolos, uma dúzia por pedido. |
 | Vender panetones e bolos de Natal em dezembro | A menção a essas vendas sazonais motivou o controle dos meses de retirada em que cada produto aceita encomendas. |
 | Atualizar informações e oferta | Informações comerciais centralizadas em configuração; disponibilidade e meses dos produtos gerenciados pelo painel. |
 
 O [brief original](BRIEF.md) foi preservado como registro inicial. A entrega evoluiu da simplificação de cinco pedidos de um produto para **cinco unidades de produção**, distribuídas entre encomendas com múltiplos itens. Todos os status contam para o limite; marcar como entregue não libera a capacidade daquela data.
 
 A sazonalidade considera o **mês da retirada**, não o mês do pedido: em novembro é possível encomendar um panetone habilitado para dezembro. Os produtos natalinos começam desabilitados, com dezembro selecionado; a administradora decide quando habilitá-los.
+
+Somente **bolos e panetone** podem ser escolhidos no formulário e ter disponibilidade e meses configurados no painel. **Café coado e café com leite permanecem no cardápio, para consumo no local, sem encomenda.** Pão de queijo não é um produto principal: o checkbox acrescenta **uma dúzia por R$ 25,00** quando há ao menos um bolo caseiro ou bolo de Natal. Panetone sozinho não permite acompanhamento. Remover o último bolo exige desmarcar o acompanhamento ou adicionar um bolo, preservando os demais campos.
+
+Essas restrições são verificadas no backend, inclusive em edições administrativas, e independem das configurações antigas de café e pão de queijo no SQLite. **Não há nova migração de esquema nem conversão automática de pedidos.** Itens, quantidades e preços históricos são mantidos; contato e status podem ser editados mesmo em pedidos antigos com itens hoje proibidos. Alterar a composição, a data ou o acompanhamento exige uma composição válida pelas regras atuais; bolos/panetones mantidos ou reduzidos continuam dispensados de reativação. Publique frontend e backend juntos e encerre versões antigas da API para que todos os escritores apliquem as mesmas regras.
 
 ## Funcionalidades principais
 
@@ -44,7 +48,7 @@ A sazonalidade considera o **mês da retirada**, não o mês do pedido: em novem
 - Edição de contato, itens, quantidades, data, acompanhamento e status: `recebida`, `em preparo` e `entregue`.
 - Exclusão com confirmação explícita, liberando a produção reservada pelo pedido.
 - Resumo financeiro e prévia da edição, preservando os preços registrados nos itens existentes.
-- Gerenciamento dos produtos que aceitam encomendas e dos meses de retirada, com persistência no SQLite.
+- Gerenciamento da disponibilidade e dos meses dos oito produtos encomendáveis (bolos e panetone), com persistência no SQLite.
 
 O painel não edita preços, cadastro dos produtos, endereço ou horários. Dados comerciais ficam em `frontend/src/data/cafeConfig.ts`; nomes, descrições e imagens em `backend/src/produtos.ts`; preços em centavos em `backend/src/catalogo.ts`. Alterar esses arquivos exige nova publicação. Disponibilidade e meses são gerenciados pela interface.
 
@@ -190,7 +194,7 @@ Escolha uma pasta ainda não usada no lugar de `NOVA-RODADA`, preservando as evi
 
 </details>
 
-Os resultados citados vêm das revisões registradas; esta atualização de documentação não reexecutou as suítes nem as auditorias.
+Os resultados históricos citados vêm das revisões registradas. A validação das regras definitivas e os comandos executados estão em [verificações das regras de encomenda](docs/regras-encomendas-final/README.md).
 
 ## Documentação complementar
 

@@ -42,20 +42,20 @@ test('listagem faz um SELECT e a próxima consulta já observa mudanças sem cac
 
 test('vários produtos e acompanhamento compartilham um SELECT dentro de cada transação', (t) => {
   const { repo, eventos } = preparar(t)
-  repo.configurarProduto('cafe-coado', ativo)
+  repo.configurarProduto('bolo-natal', ativo)
   eventos.length = 0
   const criado = repo.criar({ ...pedido, itens: [
-    { produto: 'bolo-cenoura', quantidade: 1 }, { produto: 'bolo-milho', quantidade: 1 }, { produto: 'cafe-coado', quantidade: 2 },
+    { produto: 'bolo-cenoura', quantidade: 1 }, { produto: 'bolo-milho', quantidade: 1 }, { produto: 'bolo-natal', quantidade: 2 },
   ] }, agora)
   assert.deepEqual(eventos, ['BEGIN IMMEDIATE', 'SELECT disponibilidade', 'COMMIT'])
-  assert.equal(criado.totalCentavos, 10500)
+  assert.equal(criado.totalCentavos, 20500)
   eventos.length = 0
   const movido = repo.atualizar(criado.id, { dataEntrega: '2026-12-02' }, agora)
   assert.deepEqual(eventos, ['BEGIN IMMEDIATE', 'SELECT disponibilidade', 'COMMIT'])
   assert.equal(movido.totalCentavos, criado.totalCentavos)
   assert.deepEqual(movido.itens, criado.itens)
 
-  repo.configurarProduto('cafe-coado', { ...ativo, aceitaEncomendas: false })
+  repo.configurarProduto('bolo-natal', { ...ativo, aceitaEncomendas: false })
   eventos.length = 0
   assert.throws(() => repo.atualizar(criado.id, { dataEntrega: '2026-12-03' }, agora), /não aceita encomendas/)
   assert.deepEqual(eventos, ['BEGIN IMMEDIATE', 'SELECT disponibilidade', 'ROLLBACK'])

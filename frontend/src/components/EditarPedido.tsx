@@ -5,6 +5,7 @@ import { ItensPedido } from './ItensPedido'
 import { ResumoFinanceiro } from './ResumoFinanceiro'
 import { previaFinanceira } from '../utils/precificacao'
 import { useProdutos } from '../hooks/useProdutos'
+import { unidadesBolos } from '../../../backend/src/produtos.ts'
 import { permitidoNaData } from '../services/produtos'
 import { alteracoesPedido, validarEdicao } from '../utils/edicaoEncomenda'
 import type { CamposPedido } from '../utils/edicaoEncomenda'
@@ -66,8 +67,8 @@ export function EditarPedido({ pedido, ocupado, erroApi, salvar, cancelar }: {
       {cardapio.carregando && <p role="status">Consultando produtos para novas inclusões…</p>}
       <ItensPedido prefixo={id('itens')} itens={campos.itens} limite={5} disponiveis={cardapio.produtos.filter((p) => permitidoNaData(p, campos.dataEntrega)).map((p) => p.id)} administrativo registrados={pedido.itens} alterar={(itens) => mudar('itens', itens)} erro={erros.itens} />
       <div><label htmlFor={id('dataEntrega')}>Data da retirada</label><input id={id('dataEntrega')} type="date" required value={campos.dataEntrega} onChange={(e) => mudar('dataEntrega', e.target.value)} {...acessibilidade('dataEntrega')} />{erroCampo('dataEntrega')}</div>
-      <p className="admin-edit-hint">São até cinco unidades de bolos/panetones por dia. Cafés e dúzias não usam esse grupo. Ao mudar data ou quantidade, a retirada precisa ser a partir de amanhã, no horário da Bahia. Produtos antigos desabilitados podem ser mantidos ou reduzidos; novas inclusões e aumentos seguem a disponibilidade vigente.</p>
-      <label className="admin-edit-check"><input id={id('incluirPaoDeQueijo')} type="checkbox" checked={campos.incluirPaoDeQueijo} onChange={(e) => mudar('incluirPaoDeQueijo', e.target.checked)} />Incluir uma dúzia de pão de queijo</label>
+      <p className="admin-edit-hint">São até cinco unidades de bolos/panetones por dia. O acompanhamento de pão de queijo não usa esse grupo. Ao mudar data ou quantidade, a retirada precisa ser a partir de amanhã, no horário da Bahia. Produtos antigos desabilitados podem ser mantidos ou reduzidos; novas inclusões e aumentos seguem a disponibilidade vigente.</p>
+      <label className="admin-edit-check"><input id={id('incluirPaoDeQueijo')} type="checkbox" checked={campos.incluirPaoDeQueijo} disabled={!campos.incluirPaoDeQueijo && (unidadesBolos(campos.itens) < 1 || campos.itens.some((i) => i.produto === 'pao-queijo'))} onChange={(e) => mudar('incluirPaoDeQueijo', e.target.checked)} />Incluir uma dúzia de pão de queijo</label>
       <div><label htmlFor={id('status')}>Status</label><select id={id('status')} value={campos.status} onChange={(e) => mudar('status', e.target.value as CamposPedido['status'])} {...acessibilidade('status')}>{statusEncomenda.map((valor) => <option key={valor} value={valor}>{valor}</option>)}</select>{erroCampo('status')}</div>
       <div aria-live="polite" aria-atomic="true">{previa ? <ResumoFinanceiro resumo={previa} anterior={pedido.totalCentavos} previa /> : <p>Preencha produtos e quantidades válidos para calcular a prévia financeira.</p>}</div>
       <button className="button button-primary" type="submit">{ocupado ? 'Salvando alterações…' : 'Salvar alterações'}</button>

@@ -23,8 +23,9 @@ export function validarEdicao(anterior: PedidoAdmin, campos: CamposPedido, agora
   const mudaProducao = campos.dataEntrega !== anterior.dataEntrega || unidadesItens(campos.itens) !== unidadesItens(anterior.itens)
   // Contato, sabor, adicional e status de pedidos antigos não exigem mudar sua data.
   const minima = mudaProducao ? dataMinimaEncomenda(cafeConfig.fusoHorario, agora) : anterior.dataEntrega
-  const erros: Partial<Record<keyof CamposPedido, string>> = validarEncomenda(campos, cafeConfig.produtos, minima, 5)
-  if (campos.incluirPaoDeQueijo && campos.itens.some((i) => i.produto === 'pao-queijo')) erros.itens = 'Escolha pão de queijo nos itens ou como acompanhamento, sem duplicar a dúzia.'
+  const alteracoes = alteracoesPedido(anterior, campos)
+  const preservarHistorico = !alteracoes.itens && !alteracoes.dataEntrega && alteracoes.incluirPaoDeQueijo === undefined
+  const erros: Partial<Record<keyof CamposPedido, string>> = validarEncomenda(campos, cafeConfig.produtos, minima, 5, preservarHistorico)
   if (!campos.nomeCliente.trim() || campos.nomeCliente.trim().length > 100) erros.nomeCliente = 'Informe nome e sobrenome, com até 100 caracteres.'
   if (!statusEncomenda.some((status) => status === campos.status)) erros.status = 'Escolha um dos status disponíveis.'
   return erros

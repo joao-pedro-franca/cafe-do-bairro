@@ -1,3 +1,4 @@
+import { erroComposicao } from '../../../backend/src/produtos.ts'
 import type { Produto } from '../data/cafeConfig'
 import { validarItens } from './itens.ts'
 import type { ItemEncomenda } from './itens.ts'
@@ -44,7 +45,7 @@ export function erroDataEntrega(dataEntrega: string, dataMinima: string): string
   if (dataEntrega < dataMinima) return 'Escolha amanhã ou uma data posterior, considerando o horário do café.'
 }
 
-export function validarEncomenda(dados: DadosEncomenda, _produtos: readonly Produto[], dataMinima: string, disponiveis?: number): ErrosEncomenda {
+export function validarEncomenda(dados: DadosEncomenda, _produtos: readonly Produto[], dataMinima: string, disponiveis?: number, preservarHistorico = false): ErrosEncomenda {
   const erros: ErrosEncomenda = {}
   if (dados.nomeCliente.trim().split(/\s+/).length < 2) {
     erros.nomeCliente = 'Informe seu nome e sobrenome.'
@@ -52,7 +53,7 @@ export function validarEncomenda(dados: DadosEncomenda, _produtos: readonly Prod
   if (!telefoneValido(dados.telefone)) {
     erros.telefone = 'Informe um telefone com DDD: (73) 99999-9999 ou (73) 3333-3333. O prefixo +55 é opcional.'
   }
-  const erroItens = validarItens(dados.itens, disponiveis)
+  const erroItens = validarItens(dados.itens, disponiveis) || (!preservarHistorico ? erroComposicao(dados.itens, dados.incluirPaoDeQueijo) : undefined)
   if (erroItens) erros.itens = erroItens
   const erroData = erroDataEntrega(dados.dataEntrega, dataMinima)
   if (erroData) erros.dataEntrega = erroData

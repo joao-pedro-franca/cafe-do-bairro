@@ -3,7 +3,7 @@ import { sabores, unidadesProducao, unidadesItens } from '../utils/itens'
 import type { ItemEncomenda } from '../utils/itens'
 import type { ItemPrecificado } from '../utils/precificacao'
 import { reais } from '../utils/precificacao'
-import { unidadeEncomenda, produtoPorId } from '../../../backend/src/produtos.ts'
+import { unidadeEncomenda, produtoPorId, produtoEncomendavel } from '../../../backend/src/produtos.ts'
 import { precoEncomenda } from '../../../backend/src/disponibilidadeProdutos.ts'
 import '../styles/itens.css'
 
@@ -20,7 +20,7 @@ export function ItensPedido({ itens, alterar, limite, prefixo, erro, administrat
   itens: ItemEncomenda[]; alterar: (itens: ItemEncomenda[]) => void; limite: number; prefixo: string; erro?: string; administrativo?: boolean; registrados?: readonly ItemPrecificado[]; disponiveis?: readonly string[]
 }) {
   const total = unidadesProducao(itens)
-  const proximo = sabores.find((p) => (!disponiveis || disponiveis.includes(p.id)) && !itens.some((i) => i.produto === p.id) && (!p.consomeCapacidade || total < limite))
+  const proximo = sabores.find((p) => produtoEncomendavel(p.id) && (!disponiveis || disponiveis.includes(p.id)) && !itens.some((i) => i.produto === p.id) && (!p.consomeCapacidade || total < limite))
   const aviso = erro || (itens.some((item) => !Number.isSafeInteger(item.quantidade) || item.quantidade < 1) ? 'Cada produto precisa de uma quantidade inteira, a partir de uma unidade de venda.' : undefined)
   const adicionar = useRef<HTMLButtonElement>(null)
   const foco = useRef<number | null>(null)
@@ -41,7 +41,7 @@ export function ItensPedido({ itens, alterar, limite, prefixo, erro, administrat
       <div><label htmlFor={`${prefixo}-sabor-${indice}`}>Produto {indice + 1}</label>
         <select id={`${prefixo}-sabor-${indice}`} name={`itens[${indice}].produto`} value={item.produto} required onChange={(event) => mudar(indice, 'produto', event.target.value)}>
           <option value="">Selecione um produto</option>
-          {sabores.map((sabor) => <option key={sabor.id} value={sabor.id} disabled={itens.some((outro, i) => i !== indice && outro.produto === sabor.id) || (item.produto !== sabor.id && ((disponiveis !== undefined && !disponiveis.includes(sabor.id)) || (sabor.consomeCapacidade && total - (produtoPorId(item.produto)?.consomeCapacidade ? item.quantidade : 0) + item.quantidade > limite)))}>{sabor.nome} · {unidadeEncomenda(sabor.id)}</option>)}
+          {sabores.filter((sabor) => produtoEncomendavel(sabor.id) || sabor.id === item.produto).map((sabor) => <option key={sabor.id} value={sabor.id} disabled={itens.some((outro, i) => i !== indice && outro.produto === sabor.id) || (item.produto !== sabor.id && ((disponiveis !== undefined && !disponiveis.includes(sabor.id)) || (sabor.consomeCapacidade && total - (produtoPorId(item.produto)?.consomeCapacidade ? item.quantidade : 0) + item.quantidade > limite)))}>{sabor.nome} · {unidadeEncomenda(sabor.id)}</option>)}
         </select>
         <p className="field-hint">{registrados?.some((anterior) => anterior.produto === item.produto) ? `${reais(registrados.find((anterior) => anterior.produto === item.produto)!.precoUnitarioCentavos)} · ${unidadeEncomenda(item.produto)} · preço registrado` : descricaoSabor(item.produto)}</p>
       </div>
@@ -57,7 +57,7 @@ export function ItensPedido({ itens, alterar, limite, prefixo, erro, administrat
     <button ref={adicionar} className="button button-secondary item-add" type="button" disabled={!proximo || !Number.isFinite(total)} onClick={() => {
       if (proximo) { foco.current = itens.length; alterar([...itens, { produto: proximo.id, quantidade: 1 }]) }
     }}>Adicionar produto</button>
-    <p className="items-total" role="status">Total selecionado: <strong>{Number.isFinite(unidadesItens(itens)) ? unidadesItens(itens) : '—'} unidade(s) de venda</strong>. Produção: {Number.isFinite(total) ? total : '—'} unidade(s) de bolos/panetones. {administrativo ? 'O servidor confere a capacidade ao salvar.' : `Saldo de produção restante: ${Number.isFinite(total) ? Math.max(0, limite - total) : 0}. Cafés e dúzias não consomem esse grupo.`}</p>
+    <p className="items-total" role="status">Total selecionado: <strong>{Number.isFinite(unidadesItens(itens)) ? unidadesItens(itens) : '—'} unidade(s) de venda</strong>. Produção: {Number.isFinite(total) ? total : '—'} unidade(s) de bolos/panetones. {administrativo ? 'O servidor confere a capacidade ao salvar.' : `Saldo de produção restante: ${Number.isFinite(total) ? Math.max(0, limite - total) : 0}. O acompanhamento de pão de queijo não consome esse grupo.`}</p>
     {aviso && <p className="field-error admin-field-error" id={`${prefixo}-erro`} role="alert">{aviso}</p>}
   </div>
 }

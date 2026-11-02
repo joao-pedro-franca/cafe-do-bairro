@@ -1,4 +1,4 @@
-import { CATEGORIAS, PRODUTOS, produtoPorId, unidadeEncomenda } from './produtos.ts'
+import { CATEGORIAS, PRODUTOS, produtoEncomendavel, produtoPorId, unidadeEncomenda } from './produtos.ts'
 import { CATALOGO } from './catalogo.ts'
 import type { CatalogoPrecos } from './catalogo.ts'
 import { ApiError } from './errors.ts'
@@ -12,15 +12,15 @@ export const precoEncomenda = (id: string, catalogo: CatalogoPrecos = CATALOGO) 
 export const configuracaoPadrao = (id: string): ConfiguracaoProduto => {
   const p = produtoPorId(id)
   if (!p) throw new ApiError(404, 'Produto não encontrado.')
-  return { id, aceitaEncomendas: p.encomenda.tipo !== 'indisponivel', mesesPermitidos: p.sazonalidade?.meses ?? [] }
+  return { id, aceitaEncomendas: produtoEncomendavel(id) && p.encomenda.tipo !== 'indisponivel', mesesPermitidos: p.sazonalidade?.meses ?? [] }
 }
 export function produtoDisponivel(config: ConfiguracaoProduto, catalogo = CATALOGO): ProdutoDisponivel {
   const p = produtoPorId(config.id)!
-  return { ...config, nome: p.nome, categoria: p.categoria, categoriaNome: CATEGORIAS.find((c) => c.id === p.categoria)!.nome,
+  return { ...config, aceitaEncomendas: produtoEncomendavel(p.id) && config.aceitaEncomendas, nome: p.nome, categoria: p.categoria, categoriaNome: CATEGORIAS.find((c) => c.id === p.categoria)!.nome,
     precoCentavos: precoEncomenda(p.id, catalogo), unidade: unidadeEncomenda(p.id), consomeCapacidade: p.consomeCapacidade }
 }
 export function permitidoNaData(config: ConfiguracaoProduto, data: string) {
-  return config.aceitaEncomendas && /^\d{4}-\d{2}-\d{2}$/.test(data) && (config.mesesPermitidos.length === 0 || config.mesesPermitidos.includes(Number(data.slice(5, 7))))
+  return produtoEncomendavel(config.id) && config.aceitaEncomendas && /^\d{4}-\d{2}-\d{2}$/.test(data) && (config.mesesPermitidos.length === 0 || config.mesesPermitidos.includes(Number(data.slice(5, 7))))
 }
 export function validarConfiguracao(valor: unknown): Omit<ConfiguracaoProduto, 'id'> {
   if (!valor || typeof valor !== 'object' || Array.isArray(valor)) throw new ApiError(400, 'Informe disponibilidade e meses de retirada.')

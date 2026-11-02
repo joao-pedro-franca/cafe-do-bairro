@@ -10,6 +10,7 @@ import { gerarHash } from '../../backend/src/auth/senha.ts'
 import { abrirEncomendas } from '../../backend/src/database/encomendas.ts'
 import { hojeNoFuso } from '../src/utils/prazoEncomenda.ts'
 import { comPrecos } from './fixtures/precos.mjs'
+import { produtoEncomendavel } from '../../backend/src/produtos.ts'
 import { configuracaoPadrao } from '../../backend/src/disponibilidadeProdutos.ts'
 
 const originalFetch = globalThis.fetch
@@ -64,7 +65,7 @@ afterEach(async () => {
   await act(async () => raiz.unmount())
   container.remove()
   for (const pedido of repo.listar()) repo.remover(pedido.id)
-  for (const produto of repo.listarProdutos()) { const { id, ...config } = configuracaoPadrao(produto.id); repo.configurarProduto(id, config) }
+  for (const produto of repo.listarProdutos().filter((p) => produtoEncomendavel(p.id))) { const { id, ...config } = configuracaoPadrao(produto.id); repo.configurarProduto(id, config) }
   globalThis.fetch = originalFetch
 })
 after(async () => {
@@ -453,10 +454,29 @@ test('erro de API e conflito mantêm prévia, rascunho e total definitivo anteri
 })
 
 const cartaoProduto = (nome) => [...container.querySelectorAll('.product-settings-card')].find((el) => el.querySelector('h3').textContent === nome)
+
+test('painel só configura oito produtos e edição impede acompanhamento sem bolo', async () => {
+  repo.configurarProduto('panetone', { aceitaEncomendas: true, mesesPermitidos: [12] })
+  const id = await abrirEdicao()
+  await esperar(() => container.querySelectorAll('.product-settings-card').length === 8)
+  for (const nome of ['Café coado', 'Café com leite', 'Pão de queijo']) assert.equal(cartaoProduto(nome), undefined)
+  const select = container.querySelector(`#editar-${id}-itens-sabor-0`)
+  for (const produto of ['cafe-coado', 'cafe-leite', 'pao-queijo']) assert.equal(select.querySelector(`option[value="${produto}"]`), null)
+  await preencher(`#editar-${id}-itens-sabor-0`, 'panetone')
+  await enviar(container.querySelector('.admin-edit'))
+  assert(container.querySelector('.admin-edit').textContent.includes('pelo menos um bolo'))
+  assert.equal(repo.buscar(id).itens[0].produto, 'bolo-cenoura')
+  await clicar(container.querySelector(`#editar-${id}-incluirPaoDeQueijo`))
+  assert(container.querySelector(`#editar-${id}-incluirPaoDeQueijo`).disabled)
+  await enviar(container.querySelector('.admin-edit'))
+  await esperar(() => !container.querySelector('.admin-edit'))
+  assert.equal(repo.buscar(id).itens[0].produto, 'panetone')
+  assert.equal(repo.buscar(id).incluirPaoDeQueijo, false)
+})
 test('cardápio: salva meses, aguarda confirmação e bloqueia envios duplicados', async () => {
   await login()
   await esperar(() => cartaoProduto('Panetone'))
-  assert.equal(container.querySelectorAll('.product-settings-card').length, 11)
+  assert.equal(container.querySelectorAll('.product-settings-card').length, 8)
   const cartao = cartaoProduto('Panetone')
   assert(cartao.querySelector('.product-current').textContent.includes('Não aceita encomendas'))
   await clicar(cartao.querySelector('input[type="checkbox"]'))
@@ -502,13 +522,13 @@ test('cardápio: falha conserva rascunho e estado confirmado; nenhum mês exige 
 
 test('cardápio fica bloqueado durante edição de pedido sem perder o rascunho', async () => {
   const id = await abrirEdicao()
-  await esperar(() => cartaoProduto('Café coado'))
-  assert(cartaoProduto('Café coado').querySelector('fieldset').disabled)
+  await esperar(() => cartaoProduto('Bolo de cenoura'))
+  assert(cartaoProduto('Bolo de cenoura').querySelector('fieldset').disabled)
   await preencher(`#editar-${id}-telefone`, '(73) 98888-8888')
-  assert(cartaoProduto('Café coado').querySelector('fieldset').disabled)
+  assert(cartaoProduto('Bolo de cenoura').querySelector('fieldset').disabled)
   assert.equal(container.querySelector(`#editar-${id}-telefone`).value, '(73) 98888-8888')
   await clicar(botao('Cancelar'))
-  assert(!cartaoProduto('Café coado').querySelector('fieldset').disabled)
+  assert(!cartaoProduto('Bolo de cenoura').querySelector('fieldset').disabled)
 })
 
 test('virada na Bahia atualiza prazo sem recarregar e preserva rascunho durante edição', async (t) => {

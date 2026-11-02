@@ -54,7 +54,7 @@ try {
   api = criarApp(repo, { adminToken: randomBytes(32).toString('hex') }).listen(0, '127.0.0.1')
   await once(api, 'listening')
   const target = `http://127.0.0.1:${api.address().port}`
-  vite = await createServer({ root: join(raiz, 'frontend'), server: { host: '127.0.0.1', port: 0, hmr: false, watch: null, proxy: { '/api': { target } } }, logLevel: 'warn' })
+  vite = await createServer({ cacheDir: join(temporaria, 'vite-cache'), root: join(raiz, 'frontend'), server: { host: '127.0.0.1', port: 0, hmr: false, watch: null, proxy: { '/api': { target } } }, logLevel: 'warn' })
   await vite.listen()
   const url = `http://127.0.0.1:${vite.httpServer.address().port}`
   browser = await chromium.launch({ headless: true, ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) })
@@ -167,7 +167,7 @@ try {
   await page.locator('.availability-full').waitFor()
   await page.locator('.order-details').waitFor({ state: 'visible' })
   assert(await page.locator('option[value="bolo-cenoura"]').isDisabled())
-  assert(!(await page.locator('option[value="pao-queijo"]').isDisabled()))
+  assert.equal(await page.locator('option[value="pao-queijo"]').count(), 0)
   await page.setViewportSize({ width: 390, height: 844 })
   await page.locator('.availability-full').scrollIntoViewIfNeeded()
   await captura(page, '08-data-lotada-390.png')

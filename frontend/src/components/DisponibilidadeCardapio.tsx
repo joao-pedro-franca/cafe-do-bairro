@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { listarProdutosAdmin, salvarProduto, MESES } from '../services/produtos'
 import type { ProdutoDisponivel } from '../services/produtos'
 import { reais } from '../utils/precificacao'
+import { produtoEncomendavel } from '../../../backend/src/produtos.ts'
 import { ErroAdmin } from '../services/admin'
 import '../styles/disponibilidade-cardapio.css'
 
@@ -52,12 +53,12 @@ export function DisponibilidadeCardapio({ csrf, bloqueado, erroSessao }: { csrf:
   const [tentativa, setTentativa] = useState(0)
   useEffect(() => {
     let ativo = true
-    listarProdutosAdmin().then((lista) => { if (ativo) setProdutos(lista) }).catch((e) => { if (ativo) { setErro(e.message); if (e instanceof ErroAdmin && e.status === 401) erroSessao(e) } })
+    listarProdutosAdmin().then((lista) => { if (ativo) setProdutos(lista.filter((p) => produtoEncomendavel(p.id))) }).catch((e) => { if (ativo) { setErro(e.message); if (e instanceof ErroAdmin && e.status === 401) erroSessao(e) } })
     return () => { ativo = false }
   }, [csrf, tentativa, erroSessao])
   return <section className="admin-products" aria-labelledby="disponibilidade-cardapio-titulo">
     <h2 id="disponibilidade-cardapio-titulo">Disponibilidade do cardápio</h2>
-    <p>Escolha o que aceita encomendas e os meses da <strong>retirada</strong>. Isso não esconde produtos do cardápio nem altera pedidos confirmados. Preços e cadastro de produtos não são editados aqui.</p>
+    <p>Escolha os bolos e panetone que aceitam encomendas e os meses da <strong>retirada</strong>. Pão de queijo é um acompanhamento opcional de bolos; cafés são vendidos somente no local. Produtos e preços do cardápio e pedidos confirmados são preservados.</p>
     {erro && <div role="alert" className="admin-feedback admin-error"><p>{erro}</p><button className="button button-secondary" type="button" disabled={bloqueado} onClick={() => { setErro(''); setTentativa((n) => n + 1) }}>Tentar consultar cardápio novamente</button></div>}
     {!produtos.length && !erro && <p role="status">Consultando os produtos…</p>}
     <ul className="product-settings-list">{produtos.map((produto) => <ProdutoConfiguravel key={produto.id} produto={produto} csrf={csrf} bloqueado={bloqueado} erroSessao={erroSessao} mudou={(confirmado) => setProdutos((lista) => lista.map((p) => p.id === confirmado.id ? confirmado : p))} />)}</ul>

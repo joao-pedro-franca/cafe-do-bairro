@@ -45,13 +45,19 @@ test('aceita amanhã e datas futuras, rejeita hoje, passado e calendário invál
   assert(validar({}, '2026-11-02').dataEntrega)
 })
 
-test('estrutura aceita todos os produtos conhecidos; disponibilidade é conferida separadamente', () => {
+test('encomendas aceitam somente bolos e panetone; disponibilidade é conferida separadamente', () => {
   assert(validar({ itens: [{ produto: 'inexistente', quantidade: 1 }] }).itens)
-  for (const produto of cafeConfig.produtos) assert.deepEqual(validar({ itens: [{ produto: produto.id, quantidade: 1 }] }), {})
+  for (const produto of cafeConfig.produtos) {
+    const erros = validar({ itens: [{ produto: produto.id, quantidade: 1 }] })
+    if (['cafe-coado', 'cafe-leite', 'pao-queijo'].includes(produto.id)) assert(erros.itens)
+    else assert.deepEqual(erros, {})
+  }
 })
 
 test('adicional opcional não impede a validação de um bolo', () => {
   assert.deepEqual(validar({ incluirPaoDeQueijo: true }), {})
+  assert.deepEqual(validar({ incluirPaoDeQueijo: true, itens: [{ produto: 'bolo-natal', quantidade: 1 }] }), {})
+  assert(validar({ incluirPaoDeQueijo: true, itens: [{ produto: 'panetone', quantidade: 1 }] }).itens)
 })
 
 test('quantidade deve ser inteira positiva e caber na disponibilidade consultada', () => {

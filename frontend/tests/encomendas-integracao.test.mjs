@@ -8,6 +8,7 @@ import { act, createElement } from 'react'
 import { criarApp } from '../../backend/src/app.ts'
 import { abrirEncomendas } from '../../backend/src/database/encomendas.ts'
 import { comPrecos } from './fixtures/precos.mjs'
+import { produtoEncomendavel } from '../../backend/src/produtos.ts'
 import { configuracaoPadrao } from '../../backend/src/disponibilidadeProdutos.ts'
 
 const fetchOriginal = globalThis.fetch
@@ -53,7 +54,7 @@ afterEach(async () => {
   await act(async () => raiz?.unmount())
   container?.remove()
   for (const pedido of repo.listar()) repo.remover(pedido.id)
-  for (const produto of repo.listarProdutos()) { const { id, ...config } = configuracaoPadrao(produto.id); repo.configurarProduto(id, config) }
+  for (const produto of repo.listarProdutos().filter((p) => produtoEncomendavel(p.id))) { const { id, ...config } = configuracaoPadrao(produto.id); repo.configurarProduto(id, config) }
   globalThis.fetch = fetchOriginal
 })
 
@@ -83,9 +84,10 @@ async function preencher(campo, valor) {
 async function preencherTudo() {
   await preencher('dataEntrega', dados.dataEntrega)
   await esperarConsultas()
-  for (const [campo, valor] of Object.entries(dados)) if (!['dataEntrega', 'itens'].includes(campo)) await preencher(campo, valor)
+  for (const [campo, valor] of Object.entries(dados)) if (!['dataEntrega', 'itens', 'incluirPaoDeQueijo'].includes(campo)) await preencher(campo, valor)
   await preencher('itens[0].produto', dados.itens[0].produto)
   await preencher('itens[0].quantidade', dados.itens[0].quantidade)
+  await preencher('incluirPaoDeQueijo', true)
 }
 function dispararEnvio() { container.querySelector('form').dispatchEvent(new janela.Event('submit', { bubbles: true, cancelable: true })) }
 async function enviar() { await act(async () => dispararEnvio()) }
@@ -266,7 +268,7 @@ test('dia lotado permite dúzias; outra data libera produção de bolos', async 
   await esperar(() => container.querySelector('.availability-full') && !container.querySelector('.order-details').hidden)
   assert(!container.querySelector('.order-details').hidden)
   assert(container.querySelector('[name="itens[0].produto"] option[value="bolo-cenoura"]').disabled)
-  assert(!container.querySelector('[name="itens[0].produto"] option[value="pao-queijo"]').disabled)
+  assert.equal(container.querySelector('[name="itens[0].produto"] option[value="pao-queijo"]'), null)
   assert(container.querySelector('.availability-full').textContent.includes('Escolha outra data'))
   await preencher('dataEntrega', '2099-12-26')
   await esperar(() => container.querySelector('.availability-summary > div:last-child dd')?.textContent === '5')
@@ -351,7 +353,7 @@ test('remover todos os sabores impede confirmar com total zero', async () => {
   assert(container.querySelector('[type="submit"]').disabled)
   await enviar()
   assert.equal(repo.listar().length, 0)
-  assert(container.textContent.includes('Adicione pelo menos um produto'))
+  assert(container.textContent.includes('pelo menos um bolo'))
 })
 
 test('409 mantém todos os sabores e permite corrigir o total sem perder contatos', async () => {
@@ -376,6 +378,7 @@ test('panetone para dezembro mantém seleção e aponta conflito ao mudar retira
   repo.configurarProduto('panetone', { aceitaEncomendas: true, mesesPermitidos: [12] })
   await preencherTudo()
   await esperar(() => !container.querySelector('[name="itens[0].produto"] option[value="panetone"]').disabled)
+  await preencher('incluirPaoDeQueijo', false)
   await preencher('itens[0].produto', 'panetone')
   await preencher('dataEntrega', '2099-11-25')
   await esperar(() => container.querySelector('#pedido-itens-erro')?.textContent.includes('mês de retirada'))
@@ -386,7 +389,7 @@ test('panetone para dezembro mantém seleção e aponta conflito ao mudar retira
   await esperar(() => container.querySelector('[type="submit"]')?.disabled === false)
   await enviar()
   await esperar(() => container.textContent.includes('confirmada!'))
-  assert.equal(repo.listar()[0].totalCentavos, 7000)
+  assert.equal(repo.listar()[0].totalCentavos, 4500)
   assert.equal(repo.listar()[0].quantidadeProducao, 1)
 })
 
@@ -399,41 +402,12 @@ test('produto desabilitado durante preenchimento recebe 409, atualiza cardápio 
   assert.equal(repo.listar().length, 0)
   assert.equal(container.querySelector('[name="itens[0].produto"]').value, 'bolo-cenoura')
   assert.equal(container.querySelector('[name="nomeCliente"]').value, dados.nomeCliente)
-  assert(container.querySelector('[type="submit"]').disabled)
+  await esperar(() => container.querySelector('[type="submit"]')?.disabled)
   await preencher('itens[0].produto', 'bolo-chocolate')
   await esperarConsultas()
   await enviar()
   await esperar(() => container.textContent.includes('confirmada!'))
   assert.equal(repo.listar()[0].totalCentavos, 6500)
-})
-
-test('café sozinho e dúzias sozinhas confirmam com preço/unidade corretos e produção zero', async () => {
-  repo.configurarProduto('cafe-coado', { aceitaEncomendas: true, mesesPermitidos: [] })
-  await preencherTudo()
-  await esperar(() => !container.querySelector('[name="itens[0].produto"] option[value="cafe-coado"]').disabled)
-  await preencher('incluirPaoDeQueijo', false)
-  await preencher('itens[0].produto', 'cafe-coado')
-  await preencher('itens[0].quantidade', 12)
-  await enviar()
-  await esperar(() => container.textContent.includes('confirmada!'))
-  assert.equal(repo.listar()[0].totalCentavos, 6000)
-  assert.equal(repo.listar()[0].quantidadeProducao, 0)
-  assert(container.querySelector('.form-result').textContent.includes('Xícara · 150 ml'))
-  await clicar([...container.querySelectorAll('button')].find((b) => b.textContent === 'Fazer outra encomenda'))
-  await preencher('dataEntrega', dados.dataEntrega)
-  await esperarConsultas()
-  await preencher('nomeCliente', dados.nomeCliente)
-  await preencher('telefone', dados.telefone)
-  await preencher('itens[0].produto', 'pao-queijo')
-  await preencher('itens[0].quantidade', 2)
-  assert(container.querySelector('[name="incluirPaoDeQueijo"]').disabled)
-  await enviar()
-  await esperar(() => container.textContent.includes('confirmada!'))
-  assert.equal(repo.listar()[1].totalCentavos, 5000)
-  assert.equal(repo.listar()[1].valorPaoDeQueijoCentavos, 0)
-  assert.equal(repo.listar()[1].quantidadeItens, 2)
-  assert.equal(repo.disponibilidade(dados.dataEntrega).quantidadeReservada, 0)
-  assert(container.querySelector('.form-result').textContent.includes('Dúzia · 12 unidades'))
 })
 
 test('catálogo público com erro pode ser consultado novamente sem descartar dados', async () => {
@@ -445,4 +419,23 @@ test('catálogo público com erro pode ser consultado novamente sem descartar da
   await clicar([...container.querySelectorAll('button')].find((b) => b.textContent === 'Tentar consultar produtos novamente'))
   await esperar(() => !container.querySelector('.order-details').hidden)
   assert.equal(container.querySelector('[name="dataEntrega"]').value, dados.dataEntrega)
+})
+
+test('seletor só contém bolos/panetone e remover último bolo invalida acompanhamento sem perder dados', async () => {
+  repo.configurarProduto('panetone', { aceitaEncomendas: true, mesesPermitidos: [12] })
+  await preencherTudo()
+  const select = container.querySelector('[name="itens[0].produto"]')
+  for (const id of ['cafe-coado', 'cafe-leite', 'pao-queijo']) assert.equal(select.querySelector(`option[value="${id}"]`), null)
+  await preencher('itens[0].produto', 'panetone')
+  assert(container.querySelector('[name="incluirPaoDeQueijo"]').checked)
+  assert(container.querySelector('[type="submit"]').disabled)
+  await enviar()
+  assert.equal(repo.listar().length, 0)
+  assert(container.textContent.includes('pelo menos um bolo'))
+  assert.equal(container.querySelector('[name="nomeCliente"]').value, dados.nomeCliente)
+  await preencher('incluirPaoDeQueijo', false)
+  assert(!container.querySelector('[type="submit"]').disabled)
+  await enviar()
+  await esperar(() => container.textContent.includes('confirmada!'))
+  assert.equal(repo.listar()[0].totalCentavos, 4500)
 })

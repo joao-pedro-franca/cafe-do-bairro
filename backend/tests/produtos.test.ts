@@ -3,14 +3,14 @@ import { test } from 'node:test'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { abrirEncomendas } from '../src/database/encomendas.ts'
-import { PRODUTOS } from '../src/produtos.ts'
+import { produtoEncomendavel } from '../src/produtos.ts'
 import { apiTeste, pastaTemporaria, pedido, requisicao } from './helpers.ts'
 
 const ativo = { aceitaEncomendas: true, mesesPermitidos: [] as number[] }
 const agora = () => new Date('2026-11-01T15:00:00Z')
 const itens = (produto: string, quantidade = 1) => [{ produto, quantidade }]
 
-test('catálogo público contém os 11 padrões; qualquer produto pode ser ativado/desativado com persistência', async (t) => {
+test('catálogo público contém os 11 padrões; somente bolos/panetone podem ser configurados com persistência', async (t) => {
   const arquivo = join(await pastaTemporaria(t), 'produtos.sqlite')
   const a = await apiTeste(t, { arquivo })
   const base = a.base.replace('/encomendas', '')
@@ -19,15 +19,15 @@ test('catálogo público contém os 11 padrões; qualquer produto pode ser ativa
   assert.equal(publico.headers.get('cache-control'), 'no-store')
   assert.equal(publico.dados.length, 11)
   for (const p of publico.dados) {
-    assert.equal(p.aceitaEncomendas, p.id.startsWith('bolo-') && p.id !== 'bolo-natal' || p.id === 'pao-queijo')
+    assert.equal(p.aceitaEncomendas, p.id.startsWith('bolo-') && p.id !== 'bolo-natal')
     assert.deepEqual(p.mesesPermitidos, ['panetone', 'bolo-natal'].includes(p.id) ? [12] : [])
-    assert.equal((await requisicao(base, 'PATCH', `/admin/produtos/${p.id}`, { ...ativo, mesesPermitidos: [12, 7] })).status, 200)
+    assert.equal((await requisicao(base, 'PATCH', `/admin/produtos/${p.id}`, { ...ativo, mesesPermitidos: [12, 7] })).status, produtoEncomendavel(p.id) ? 200 : 400)
   }
   await a.fechar()
   const b = await apiTeste(t, { arquivo })
   const base2 = b.base.replace('/encomendas', '')
   const confirmados = await requisicao(base2, 'GET', '/admin/produtos')
-  for (const p of confirmados.dados) {
+  for (const p of confirmados.dados.filter((p: { id: string }) => produtoEncomendavel(p.id))) {
     assert.equal(p.aceitaEncomendas, true)
     assert.deepEqual(p.mesesPermitidos, [7, 12])
     assert.equal((await requisicao(base2, 'PATCH', `/admin/produtos/${p.id}`, { ...ativo, aceitaEncomendas: false })).status, 200)
@@ -69,70 +69,11 @@ test('em novembro encomenda panetone para dezembro; mês de retirada e estado s�
   assert.equal((await api.request('GET', `/${criado.dados.id}`)).dados.totalCentavos, 4500)
 })
 
-test('todos os produtos usam sua unidade e preço; café/dúzias não consomem capacidade nem duplicam adicional', () => {
-  const repo = abrirEncomendas(':memory:')
-  try {
-    for (const p of PRODUTOS) repo.configurarProduto(p.id, ativo)
-    const misto = repo.criar({ ...pedido, incluirPaoDeQueijo: false, itens: [{ produto: 'cafe-coado', quantidade: 20 }, { produto: 'pao-queijo', quantidade: 2 }] }, agora)
-    assert.equal(misto.quantidadeItens, 22)
-    assert.equal(misto.quantidadeProducao, 0)
-    assert.equal(misto.totalBolos, 0)
-    assert.equal(misto.subtotalBolosCentavos, 15000)
-    assert.equal(misto.valorPaoDeQueijoCentavos, 0)
-    assert.equal(misto.totalCentavos, 15000)
-    for (const p of repo.listarProdutos()) {
-      const criado = repo.criar({ ...pedido, dataEntrega: `2027-01-${String(PRODUTOS.findIndex((r) => r.id === p.id) + 1).padStart(2, '0')}`, incluirPaoDeQueijo: false, itens: itens(p.id) }, agora)
-      assert.equal(criado.itens[0]!.precoUnitarioCentavos, p.precoCentavos)
-      assert.equal(criado.totalCentavos, p.precoCentavos)
-      assert.equal(criado.quantidadeProducao, Number(p.consomeCapacidade))
-      assert.equal(criado.quantidadeItens, 1)
-    }
-    assert.match(repo.listarProdutos().find((p) => p.id === 'pao-queijo')!.unidade, /Dúzia/)
-    assert.throws(() => repo.criar({ ...pedido, itens: itens('pao-queijo') }, agora), /sem duplicar/)
-    assert.throws(() => repo.atualizar(misto.id, { incluirPaoDeQueijo: true }, agora), /sem duplicar/)
-    const legado = repo.criar(pedido, agora)
-    assert.equal(legado.totalCentavos, 6000)
-    assert.equal(legado.valorPaoDeQueijoCentavos, 2500)
-    assert.equal(legado.quantidadeItens, 2)
-  } finally { repo.fechar() }
-})
-
-test('bolos e panetones dividem cinco vagas, produtos sem quota continuam permitidos no dia cheio', () => {
-  const repo = abrirEncomendas(':memory:')
-  try {
-    repo.configurarProduto('panetone', ativo)
-    repo.configurarProduto('cafe-leite', ativo)
-    repo.criar({ ...pedido, incluirPaoDeQueijo: false, itens: [{ produto: 'bolo-cenoura', quantidade: 3 }, { produto: 'panetone', quantidade: 2 }] }, agora)
-    assert.equal(repo.disponibilidade(pedido.dataEntrega).quantidadeReservada, 5)
-    assert.throws(() => repo.criar({ ...pedido, itens: itens('panetone') }, agora), /disponibilidade/)
-    const cafe = repo.criar({ ...pedido, incluirPaoDeQueijo: false, itens: itens('cafe-leite', 60) }, agora)
-    assert.equal(cafe.totalCentavos, 42000)
-    assert.equal(repo.disponibilidade(pedido.dataEntrega).quantidadeReservada, 5)
-    assert.throws(() => repo.atualizar(cafe.id, { itens: itens('panetone') }, agora), /disponibilidade/)
-    assert.equal(repo.buscar(cafe.id).quantidadeProducao, 0)
-  } finally { repo.fechar() }
-})
-
-test('produtos sem quota continuam limitados a valores monetários inteiros seguros, com rollback', async (t) => {
-  const api = await apiTeste(t)
-  const base = api.base.replace('/encomendas', '')
-  await requisicao(base, 'PATCH', '/admin/produtos/cafe-coado', ativo)
-  await requisicao(base, 'PATCH', '/admin/produtos/cafe-leite', ativo)
-  const quantidade = Math.floor(Number.MAX_SAFE_INTEGER / 500)
-  const criado = await api.request('POST', '', { ...pedido, itens: itens('cafe-coado', quantidade), incluirPaoDeQueijo: false })
-  assert.equal(criado.status, 201)
-  assert.equal((await api.request('PATCH', `/${criado.dados.id}`, { incluirPaoDeQueijo: true })).status, 400)
-  assert.deepEqual((await api.request('GET', `/${criado.dados.id}`)).dados, criado.dados)
-  assert.equal((await api.request('POST', '', { ...pedido, incluirPaoDeQueijo: false, itens: [{ produto: 'cafe-coado', quantidade }, { produto: 'cafe-leite', quantidade: Math.floor(Number.MAX_SAFE_INTEGER / 700) }] })).status, 400)
-  assert.equal((await api.request('GET')).dados.length, 1)
-})
-
 test('desativar preserva histórico e manutenção; aumentos/inclusões e nova data validam regras atuais', () => {
   const repo = abrirEncomendas(':memory:')
   try {
     const original = repo.criar({ ...pedido, itens: itens('bolo-cenoura', 2) }, agora)
     repo.configurarProduto('bolo-cenoura', { ...ativo, aceitaEncomendas: false })
-    repo.configurarProduto('pao-queijo', { ...ativo, aceitaEncomendas: false })
     assert.deepEqual(repo.buscar(original.id), original)
     const editado = repo.atualizar(original.id, { status: 'em preparo', telefone: '73988888888', nomeCliente: 'Outro Cliente' }, agora)
     assert.equal(editado.totalCentavos, original.totalCentavos)
@@ -143,7 +84,8 @@ test('desativar preserva histórico e manutenção; aumentos/inclusões e nova d
     }
     const reduzido = repo.atualizar(original.id, { itens: itens('bolo-cenoura'), incluirPaoDeQueijo: false }, agora)
     assert.equal(reduzido.totalCentavos, 3500)
-    assert.throws(() => repo.atualizar(original.id, { incluirPaoDeQueijo: true }, agora), /não aceita encomendas/)
+    assert.equal(repo.atualizar(original.id, { incluirPaoDeQueijo: true }, agora).incluirPaoDeQueijo, true)
+    repo.atualizar(original.id, { incluirPaoDeQueijo: false }, agora)
     repo.atualizar(original.id, { itens: itens('bolo-chocolate') }, agora)
     assert.equal(repo.buscar(original.id).totalCentavos, 4000)
   } finally { repo.fechar() }
@@ -165,11 +107,11 @@ test('migração de banco precificado restrito preserva IDs e valores, é repet�
   assert.equal(antes.itens[0]!.precoUnitarioCentavos, 1234)
   assert.equal(antes.totalCentavos, 4268)
   assert.equal(antes.precosInicializados, false)
-  repo.configurarProduto('cafe-coado', ativo)
+  repo.configurarProduto('bolo-natal', ativo)
   repo.fechar()
   repo = abrirEncomendas(arquivo)
   assert.deepEqual(repo.buscar(27), antes)
-  const novo = repo.criar({ ...pedido, itens: itens('cafe-coado'), incluirPaoDeQueijo: false }, agora)
+  const novo = repo.criar({ ...pedido, itens: itens('bolo-natal'), incluirPaoDeQueijo: false }, agora)
   assert(novo.id > 27)
   assert.equal(repo.listar().length, 2)
   repo.fechar()

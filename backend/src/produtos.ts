@@ -46,8 +46,13 @@ export const PRODUTOS = [
   ] satisfies Produto[]
 
 export const produtoPorId = (id: string) => PRODUTOS.find((produto) => produto.id === id)
+export const produtoEncomendavel = (id: string) => produtoPorId(id)?.categoria === 'bolos-caseiros' || id === 'bolo-natal' || id === 'panetone'
+export function erroComposicao(itens: readonly { produto: string; quantidade: number }[], incluirPaoDeQueijo: boolean) {
+  if (itens.some((item) => !produtoEncomendavel(item.produto))) return 'Escolha somente bolos ou panetone como produtos. Pão de queijo é exclusivo do acompanhamento; cafés não aceitam encomendas.'
+  if (incluirPaoDeQueijo && unidadesBolos(itens) < 1) return 'O acompanhamento de pão de queijo exige pelo menos um bolo no pedido, inclusive bolo de Natal.'
+}
 export const unidadesItens = (itens: readonly { quantidade: number }[]) => itens.reduce((soma, item) => soma + item.quantidade, 0)
 export const unidadesProducao = (itens: readonly { produto: string; quantidade: number }[]) => itens.reduce((soma, item) => soma + (produtoPorId(item.produto)?.consomeCapacidade ? item.quantidade : 0), 0)
-export const unidadesBolos = (itens: readonly { produto: string; quantidade: number }[]) => itens.reduce((soma, item) => soma + (item.produto.startsWith('bolo-') ? item.quantidade : 0), 0)
+export const unidadesBolos = (itens: readonly { produto: string; quantidade: number }[]) => itens.reduce((soma, item) => soma + (produtoPorId(item.produto)?.categoria === 'bolos-caseiros' || item.produto === 'bolo-natal' ? item.quantidade : 0), 0)
 export const unidadeEncomenda = (id: string) => { const p = produtoPorId(id); return p?.encomenda.tipo === 'acompanhamento' ? p.encomenda.tamanho : p?.tamanho ?? id }
 
